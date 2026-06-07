@@ -2,9 +2,10 @@
   "name": "webenv",
   "version": "0.0.1",
   "description": "The fully-static, git based CMS.",
+  "types": "./src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
+      "types": "./src/index.d.ts",
       "default": "./src/index.ts"
     },
     "./config": {

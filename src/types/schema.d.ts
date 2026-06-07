@@ -19,6 +19,8 @@ type ComponentInput<TComponent extends Component> = {
   [TKey in RequiredElementKeys<TComponent>]: ElementInput<TComponent['elements'][TKey]>
 } & {
   [TKey in OptionalElementKeys<TComponent>]?: ElementInput<TComponent['elements'][TKey]>
+} & {
+  id: string
 }
 
 export type WebenvContent<

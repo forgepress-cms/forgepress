@@ -12,7 +12,7 @@
     "playground": {
       "name": "webenv-playground",
       "dependencies": {
-        "webenv": "latest",
+        "webenv": "workspace:*",
       },
     },
   },

@@ -1,4 +1,4 @@
-import { defineWebenvConfig } from '../../src'
+import { defineWebenvConfig } from 'webenv'
 
 export default defineWebenvConfig({
   name: 'Playground',

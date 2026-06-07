@@ -1,4 +1,4 @@
-import type { WebenvSchema } from '../../src/types/schema'
+import type { WebenvSchema } from 'webenv'
 
 export default {
   components: {
