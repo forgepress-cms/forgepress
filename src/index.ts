@@ -1,0 +1,1 @@
+export { defineWebenvConfig } from './config'
