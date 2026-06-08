@@ -1,3 +1,4 @@
 export { defineWebenvConfig } from './config'
 
-export type { WebenvContent, WebenvSchema } from './types/schema'
+export type { WebenvSchema } from './types/core/schema'
+export type { WebenvContent } from './types/core/content'

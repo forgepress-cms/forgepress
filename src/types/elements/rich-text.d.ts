@@ -4,4 +4,4 @@ export interface RichTextElement extends Element {
   type: 'richtext'
 }
 
-export type RichTextElementInput = string
+export type RichTextElementContent = string

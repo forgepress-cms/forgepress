@@ -4,4 +4,4 @@ export interface TextElement extends Element {
   type: 'text'
 }
 
-export type TextElementInput = string
+export type TextElementContent = string

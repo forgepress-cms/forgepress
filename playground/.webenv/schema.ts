@@ -1,6 +1,8 @@
 import type { WebenvSchema } from 'webenv'
 
 export default {
+  locales: ['en', 'de'],
+
   components: {
     author: {
       label: 'Author',
@@ -20,15 +22,14 @@ export default {
           type: 'richtext',
           label: 'Biography',
           description: 'A short biography of the author',
+          translate: true,
         },
         blogPosts: {
           type: 'relation',
           label: 'Blog Posts',
           description: 'The blog posts authored by this author',
-          relation: {
-            component: 'blogPost',
-            multiple: true,
-          },
+          component: 'blogPost',
+          multiple: true,
         },
       },
     },
@@ -41,14 +42,13 @@ export default {
           type: 'relation',
           label: 'Author',
           description: 'The author of this blog post',
-          relation: {
-            component: 'author',
-          },
+          component: 'author',
         },
         title: {
           type: 'text',
           label: 'Title',
           description: 'The title of the blog post',
+          translate: true,
         },
         coverImage: {
           type: 'image',
@@ -60,8 +60,71 @@ export default {
           type: 'richtext',
           label: 'Content',
           description: 'The content of the blog post',
+          translate: true,
         },
       },
     },
+
+    hero: {
+      label: 'Hero',
+      description: 'A hero section with a headline, subheadline, and background image',
+      elements: {
+        headline: {
+          type: 'text',
+          label: 'Headline',
+          description: 'The main headline for the hero section',
+          translate: true,
+        },
+        subheadline: {
+          type: 'text',
+          label: 'Subheadline',
+          description: 'A subheadline for the hero section',
+          translate: true,
+        },
+        backgroundImage: {
+          type: 'image',
+          label: 'Background Image',
+          description: 'A background image for the hero section',
+        },
+      },
+    },
+
+    textBlock: {
+      label: 'Text',
+      description: 'A text element with content',
+      elements: {
+        content: {
+          type: 'richtext',
+          label: 'Content',
+          description: 'The content of the text element',
+          translate: true,
+        },
+      },
+    },
+
+    page: {
+      label: 'Page',
+      description: 'A generic page component with a title and content',
+      elements: {
+        slug: {
+          type: 'text',
+          label: 'Slug',
+          description: 'The URL slug for the page',
+          translate: true,
+        },
+        title: {
+          type: 'text',
+          label: 'Title',
+          description: 'The title of the page',
+          translate: true,
+        },
+        content: {
+          type: 'dynamic',
+          label: 'Content',
+          description: 'The content of the page, which can include various elements',
+          components: ['hero', 'textBlock'],
+        }
+      },
+    },
   },
-} satisfies WebenvSchema
+} as const satisfies WebenvSchema

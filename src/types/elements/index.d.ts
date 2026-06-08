@@ -1,17 +1,21 @@
-import type { MediaElement, MediaElementInput } from './media'
-import type { RelationElement, RelationElementInput } from './relation'
-import type { RichTextElement, RichTextElementInput } from './rich-text'
-import type { TextElement, TextElementInput } from './text'
+import type { DynamicElement, DynamicElementContent } from './dynamic'
+import type { MediaElement, MediaElementContent } from './media'
+import type { RelationElement, RelationElementContent } from './relation'
+import type { RichTextElement, RichTextElementContent } from './rich-text'
+import type { TextElement, TextElementContent } from './text'
 
-export type ElementType = TextElement | RichTextElement | MediaElement | RelationElement
+export type ElementType = DynamicElement | TextElement | RichTextElement | MediaElement | RelationElement
 
-export type ElementInput<TElement extends ElementType>
-  = TElement extends TextElement
-    ? TextElementInput
-    : TElement extends RichTextElement
-      ? RichTextElementInput
+export type ElementContent<TElement extends ElementType>
+  = TElement extends DynamicElement
+    ? DynamicElementContent<TElement>
+    : TElement extends RelationElement
+      ? RelationElementContent<TElement>
       : TElement extends MediaElement
-        ? MediaElementInput
-        : TElement extends RelationElement
-          ? RelationElementInput
-          : never
+        ? MediaElementContent<TElement>
+        : TElement extends TextElement
+          ? TextElementContent
+          : TElement extends RichTextElement
+            ? RichTextElementContent
+            : never
+
