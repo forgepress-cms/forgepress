@@ -42,4 +42,4 @@ type ComponentContent<
 export type WebenvContent<
   TSchema extends WebenvSchema,
   TComponentName extends keyof TSchema['components'],
-> = Array<ComponentContent<TSchema, TSchema['components'][TComponentName]>>
+> = ComponentContent<TSchema, TSchema['components'][TComponentName]>[]

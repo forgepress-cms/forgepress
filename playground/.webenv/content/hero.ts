@@ -1,7 +1,8 @@
-import type { WebenvContent } from 'webenv'
 import type schema from '../schema'
 
-export default [
+import { defineWebenvContent } from 'webenv'
+
+export default defineWebenvContent<typeof schema, 'hero'>([
   {
     id: 'hero-1',
     status: 'published',
@@ -20,4 +21,4 @@ export default [
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-15T00:00:00Z',
   },
-] satisfies WebenvContent<typeof schema, 'hero'>
+])

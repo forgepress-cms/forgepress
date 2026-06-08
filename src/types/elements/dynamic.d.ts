@@ -11,4 +11,4 @@ type DynamicContentItem<TComponentName extends string> = {
 }
 
 export type DynamicElementContent<TElement extends DynamicElement> =
-  Array<DynamicContentItem<TElement['components'][number]>>
+  DynamicContentItem<TElement['components'][number]>[]

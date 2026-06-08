@@ -1,6 +1,6 @@
-import type { WebenvSchema } from 'webenv'
+import { defineWebenvSchema } from 'webenv'
 
-export default {
+export default defineWebenvSchema({
   locales: ['en', 'de'],
 
   components: {
@@ -127,4 +127,4 @@ export default {
       },
     },
   },
-} as const satisfies WebenvSchema
+})
