@@ -1,6 +1,6 @@
 # Webenv
 
-The Fully Static, Git Only CMS.
+A framework-agnostic static CMS platform where your app consumes typed local content at build time without a backend API, while an optional in-browser CMS syncs content through Git provider APIs and ships as part of the static site.
 
 ## What?
 
@@ -15,7 +15,7 @@ Like Payload CMS but framework agnostic and without the server, database and hos
 I don't like hosting stuff. No database, no server, no nothing. Not even serverless functions. Just a static site that you can host anywhere.
 Which also happens to have a CMS baked in.
 No vendor lock-in, no lock-in to a specific hosting provider, no lock-in to a specific database. Just you and your content in a Git repository.
-Also consumable and bundle-able with anything! Use it in your Astro or Nuxt App that statically generates your site, or use it in your Next.js app that does server-side rendering, your choice.
+Consumable and bundle-able with anything, use it in your Astro or Nuxt App that statically generates your site, or use it in your Next.js app that does server-side rendering, your choice.
 
 ## How?
 
@@ -28,15 +28,22 @@ We authenticate using OAuth PKCE for browser-only auth.
 Yes i know GitHub doesn't support it, but they do support GitHub Apps which is a similar enough concept and also works without a backend.
 The CMS is bundled into the static website, and it uses the GitHub/GitLab/Forgejo API to pull the content and push changes.
 In the browser frontend, you can edit your content schema and also the content itself.
-To be fast, it uses a local model of the content and only pushes the cumulated changes to the API when you hit save. This also allows for offline editing, which is pretty neat.
+To be fast, it uses a local model of the content and only pushes the cumulated changes to the API when you hit save. This also allows for offline editing.
+When you hit save, it pushes the changes to the Git provider API, which creates a commit and optionally a pull request if you have that enabled.
+Then, the CI pipeline of your static site will pull the changes and rebuild the site, which is then published to the CDN.
 
-So for the CMS user it looks like this:
+So for the CMS user the setup looks like this:
 
 1. Create Repository
-2. Create Schema
-3. Create Content
-4. Consume Content in your static site
+2. Create Schema, Content + CI pipeline
+4. Consume Content in your static site / app
 5. Publish static site to CDN with the CMS bundled in
-6. Edit from wherever you want, whenever you want, and publish changes to the CDN with a single click
+6. Edit from wherever you want, whenever you want
 
-We work with CI / CD to automatically build and deploy the static site whenever there are changes to the content. This way, you don't have to worry about hosting or deploying your site, just focus on creating content.
+When you edit content it follows this flow:
+
+1. Edit content in the CMS
+2. Hit save, which pushes changes to Git provider API
+3. Git provider creates commit and optionally a pull request
+4. CI pipeline of static site pulls changes and rebuilds site
+5. New version of static site is published to CDN (or wherever you host it)

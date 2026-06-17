@@ -1,5 +1,5 @@
 {
-  "name": "webenv-playground",
+  "name": "playground-js",
   "dependencies": {
     "webenv": "workspace:*"
   }

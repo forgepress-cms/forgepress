@@ -1,8 +1,14 @@
 export type ProviderType = 'github' | 'gitlab' | 'forgejo'
 
+export interface ProviderRepositoryConfig {
+  owner: string
+  name: string
+  branch?: string
+}
+
 export interface ProviderConfigBase {
   type: ProviderType
-  repository: RepositoryConfig
+  repository: ProviderRepositoryConfig
 }
 
 export interface GitHubProviderConfig extends ProviderConfigBase {

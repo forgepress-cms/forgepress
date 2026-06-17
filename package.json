@@ -10,7 +10,8 @@
   },
   "types": "./src/index.d.ts",
   "scripts": {
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "dev:nuxt": "bun run --filter=playground-nuxt dev"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^9.0.0",
@@ -18,7 +19,7 @@
   },
   "workspaces": [
     ".",
-    "playground"
+    "playgrounds/*"
   ],
   "overrides": {
     "webenv": "file:."
