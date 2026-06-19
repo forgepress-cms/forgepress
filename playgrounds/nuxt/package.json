@@ -12,7 +12,6 @@
   "dependencies": {
     "nuxt": "^4.4.7",
     "vue": "^3.5.35",
-    "vue-router": "^5.1.0",
-    "webenv": "workspace:*"
+    "vue-router": "^5.1.0"
   }
 }

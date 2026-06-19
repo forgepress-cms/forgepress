@@ -1,4 +1,4 @@
-import type { Element } from '../core/element'
+import type { Element } from '../types/core/element'
 
 export interface DynamicElement extends Element {
   type: 'dynamic'

@@ -1,4 +1,4 @@
-import type { Element } from '../core/element'
+import type { Element } from '../types/core/element'
 
 export interface TextElement extends Element {
   type: 'text'

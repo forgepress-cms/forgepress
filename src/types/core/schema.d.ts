@@ -1,10 +1,10 @@
 import type { ElementContentMetadata } from './element'
 import type { Component } from './component'
-import type { ElementContent, ElementType } from '../elements'
+import type { ElementContent, ElementType } from '../../elements'
 
-type NonTranslatedElement<TElement extends ElementType = ElementType> = Omit<TElement, 'translate'> & {
-  translate?: false
-}
+type NonTranslatedElement<TElement extends ElementType = ElementType> = TElement extends ElementType
+  ? Omit<TElement, 'translate'> & { translate?: false }
+  : never
 
 type NonTranslatedComponent<TComponent extends Component = Component> = Omit<TComponent, 'elements'> & {
   elements: {
