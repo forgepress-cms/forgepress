@@ -123,7 +123,7 @@ export default defineWebenvSchema({
           label: 'Content',
           description: 'The content of the page, which can include various elements',
           components: ['hero', 'textBlock'],
-        }
+        },
       },
     },
   },

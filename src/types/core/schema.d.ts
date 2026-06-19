@@ -1,6 +1,5 @@
-import type { ElementContentMetadata } from './element'
+import type { ElementType } from '../../elements'
 import type { Component } from './component'
-import type { ElementContent, ElementType } from '../../elements'
 
 type NonTranslatedElement<TElement extends ElementType = ElementType> = TElement extends ElementType
   ? Omit<TElement, 'translate'> & { translate?: false }
@@ -20,5 +19,5 @@ export type WebenvSchema = {
   locales?: readonly string[]
 }
 
-export type SchemaLocale<TSchema extends WebenvSchema> =
-  TSchema['locales'] extends readonly string[] ? TSchema['locales'][number] : never
+export type SchemaLocale<TSchema extends WebenvSchema>
+  = TSchema['locales'] extends readonly string[] ? TSchema['locales'][number] : never

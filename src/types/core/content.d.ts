@@ -1,13 +1,13 @@
-import type { ElementContentMetadata } from './element'
-import type { AnyComponent } from './component'
 import type { ElementContent, ElementType } from '../../elements'
-import type { WebenvSchema, SchemaLocale } from './schema'
+import type { AnyComponent } from './component'
+import type { ElementContentMetadata } from './element'
+import type { SchemaLocale, WebenvSchema } from './schema'
 
-type TranslatedContent<TSchema extends WebenvSchema, TContent> =
-  [SchemaLocale<TSchema>] extends [never] ? TContent : Record<SchemaLocale<TSchema>, TContent>
+type TranslatedContent<TSchema extends WebenvSchema, TContent>
+  = [SchemaLocale<TSchema>] extends [never] ? TContent : Record<SchemaLocale<TSchema>, TContent>
 
-type OptionalTranslatedContent<TSchema extends WebenvSchema, TContent> =
-  [SchemaLocale<TSchema>] extends [never] ? TContent : Partial<Record<SchemaLocale<TSchema>, TContent>>
+type OptionalTranslatedContent<TSchema extends WebenvSchema, TContent>
+  = [SchemaLocale<TSchema>] extends [never] ? TContent : Partial<Record<SchemaLocale<TSchema>, TContent>>
 
 type ElementValueContent<
   TSchema extends WebenvSchema,
@@ -38,14 +38,19 @@ type ComponentContent<
   [TKey in OptionalElementKeys<TComponent>]?: ElementValueContent<TSchema, TComponent['elements'][TKey], true>
 }
 
-type SchemaComponent<
+export type SchemaComponent<
   TSchema extends WebenvSchema,
   TComponentName extends keyof TSchema['components'],
 > = TSchema['components'][TComponentName] extends AnyComponent
   ? TSchema['components'][TComponentName]
   : AnyComponent
 
+export type WebenvContentRow<
+  TSchema extends WebenvSchema,
+  TComponentName extends keyof TSchema['components'],
+> = ComponentContent<TSchema, SchemaComponent<TSchema, TComponentName>>
+
 export type WebenvContent<
   TSchema extends WebenvSchema,
   TComponentName extends keyof TSchema['components'],
-> = ComponentContent<TSchema, SchemaComponent<TSchema, TComponentName>>[]
+> = WebenvContentRow<TSchema, TComponentName>[]

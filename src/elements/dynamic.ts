@@ -5,10 +5,10 @@ export interface DynamicElement extends Element {
   components: readonly string[]
 }
 
-type DynamicContentItem<TComponentName extends string> = {
+interface DynamicContentItem<TComponentName extends string> {
   type: TComponentName
   component: string
 }
 
-export type DynamicElementContent<TElement extends DynamicElement> =
-  DynamicContentItem<TElement['components'][number]>[]
+export type DynamicElementContent<TElement extends DynamicElement>
+  = DynamicContentItem<TElement['components'][number]>[]

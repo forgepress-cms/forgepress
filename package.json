@@ -4,25 +4,33 @@
   "description": "The fully-static, git based CMS.",
   "exports": {
     ".": {
-      "types": "./src/index.d.ts",
+      "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./unplugin": {
+      "types": "./src/unplugin.ts",
+      "default": "./src/unplugin.ts"
     }
   },
-  "types": "./src/index.d.ts",
+  "types": "./src/index.ts",
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "build": "obuild",
     "dev:nuxt": "bun run --filter=playground-nuxt dev"
   },
-  "devDependencies": {
-    "@antfu/eslint-config": "^9.0.0",
-    "eslint": "^10.4.1",
-    "obuild": "^0.4.36",
-    "typescript": "^6.0.3"
-  },
   "workspaces": [
     ".",
     "playgrounds/*"
-  ]
+  ],
+  "dependencies": {
+    "unplugin": "^3.0.0"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^9.0.0",
+    "@types/node": "^26.0.0",
+    "eslint": "^10.4.1",
+    "obuild": "^0.4.36",
+    "typescript": "^6.0.3"
+  }
 }

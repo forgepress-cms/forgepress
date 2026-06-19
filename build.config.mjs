@@ -6,6 +6,7 @@ export default defineBuildConfig({
       type: 'bundle',
       input: [
         './src/index.ts',
+        './src/unplugin.ts',
       ],
       dts: true,
     },
