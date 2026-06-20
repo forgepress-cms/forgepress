@@ -16,6 +16,8 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit && bun run --filter=playground-nuxt typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "build": "obuild",
     "dev:nuxt": "bun run --filter=playground-nuxt dev"
   },
@@ -31,6 +33,7 @@
     "@types/node": "^26.0.0",
     "eslint": "^10.4.1",
     "obuild": "^0.4.36",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^3.0.0"
   }
 }
