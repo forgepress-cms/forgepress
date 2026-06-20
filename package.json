@@ -15,7 +15,7 @@
   "types": "./src/index.ts",
   "scripts": {
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && bun run --filter=playground-nuxt typecheck",
     "build": "obuild",
     "dev:nuxt": "bun run --filter=playground-nuxt dev"
   },

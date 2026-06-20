@@ -1,8 +1,9 @@
 import type { WebenvConfig } from './types/config'
 import type { WebenvContent } from './types/core/content'
 import type { WebenvSchema } from './types/core/schema'
+import type { RegisteredSchema } from './types/query'
 
-export function defineWebenvConfig<const T extends WebenvConfig>(config: T) {
+export function defineWebenvConfig(config: WebenvConfig) {
   return config
 }
 
@@ -10,6 +11,6 @@ export function defineWebenvSchema<const T extends WebenvSchema>(schema: T) {
   return schema
 }
 
-export function defineWebenvContent<const TSchema extends WebenvSchema, const TName extends keyof TSchema['components']>(content: WebenvContent<TSchema, TName>) {
+export function defineWebenvContent<const TName extends keyof RegisteredSchema['components']>(content: WebenvContent<RegisteredSchema, TName>) {
   return content
 }

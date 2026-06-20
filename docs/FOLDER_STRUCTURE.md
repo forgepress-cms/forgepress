@@ -10,8 +10,8 @@ src/
 ├── elements/
 │   └── [element].ts          # The element module for each element type; exports the ElementContent type and the element's schema
 │
-├── query.ts                  # Exports query() and selects the backend by environment
 ├── query/
+│   ├── index.ts              # Exports query() and selects the backend by environment
 │   ├── builder.ts            # Lazy, awaitable chained builder: query('x').where().sort().with().limit()
 │   ├── evaluator.ts          # Shared where/sort/limit core used identically by both backends
 │   └── backend/
@@ -21,21 +21,21 @@ src/
 ├── build/
 │   └── content.ts            # Loads .webenv/*, validates, emits the index + body shards + manifest
 │
-├── write.ts                  # The headless write API (mutate, publish)
 ├── write/
+│   ├── index.ts              # The headless write API (mutate, publish)
 │   ├── state.ts              # Holds pending edits client-side (memory/localStorage) until publish
 │   └── serialize.ts          # Full-regeneration canonical TS printer; data -> .ts content files
 │
-├── storage.ts                # The write-target storage abstraction
 ├── storage/
+│   ├── index.ts              # The write-target storage abstraction
 │   ├── node.ts               # Local disk storage target (dev): read current file, write file
 │   └── git/
 │       ├── github.ts         # GitHub provider: get current file + commit changes
 │       ├── gitlab.ts         # GitLab provider: get current file + commit changes
 │       └── codeberg.ts       # Codeberg/Forgejo provider: get current file + commit changes
 │
-├── validation.ts             # The shared validator
 ├── validation/
+│   ├── index.ts              # The shared validator
 │   └── relations.ts          # Build-time relation integrity: every referenced id resolves
 │
 ├── editor/                   # Opt-in, lazy editor; webenv's own mountable UI surface
@@ -48,12 +48,15 @@ src/
     ├── config/
     │   ├── index.d.ts        # WebenvConfig type
     │   └── provider.d.ts     # Provider config types
+    ├── query/
+    │   ├── index.d.ts        # Query plan + typed QueryBuilder surface
+    │   ├── loader.d.ts       # Shared loader interface for both backends
+    │   └── virtual.d.ts      # Type for the plugin's virtual:webenv/content module
     └── core/
         ├── schema.d.ts       # WebenvSchema and locale types
         ├── component.d.ts    # Component type
         ├── element.d.ts      # Element metadata types
         ├── content.d.ts      # Content row/collection types derived from schema + elements
-        ├── query.d.ts        # Query builder, operator, and result types
         ├── write.d.ts        # Write API contracts
         └── storage.d.ts      # Storage provider interface contract
 ```

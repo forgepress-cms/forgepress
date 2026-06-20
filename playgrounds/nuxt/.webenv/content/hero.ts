@@ -1,8 +1,6 @@
-import type schema from '../schema'
-
 import { defineWebenvContent } from 'webenv'
 
-export default defineWebenvContent<typeof schema, 'hero'>([
+export default defineWebenvContent<'hero'>([
   {
     id: 'hero-1',
     status: 'published',
