@@ -27,23 +27,23 @@ It uses the Git provider as the backend, so you can use any of the following:
 We authenticate using OAuth PKCE for browser-only auth.
 Yes i know GitHub doesn't support it, but they do support GitHub Apps which is a similar enough concept and also works without a backend.
 The CMS is bundled into the static website, and it uses the GitHub/GitLab/Forgejo API to pull the content and push changes.
-In the browser frontend, you can edit your content schema and also the content itself.
+In the browser frontend, you can edit your content.
 To be fast, it uses a local model of the content and only pushes the cumulated changes to the API when you hit save. This also allows for offline editing.
-When you hit save, it pushes the changes to the Git provider API, which creates a commit and optionally a pull request if you have that enabled.
-Then, the CI pipeline of your static site will pull the changes and rebuild the site, which is then published to the CDN.
+When you hit save, it pushes the changes to the Git provider API, which creates a commit and pushes the new content.
+Then, the CI pipeline will pick up the changes and rebuild the site, which is then published to the CDN again.
 
-So for the CMS user the setup looks like this:
+So for the Developer the setup looks like this:
 
 1. Create Repository
 2. Create Schema, Content + CI pipeline
-4. Consume Content in your static site / app
-5. Publish static site to CDN with the CMS bundled in
-6. Edit from wherever you want, whenever you want
+3. Consume Content in your static site / app
+4. Publish static site / app with the CMS bundled in
+5. Edit from wherever you want, whenever you want
 
-When you edit content it follows this flow:
+For the User, editing content follows this flow:
 
-1. Edit content in the CMS
+1. Edit content in the CMS (e.g. /webenv route of your static site)
 2. Hit save, which pushes changes to Git provider API
-3. Git provider creates commit and optionally a pull request
+3. Git provider creates commit and pushes new content
 4. CI pipeline of static site pulls changes and rebuilds site
 5. New version of static site is published to CDN (or wherever you host it)
