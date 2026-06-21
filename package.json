@@ -10,6 +10,10 @@
     "./unplugin": {
       "types": "./src/unplugin.ts",
       "default": "./src/unplugin.ts"
+    },
+    "./editor": {
+      "types": "./dist/editor/index.d.mts",
+      "default": "./dist/editor/index.mjs"
     }
   },
   "types": "./src/index.ts",
@@ -34,6 +38,8 @@
     "eslint": "^10.5.0",
     "obuild": "^0.4.36",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "unplugin-vue": "^7.2.0",
+    "vitest": "^4.1.9",
+    "vue": "^3.5.38"
   }
 }

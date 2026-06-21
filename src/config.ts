@@ -11,6 +11,6 @@ export function defineWebenvSchema<const T extends WebenvSchema>(schema: T) {
   return schema
 }
 
-export function defineWebenvContent<const TName extends keyof RegisteredSchema['components']>(content: WebenvContent<RegisteredSchema, TName>) {
+export function defineWebenvContent<TName extends keyof RegisteredSchema['components']>(content: WebenvContent<RegisteredSchema, TName>) {
   return content
 }

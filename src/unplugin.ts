@@ -105,6 +105,5 @@ export const rollupPlugin = unplugin.rollup
 export const rolldownPlugin = unplugin.rolldown
 export const webpackPlugin = unplugin.webpack
 export const rspackPlugin = unplugin.rspack
-export const esbuildPlugin = unplugin.esbuild
 export const farmPlugin = unplugin.farm
 export const bunPlugin = unplugin.bun
