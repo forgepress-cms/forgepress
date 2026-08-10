@@ -1,7 +1,37 @@
+import type { MountEditor } from '../types/editor'
+
+import ui from '@nuxt/ui/vue-plugin'
 import { createApp } from 'vue'
 import App from './App.vue'
+import { colorModeKey, createColorMode } from './color-mode'
 import { createRouter, routerKey } from './router'
+import { routes } from './routes'
 import styles from './styles.css?inline'
+
+const PROPERTIES_ID = 'webenv-properties'
+const PROPERTY_RULE = /@property\s+--[\w-]+\s*\{[^}]*\}/g
+
+/**
+ * `@property` is ignored inside a shadow root, which leaves Tailwind's `--tw-*` defaults
+ * unregistered and silently drops every border, ring, shadow and transform. Only those
+ * registrations are hoisted to the document; the styles themselves stay scoped.
+ */
+function registerProperties(): (() => void) | undefined {
+  if (document.getElementById(PROPERTIES_ID))
+    return undefined
+
+  const rules = styles.match(PROPERTY_RULE)
+
+  if (!rules)
+    return undefined
+
+  const sheet = document.createElement('style')
+  sheet.id = PROPERTIES_ID
+  sheet.textContent = rules.join('\n')
+  document.head.append(sheet)
+
+  return () => sheet.remove()
+}
 
 function resolve(target?: Element | string | null): Element {
   const el = typeof target === 'string'
@@ -16,7 +46,7 @@ function resolve(target?: Element | string | null): Element {
   return el
 }
 
-export function mountEditor(target?: Element | string | null): () => void {
+export const mountEditor: MountEditor = (target) => {
   const host = resolve(target)
   const root = host.shadowRoot ?? host.attachShadow({ mode: 'open' })
 
@@ -27,15 +57,22 @@ export function mountEditor(target?: Element | string | null): () => void {
   container.className = 'webenv-root'
   root.replaceChildren(sheet, container)
 
-  const app = createApp(App)
-  const router = createRouter()
+  const unregister = registerProperties()
 
+  const app = createApp(App)
+  const router = createRouter(routes)
+  const colorMode = createColorMode(container)
+
+  app.use(ui)
   app.provide(routerKey, router)
+  app.provide(colorModeKey, colorMode)
   app.mount(container)
 
   return () => {
     app.unmount()
     router.dispose()
+    colorMode.dispose()
+    unregister?.()
     root.replaceChildren()
   }
 }

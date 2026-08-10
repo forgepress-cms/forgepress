@@ -1,39 +1,78 @@
-import type { InjectionKey, Ref } from 'vue'
+import type { Component, InjectionKey, Ref } from 'vue'
 
-import { inject, ref } from 'vue'
+import { inject, shallowRef } from 'vue'
 
-export const routes = ['content', 'schema', 'assets'] as const
+export type EditorRoutes = Record<string, Component>
 
-export type EditorRoute = typeof routes[number]
+export interface EditorRoute {
+  path: string
+  params: Record<string, string>
+  page: Component
+}
 
 export interface EditorRouter {
-  route: Ref<EditorRoute | undefined>
-  navigate: (route?: EditorRoute) => void
-  href: (route?: EditorRoute) => string
+  route: Ref<EditorRoute>
+  navigate: (path?: string) => void
+  href: (path?: string) => string
   dispose: () => void
 }
 
 export const routerKey: InjectionKey<EditorRouter> = Symbol('webenv:editor:router')
 
-function parse(): EditorRoute | undefined {
-  const [name] = window.location.hash.replace(/^#\/?/, '').split('/')
-
-  return routes.includes(name as EditorRoute) ? name as EditorRoute : undefined
+function segments(path: string): string[] {
+  return path.split('/').filter(Boolean).map(decodeURIComponent)
 }
 
-export function createRouter(): EditorRouter {
-  const route = ref<EditorRoute | undefined>(parse())
+function capture(pattern: string, path: string[]): Record<string, string> | undefined {
+  const parts = segments(pattern)
+
+  if (parts.length !== path.length)
+    return undefined
+
+  const params: Record<string, string> = {}
+
+  for (const [index, part] of parts.entries()) {
+    const value = path[index]!
+
+    if (part.startsWith(':'))
+      params[part.slice(1)] = value
+    else if (part !== value)
+      return undefined
+  }
+
+  return params
+}
+
+export function matchRoute(routes: EditorRoutes, path: string): EditorRoute {
+  const parts = segments(path)
+
+  for (const [pattern, page] of Object.entries(routes)) {
+    const params = capture(pattern, parts)
+
+    if (params)
+      return { path, params, page }
+  }
+
+  return { path, params: {}, page: routes['']! }
+}
+
+export function createRouter(routes: EditorRoutes): EditorRouter {
+  if (!routes[''])
+    throw new Error('[webenv] the editor router needs a route for \'\'')
+
+  const read = (): string => window.location.hash.replace(/^#\/?/, '')
+  const route = shallowRef<EditorRoute>(matchRoute(routes, read()))
 
   const onChange = (): void => {
-    route.value = parse()
+    route.value = matchRoute(routes, read())
   }
 
   window.addEventListener('hashchange', onChange)
 
   return {
     route,
-    navigate: name => void (window.location.hash = `#/${name ?? ''}`),
-    href: name => `#/${name ?? ''}`,
+    navigate: path => void (window.location.hash = `#/${path ?? ''}`),
+    href: path => `#/${path ?? ''}`,
     dispose: () => window.removeEventListener('hashchange', onChange),
   }
 }

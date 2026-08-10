@@ -1,133 +1,69 @@
 @import "tailwindcss" source(none);
+@import "@nuxt/ui";
 
 @source "./**/*.vue";
 
-@theme {
-  --color-canvas: var(--webenv-canvas);
-  --color-panel: var(--webenv-panel);
-  --color-line: var(--webenv-line);
-  --color-fg: var(--webenv-fg);
-  --color-muted: var(--webenv-muted);
-  --color-accent: var(--webenv-accent);
-  --color-danger: var(--webenv-danger);
-  --color-warn: var(--webenv-warn);
+@theme static {
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: #FFF1F1;
+  --color-brand-100: #FCE2E2;
+  --color-brand-200: #F9CACC;
+  --color-brand-300: #FA9DA2;
+  --color-brand-400: #F85F6D;
+  --color-brand-500: #F21B3F;
+  --color-brand-600: #E20026;
+  --color-brand-700: #BF0021;
+  --color-brand-800: #A00028;
+  --color-brand-900: #89062C;
+  --color-brand-950: #4E0213;
+}
+
+@layer theme {
+  :host {
+    --ui-color-primary-50: var(--color-brand-50);
+    --ui-color-primary-100: var(--color-brand-100);
+    --ui-color-primary-200: var(--color-brand-200);
+    --ui-color-primary-300: var(--color-brand-300);
+    --ui-color-primary-400: var(--color-brand-400);
+    --ui-color-primary-500: var(--color-brand-500);
+    --ui-color-primary-600: var(--color-brand-600);
+    --ui-color-primary-700: var(--color-brand-700);
+    --ui-color-primary-800: var(--color-brand-800);
+    --ui-color-primary-900: var(--color-brand-900);
+    --ui-color-primary-950: var(--color-brand-950);
+    --ui-primary: var(--color-brand-500);
+  }
+
+  .dark {
+    --ui-primary: var(--color-brand-400);
+  }
 }
 
 @layer base {
   :host {
     display: block;
     color-scheme: light dark;
-    background-color: var(--webenv-canvas);
-
-    --webenv-canvas: #fbfbfd;
-    --webenv-panel: #ffffff;
-    --webenv-line: #e3e3ea;
-    --webenv-fg: #1b1b1f;
-    --webenv-muted: #6b6b78;
-    --webenv-accent: #4f46e5;
-    --webenv-danger: #c8322b;
-    --webenv-warn: #a86a00;
+    background-color: var(--ui-bg);
   }
 
-  @media (prefers-color-scheme: dark) {
-    :host {
-      --webenv-canvas: #131316;
-      --webenv-panel: #1b1b20;
-      --webenv-line: #2e2e36;
-      --webenv-fg: #f2f2f5;
-      --webenv-muted: #9a9aa8;
-      --webenv-accent: #8b83ff;
-      --webenv-danger: #ff8079;
-      --webenv-warn: #ffc24d;
-    }
-  }
-
-  /* The host page can style the host element, so inheritance is cut off here instead. */
   .webenv-root {
     all: initial;
     display: block;
     min-height: 100%;
-    color-scheme: light dark;
-    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-sans);
     font-size: 14px;
     line-height: 1.5;
+    color: var(--ui-text);
+    background-color: var(--ui-bg);
   }
 
-  h1 {
-    @apply text-xl font-semibold;
+  /* Scrollbars and native controls follow the mode the editor is in, not the OS. */
+  .webenv-root {
+    color-scheme: light;
   }
 
-  h2 {
-    @apply text-base font-semibold;
-  }
-
-  h3 {
-    @apply text-sm font-semibold;
-  }
-
-  a {
-    @apply text-inherit no-underline;
-  }
-
-  code {
-    @apply font-mono text-xs;
-  }
-
-  input, select, textarea {
-    @apply w-full rounded-lg border border-line bg-canvas px-2.5 py-1.5 text-fg;
-  }
-
-  input:focus-visible, select:focus-visible, textarea:focus-visible {
-    @apply border-accent outline-none;
-  }
-
-  input[type="checkbox"] {
-    @apply w-auto accent-accent;
-  }
-
-  textarea {
-    @apply min-h-30 resize-y;
-  }
-
-  table {
-    @apply w-full border-collapse;
-  }
-
-  th {
-    @apply border-b border-line px-2.5 py-2 text-left text-xs font-medium text-muted;
-  }
-
-  td {
-    @apply border-b border-line px-2.5 py-2;
-  }
-}
-
-@layer components {
-  .panel {
-    @apply rounded-xl border border-line bg-panel p-4;
-  }
-
-  .btn {
-    @apply cursor-pointer rounded-lg border border-line bg-panel px-3 py-1.5 whitespace-nowrap hover:border-accent disabled:cursor-default disabled:opacity-50;
-  }
-
-  .btn-primary {
-    @apply border-accent bg-accent text-white hover:opacity-90;
-  }
-
-  .btn-ghost {
-    @apply border-transparent bg-transparent text-muted hover:border-transparent hover:text-fg;
-  }
-
-  .badge {
-    @apply rounded-full bg-accent/12 px-2 py-0.5 text-[11px] whitespace-nowrap text-accent;
-  }
-
-  .badge-muted {
-    @apply bg-muted/14 text-muted;
-  }
-
-  .field {
-    @apply block text-xs text-muted;
+  .webenv-root.dark {
+    color-scheme: dark;
   }
 }

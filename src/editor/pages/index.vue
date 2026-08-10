@@ -1,22 +1,30 @@
 <script setup lang="ts">
-import Card from '../components/layout/Card.vue'
 import { useRouter } from '../router'
 
 const { href } = useRouter()
 </script>
 
 <template>
-  <div class="grid sm:grid-cols-3 gap-6">
-    <Card :to="href('content')">
-      Content
-    </Card>
+  <UPageGrid class="sm:grid-cols-3">
+    <UPageCard
+      title="Content"
+      description="Browse and edit the entries of every component."
+      icon="i-lucide-file-text"
+      :to="href('content')"
+    />
 
-    <Card :to="href('schema')">
-      Schema
-    </Card>
+    <UPageCard
+      title="Schema"
+      description="Inspect the components and elements the project defines."
+      icon="i-lucide-layout-list"
+      :to="href('schema')"
+    />
 
-    <Card :to="href('assets')">
-      Assets
-    </Card>
-  </div>
+    <UPageCard
+      title="Assets"
+      description="Manage the files the content references."
+      icon="i-lucide-image"
+      :to="href('assets')"
+    />
+  </UPageGrid>
 </template>

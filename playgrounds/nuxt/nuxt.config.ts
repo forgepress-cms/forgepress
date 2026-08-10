@@ -2,9 +2,9 @@ import { fileURLToPath } from 'node:url'
 import tailwind from '@tailwindcss/vite'
 import { vitePlugin as webenv } from '../../src/unplugin'
 
-// The library lives at the repo root, so it is live-linked by path rather than
-// installed as a package (bun copies `file:` deps and can't `workspace:*` the root).
 const webenvSrc = fileURLToPath(new URL('../../src', import.meta.url))
+
+const webenvEditor = fileURLToPath(new URL('../../dist/editor/index.mjs', import.meta.url))
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -12,14 +12,16 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
 
   alias: {
-    webenv: webenvSrc,
+    'webenv/editor': webenvEditor,
+    'webenv': webenvSrc,
   },
 
   typescript: {
     tsConfig: {
       compilerOptions: {
         paths: {
-          webenv: [webenvSrc],
+          'webenv': [webenvSrc],
+          'webenv/editor': [fileURLToPath(new URL('../../dist/editor/index.d.mts', import.meta.url))],
         },
       },
     },
@@ -34,7 +36,6 @@ export default defineNuxtConfig({
   },
 
   vite: {
-    // The editor is consumed from source here, so its stylesheet compiles in this app's Vite.
     plugins: [webenv(), tailwind()],
   },
 })

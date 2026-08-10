@@ -19,6 +19,8 @@
     "skipLibCheck": true
   },
   "include": [
-    "src"
+    "src",
+    "components.d.ts",
+    "auto-imports.d.ts"
   ]
 }

@@ -18,17 +18,19 @@
       "default": "./src/unplugin.ts"
     },
     "./editor": {
-      "types": "./dist/editor/index.d.ts",
+      "types": "./dist/editor/index.d.mts",
       "default": "./dist/editor/index.mjs"
     }
   },
   "types": "./src/index.ts",
   "scripts": {
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit && bun --filter=playground-nuxt run typecheck",
+    "typecheck": "vue-tsc --noEmit && bun --filter=playground-nuxt run typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "obuild",
+    "build": "obuild && bun run build:editor",
+    "build:editor": "vite build --config vite.editor.config.mjs",
+    "dev:editor": "vite build --config vite.editor.config.mjs --watch",
     "dev:nuxt": "bun --filter=playground-nuxt run dev"
   },
   "workspaces": [
@@ -41,7 +43,8 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^9.0.0",
-    "@tailwindcss/oxide": "^4.3.3",
+    "@iconify-json/lucide": "^1.2.123",
+    "@nuxt/ui": "^4.10.0",
     "@types/node": "^26.0.0",
     "@vitejs/plugin-vue": "^6.0.7",
     "eslint": "^10.5.0",
