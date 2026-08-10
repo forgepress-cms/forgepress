@@ -1,9 +1,16 @@
-import type { Element } from '../types/core/element'
+import type { ElementDefinition, ElementOf } from '../types/core/element'
 
-export interface RelationElement extends Element {
-  type: 'relation'
-  component: string
-  multiple?: boolean
-}
+const relation = {
+  type: 'relation',
+  label: 'Relation',
+  options: {
+    component: { label: 'Component', type: 'component', required: true },
+    multiple: { label: 'Multiple', type: 'boolean' },
+  },
+} as const satisfies ElementDefinition
 
-export type RelationElementContent<TElement extends { multiple?: boolean }> = TElement['multiple'] extends true ? string[] : string
+export type RelationElement = ElementOf<typeof relation>
+
+export type RelationElementContent<TElement extends RelationElement> = TElement['multiple'] extends true ? string[] : string
+
+export default relation

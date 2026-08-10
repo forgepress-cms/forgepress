@@ -1,9 +1,14 @@
-import type { Element } from '../types/core/element'
+import type { ElementDefinition, ElementOf } from '../types/core/element'
 
-export interface DynamicElement extends Element {
-  type: 'dynamic'
-  components: readonly string[]
-}
+const dynamic = {
+  type: 'dynamic',
+  label: 'Dynamic',
+  options: {
+    components: { label: 'Components', type: 'components', required: true },
+  },
+} as const satisfies ElementDefinition
+
+export type DynamicElement = ElementOf<typeof dynamic>
 
 interface DynamicContentItem<TComponentName extends string> {
   type: TComponentName
@@ -12,3 +17,5 @@ interface DynamicContentItem<TComponentName extends string> {
 
 export type DynamicElementContent<TElement extends DynamicElement>
   = DynamicContentItem<TElement['components'][number]>[]
+
+export default dynamic

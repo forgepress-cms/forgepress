@@ -1,10 +1,17 @@
-import type { Element } from '../types/core/element'
+import type { ElementDefinition, ElementOf } from '../types/core/element'
 
-export interface NumberElement extends Element {
-  type: 'number'
-  min?: number
-  max?: number
-  step?: number
-}
+const number = {
+  type: 'number',
+  label: 'Number',
+  options: {
+    min: { label: 'Minimum', type: 'number' },
+    max: { label: 'Maximum', type: 'number' },
+    step: { label: 'Step', type: 'number' },
+  },
+} as const satisfies ElementDefinition
+
+export type NumberElement = ElementOf<typeof number>
 
 export type NumberElementContent = number
+
+export default number

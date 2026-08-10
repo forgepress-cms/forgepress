@@ -1,8 +1,15 @@
-import type { Element } from '../types/core/element'
+import type { ElementDefinition, ElementOf } from '../types/core/element'
 
-export interface TextElement extends Element {
-  type: 'text'
-  validation?: string
-}
+const text = {
+  type: 'text',
+  label: 'Text',
+  options: {
+    validation: { label: 'Validation Pattern', type: 'text' },
+  },
+} as const satisfies ElementDefinition
+
+export type TextElement = ElementOf<typeof text>
 
 export type TextElementContent = string
+
+export default text

@@ -14,9 +14,16 @@ const { data: authors } = await useAsyncData('blog-authors', () =>
     .sort('name', 'asc')
     .pick('id', 'name'))
 
-const test = ref()
+const testQuery = () => query('hero').locale('en').first()
+const test = ref<Awaited<ReturnType<typeof testQuery>>>()
 async function getInBrowser() {
-  test.value = await query('hero').locale('en').first()
+  test.value = await testQuery()
+}
+
+const testQuery2 = () => query('author').locale('en').first()
+const test2 = ref<Awaited<ReturnType<typeof testQuery2>>>()
+async function getInBrowser2() {
+  test2.value = await testQuery2()
 }
 </script>
 
@@ -45,7 +52,16 @@ async function getInBrowser() {
 
     <div v-if="test">
       <h2>Hero</h2>
-      <p>{{ test.title }}</p>
+      <p>{{ test.headline }}</p>
+    </div>
+
+    <button @click="getInBrowser2">
+      Get Author in Browser
+    </button>
+
+    <div v-if="test2">
+      <h2>Author</h2>
+      <p>{{ test2.name }}</p>
     </div>
   </main>
 </template>

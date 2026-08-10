@@ -1,7 +1,13 @@
-import type { Element } from '../types/core/element'
+import type { ElementDefinition, ElementOf } from '../types/core/element'
 
-export interface RichTextElement extends Element {
-  type: 'richtext'
-}
+const richtext = {
+  type: 'richtext',
+  label: 'Rich Text',
+  options: {},
+} as const satisfies ElementDefinition
+
+export type RichTextElement = ElementOf<typeof richtext>
 
 export type RichTextElementContent = string
+
+export default richtext

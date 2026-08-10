@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import tailwind from '@tailwindcss/vite'
 import { vitePlugin as webenv } from '../../src/unplugin'
 
 // The library lives at the repo root, so it is live-linked by path rather than
@@ -33,6 +34,7 @@ export default defineNuxtConfig({
   },
 
   vite: {
-    plugins: [webenv()],
+    // The editor is consumed from source here, so its stylesheet compiles in this app's Vite.
+    plugins: [webenv(), tailwind()],
   },
 })

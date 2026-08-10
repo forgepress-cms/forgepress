@@ -1,4 +1,14 @@
 {
-    "nixEnvSelector.nixFile": "${workspaceFolder}/shell.nix",
-    "nixEnvSelector.useFlakes": false
+  /// Nix
+  "nixEnvSelector.nixFile": "${workspaceFolder}/shell.nix",
+  "nixEnvSelector.useFlakes": false,
+
+  /// Editor
+  "editor.indentSize": 2,
+
+  /// Eslint
+  "eslint.useFlatConfig": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  }
 }

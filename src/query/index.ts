@@ -1,11 +1,11 @@
 import type { WebenvContentRow } from '../types/core/content'
 import type { QueryBackend, QueryBuilder, RegisteredSchema } from '../types/query'
-import { load, reader } from '../content/reader/node'
+import { reader } from '#content-source'
 import { createBuilder } from './builder'
 
 const backend: QueryBackend = {
   reader,
-  schema: async () => (await load()).schema,
+  schema: reader.schema,
 }
 
 export function query<TName extends keyof RegisteredSchema['components'] & string>(

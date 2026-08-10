@@ -2,6 +2,12 @@
   "name": "webenv",
   "version": "0.0.1",
   "description": "The fully-static, git based CMS.",
+  "imports": {
+    "#content-source": {
+      "node": "./src/content/reader/node.ts",
+      "default": "./src/content/source.ts"
+    }
+  },
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -30,18 +36,20 @@
     "playgrounds/*"
   ],
   "dependencies": {
-    "unplugin": "^3.0.0"
+    "unplugin": "^3.0.0",
+    "vue": "^3.5.38"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^9.0.0",
+    "@tailwindcss/oxide": "^4.3.3",
     "@types/node": "^26.0.0",
     "@vitejs/plugin-vue": "^6.0.7",
     "eslint": "^10.5.0",
     "obuild": "^0.4.36",
+    "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
     "vitest": "^4.1.9",
-    "vue": "^3.5.38",
     "vue-tsc": "^3.3.5"
   }
 }
