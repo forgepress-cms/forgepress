@@ -1,6 +1,6 @@
+import type { ContentReader } from '../content/reader'
 import type { WebenvContentRow } from '../core/content'
 import type { SchemaLocale, WebenvSchema } from '../core/schema'
-import type { ContentLoader } from './loader'
 
 export type Operator = 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'contains'
 
@@ -25,7 +25,7 @@ export interface QueryPlan {
 }
 
 export interface QueryBackend {
-  loader: ContentLoader
+  reader: ContentReader
   schema: () => Promise<WebenvSchema>
 }
 

@@ -1,6 +1,6 @@
+import type { ContentRow } from '../src/types/content/reader'
 import type { WebenvSchema } from '../src/types/core/schema'
 import type { QueryBackend } from '../src/types/query'
-import type { ContentRow } from '../src/types/query/loader'
 import { describe, expect, it } from 'vitest'
 import { createBuilder } from '../src/query/builder'
 
@@ -40,7 +40,7 @@ function fixtures(): Record<string, ContentRow[]> {
 
 function backend(content: Record<string, ContentRow[]>): QueryBackend {
   return {
-    loader: {
+    reader: {
       list: async component => content[component] ?? [],
       get: async (component, id) => (content[component] ?? []).find(row => row.id === id),
     },

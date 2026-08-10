@@ -10,6 +10,9 @@ export default defineBuildConfig({
         './src/unplugin.ts',
       ],
       dts: true,
+      rolldown: {
+        external: [/^virtual:/],
+      },
     },
     {
       type: 'bundle',
@@ -20,12 +23,6 @@ export default defineBuildConfig({
         plugins: [Vue()],
         external: [/^virtual:/],
         platform: 'browser',
-        define: {
-          'process.env.NODE_ENV': '"production"',
-          '__VUE_OPTIONS_API__': 'false',
-          '__VUE_PROD_DEVTOOLS__': 'false',
-          '__VUE_PROD_HYDRATION_MISMATCH_DETAILS__': 'false',
-        },
       },
     },
   ],

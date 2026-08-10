@@ -5,12 +5,10 @@
     "moduleDetection": "force",
     "module": "preserve",
     "moduleResolution": "bundler",
-    "paths": {
-      "webenv": ["./src/index.ts"]
-    },
     "resolveJsonModule": true,
     "types": ["node"],
     "strict": true,
+    "exactOptionalPropertyTypes": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "declaration": true,

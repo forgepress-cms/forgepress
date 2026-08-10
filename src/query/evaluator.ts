@@ -1,5 +1,5 @@
+import type { ContentRow } from '../types/content/reader'
 import type { QueryPlan, WhereClause } from '../types/query'
-import type { ContentRow } from '../types/query/loader'
 
 function compare(a: unknown, b: unknown): number {
   if (a === b)

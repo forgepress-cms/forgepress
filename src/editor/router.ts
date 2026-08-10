@@ -19,7 +19,10 @@ export const routerKey: InjectionKey<EditorRouter> = Symbol('webenv:editor:route
 function parse(): EditorRoute {
   const [component, id] = window.location.hash.replace(/^#\/?/, '').split('/')
 
-  return { component: component || undefined, id: id || undefined }
+  return {
+    ...(component ? { component } : {}),
+    ...(id ? { id } : {}),
+  }
 }
 
 export function createRouter(): EditorRouter {

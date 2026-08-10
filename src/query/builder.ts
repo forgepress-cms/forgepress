@@ -1,6 +1,6 @@
+import type { ContentRow } from '../types/content/reader'
 import type { WebenvSchema } from '../types/core/schema'
 import type { Operator, QueryBackend, QueryPlan } from '../types/query'
-import type { ContentRow } from '../types/query/loader'
 import { evaluate, localize } from './evaluator'
 
 interface ElementMeta { type?: string, translate?: boolean, component?: string, multiple?: boolean }
@@ -59,7 +59,7 @@ class Builder {
 
   private async run(): Promise<ContentRow[]> {
     const [rows, schema] = await Promise.all([
-      this.backend.loader.list(this.component),
+      this.backend.reader.list(this.component),
       this.backend.schema(),
     ])
 
@@ -87,7 +87,7 @@ class Builder {
       const related = translatedFields(componentElements(schema, element.component))
       const locale = this.plan.locale
       const fetch = async (id: string): Promise<ContentRow | undefined> => {
-        const row = await this.backend.loader.get(element.component!, id)
+        const row = await this.backend.reader.get(element.component!, id)
         return row && locale ? localize(row, related, locale) : row
       }
 

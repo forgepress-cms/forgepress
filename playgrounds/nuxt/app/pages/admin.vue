@@ -6,10 +6,10 @@ const host = useTemplateRef('host')
 onMounted(() => {
   const unmount = mountEditor(host.value)
 
-  onUnmounted(unmount)
+  onBeforeUnmount(unmount)
 })
 </script>
 
 <template>
-  <div ref="host" id="webenv" />
+  <div id="webenv" ref="host" />
 </template>

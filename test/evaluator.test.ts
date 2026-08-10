@@ -1,5 +1,5 @@
+import type { ContentRow } from '../src/types/content/reader'
 import type { QueryPlan } from '../src/types/query'
-import type { ContentRow } from '../src/types/query/loader'
 import { describe, expect, it } from 'vitest'
 import { evaluate, localize } from '../src/query/evaluator'
 
