@@ -11,11 +11,6 @@ import styles from './styles.css?inline'
 const PROPERTIES_ID = 'webenv-properties'
 const PROPERTY_RULE = /@property\s+--[\w-]+\s*\{[^}]*\}/g
 
-/**
- * `@property` is ignored inside a shadow root, which leaves Tailwind's `--tw-*` defaults
- * unregistered and silently drops every border, ring, shadow and transform. Only those
- * registrations are hoisted to the document; the styles themselves stay scoped.
- */
 function registerProperties(): (() => void) | undefined {
   if (document.getElementById(PROPERTIES_ID))
     return undefined
@@ -59,7 +54,7 @@ export const mountEditor: MountEditor = (target) => {
 
   const unregister = registerProperties()
 
-  const app = createApp(App)
+  const app = createApp(App, { container })
   const router = createRouter(routes)
   const colorMode = createColorMode(container)
 

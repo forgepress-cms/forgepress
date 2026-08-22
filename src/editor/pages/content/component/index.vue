@@ -24,7 +24,6 @@ if (!component) {
 
 const rows = await source.list(name)
 
-/** Content values can be objects (translations, rich elements), which the table cannot print as-is. */
 function display(value: unknown): string {
   if (value === undefined || value === null || value === '')
     return '—'
@@ -65,9 +64,18 @@ function clear(): void {
 
 <template>
   <div class="grid gap-4">
-    <h1 class="text-xl font-semibold text-highlighted">
-      {{ component.label ?? name }}
-    </h1>
+    <div class="flex items-center gap-6 mb-4">
+      <button
+        class="text-xl lg:text-2xl font-semibold text-highlighted cursor-pointer"
+        @click="navigate(`content`)"
+      >
+        Content
+      </button>
+
+      <h2 class="text-lg lg:text-xl pt-1 font-semibold text-highlighted">
+        {{ component.label ?? name }}
+      </h2>
+    </div>
 
     <div v-if="selected.length" class="flex items-center justify-between gap-4 rounded-lg border border-primary/40 bg-primary/10 px-4 py-2.5">
       <span class="text-sm text-muted">

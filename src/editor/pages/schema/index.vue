@@ -8,36 +8,36 @@ interface ComponentRow {
   id: string
   name: string
   description: string
-  entries: number
+  fields: number
 }
 
 const { navigate } = useRouter()
 
 const schema = await source.schema()
 
-const components: ComponentRow[] = await Promise.all(Object.entries(schema.components).map(async ([name, component]) => ({
+const components: ComponentRow[] = Object.entries(schema.components).map(([name, component]) => ({
   id: name,
   name: component.label ?? name,
   description: component.description ?? '',
-  entries: (await source.list(name)).length,
-})))
+  fields: Object.keys(component.elements).length,
+}))
 
 const columns: TableColumn<ComponentRow>[] = [
   { accessorKey: 'name', header: 'Component' },
   { accessorKey: 'description', header: 'Description' },
-  { accessorKey: 'entries', header: 'Entries' },
+  { accessorKey: 'fields', header: 'Fields' },
 ]
 </script>
 
 <template>
   <div>
     <h1 class="text-xl lg:text-2xl mb-4 font-semibold text-highlighted">
-      Content
+      Schema
     </h1>
 
     <p class="lg:text-lg mb-12">
-      The content section allows you to view and manage the content entries for each component defined in the schema.<br>
-      Click on a component to see its entries and details.
+      The content schema defines the structure of your content.<br>
+      You can view and edit the components that make up your content here.
     </p>
 
     <UTable
@@ -45,7 +45,7 @@ const columns: TableColumn<ComponentRow>[] = [
       :columns="columns"
       empty="No components in the schema"
       class="rounded-lg border border-default bg-default"
-      @select="(_, row) => navigate(`content/${row.original.id}`)"
+      @select="(_, row) => navigate(`schema/${row.original.id}`)"
     />
   </div>
 </template>

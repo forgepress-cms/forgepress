@@ -3,11 +3,16 @@ import Header from './components/layout/Header.vue'
 
 import { useRouter } from './router'
 
+/** The shadow root's container, which every overlay has to be portalled into to be styled. */
+defineProps<{
+  container: HTMLElement
+}>()
+
 const { route } = useRouter()
 </script>
 
 <template>
-  <UApp>
+  <UApp :portal="container">
     <div class="fixed inset-0 overflow-y-auto bg-default text-default">
       <Header />
 
