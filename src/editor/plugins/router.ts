@@ -1,6 +1,6 @@
 import type { Component, InjectionKey, Ref } from 'vue'
 
-import { inject, shallowRef } from 'vue'
+import { shallowRef } from 'vue'
 
 export type EditorRoutes = Record<string, Component>
 
@@ -10,10 +10,13 @@ export interface EditorRoute {
   page: Component
 }
 
+export type NavigationGuard = (resume: () => void) => boolean
+
 export interface EditorRouter {
   route: Ref<EditorRoute>
   navigate: (path?: string) => void
   href: (path?: string) => string
+  block: (guard: NavigationGuard) => () => void
   dispose: () => void
 }
 
@@ -63,20 +66,78 @@ export function createRouter(routes: EditorRoutes): EditorRouter {
   const read = (): string => window.location.hash.replace(/^#\/?/, '')
   const route = shallowRef<EditorRoute>(matchRoute(routes, read()))
 
+  const guards = new Set<NavigationGuard>()
+
+  let bypass = false
+  let reverting = false
+
+  function go(path: string): void {
+    if (read() === path)
+      route.value = matchRoute(routes, path)
+    else
+      window.location.hash = `#/${path}`
+  }
+
+  function allowed(path: string): boolean {
+    if (bypass) {
+      bypass = false
+
+      return true
+    }
+
+    const resume = (): void => {
+      bypass = true
+      go(path)
+    }
+
+    return ![...guards].some(guard => guard(resume))
+  }
+
   const onChange = (): void => {
-    route.value = matchRoute(routes, read())
+    if (reverting) {
+      reverting = false
+
+      return
+    }
+
+    const next = read()
+
+    if (next === route.value.path)
+      return
+
+    if (!allowed(next)) {
+      reverting = true
+      window.location.hash = `#/${route.value.path}`
+
+      return
+    }
+
+    route.value = matchRoute(routes, next)
   }
 
   window.addEventListener('hashchange', onChange)
 
   return {
     route,
-    navigate: path => void (window.location.hash = `#/${path ?? ''}`),
-    href: path => `#/${path ?? ''}`,
-    dispose: () => window.removeEventListener('hashchange', onChange),
-  }
-}
 
-export function useRouter(): EditorRouter {
-  return inject(routerKey)!
+    navigate: (path) => {
+      const next = path ?? ''
+
+      if (next !== route.value.path && allowed(next))
+        go(next)
+    },
+
+    href: path => `#/${path ?? ''}`,
+
+    block: (guard) => {
+      guards.add(guard)
+
+      return () => void guards.delete(guard)
+    },
+
+    dispose: () => {
+      guards.clear()
+      window.removeEventListener('hashchange', onChange)
+    },
+  }
 }

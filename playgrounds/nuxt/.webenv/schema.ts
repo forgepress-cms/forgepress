@@ -2,7 +2,6 @@ import { defineWebenvSchema } from 'webenv'
 
 export default defineWebenvSchema({
   locales: ['en', 'de'],
-
   components: {
     author: {
       label: 'Author',
@@ -33,7 +32,6 @@ export default defineWebenvSchema({
         },
       },
     },
-
     blogPost: {
       label: 'Blog Post',
       description: 'Blog post information, including author, title, cover image, and content',
@@ -64,7 +62,6 @@ export default defineWebenvSchema({
         },
       },
     },
-
     hero: {
       label: 'Hero',
       description: 'A hero section with a headline, subheadline, and background image',
@@ -88,7 +85,6 @@ export default defineWebenvSchema({
         },
       },
     },
-
     textBlock: {
       label: 'Text',
       description: 'A text element with content',
@@ -101,21 +97,20 @@ export default defineWebenvSchema({
         },
       },
     },
-
     page: {
       label: 'Page',
       description: 'A generic page component with a title and content',
       elements: {
-        slug: {
-          type: 'text',
-          label: 'Slug',
-          description: 'The URL slug for the page',
-          translate: true,
-        },
         title: {
           type: 'text',
           label: 'Title',
           description: 'The title of the page',
+          translate: true,
+        },
+        slug: {
+          type: 'text',
+          label: 'Slug',
+          description: 'The URL slug for the page',
           translate: true,
         },
         content: {

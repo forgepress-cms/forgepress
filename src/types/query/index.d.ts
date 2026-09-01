@@ -56,20 +56,17 @@ type RelatedComponent<TSchema extends WebenvSchema, TElement> = TElement extends
   ? TComponent extends keyof TSchema['components'] ? TComponent : never
   : never
 
-/** A resolved relation row, localized when a locale is active so nested fields flatten too. */
 type RelatedRow<TSchema extends WebenvSchema, TComponent extends keyof TSchema['components'], TLocale>
   = [TLocale] extends [never]
     ? WebenvContentRow<TSchema, TComponent>
     : Localized<TSchema, TComponent, WebenvContentRow<TSchema, TComponent>>
 
-/** Collapse the translatable `{ locale: value }` maps to plain values once a locale is chosen. */
 type Localized<TSchema extends WebenvSchema, TName extends keyof TSchema['components'], TRow> = {
   [TKey in keyof TRow]: TKey extends TranslatedKeys<TSchema, TName>
     ? TRow[TKey] extends Partial<Record<string, infer TValue>> ? TValue : TRow[TKey]
     : TRow[TKey]
 }
 
-/** Replace a relation field's id(s) with the resolved row(s). */
 type Resolved<TSchema extends WebenvSchema, TName extends keyof TSchema['components'], TKey extends keyof TRow, TRow, TLocale>
   = Omit<TRow, TKey> & {
     [TField in TKey]: ComponentElements<TSchema, TName>[TField] extends { multiple: true }

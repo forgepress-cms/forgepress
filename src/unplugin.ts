@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { UnpluginFactory } from 'unplugin'
+import type { MediaConfig } from './types/config/media'
 import type { ContentRow } from './types/content/reader'
 import type { WebenvSchema } from './types/core/schema'
 
@@ -8,6 +9,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { createUnplugin } from 'unplugin'
+import { createMediaStore } from './content/media/node'
 import { AUGMENTATION_FILE, CONTENT_DIR, ENDPOINT, SCHEMA_FILE, toComponentName } from './content/paths'
 import { findRoot } from './content/root'
 import { createWriter } from './content/writer/node'
@@ -17,6 +19,8 @@ export interface Options {
   root?: string
   /** Serve the editor write endpoint from the dev server. Defaults to `true`. */
   write?: boolean
+  /** Where uploads are written and how content references them. Defaults to `public/uploads` served at `/uploads`. */
+  media?: MediaConfig
 }
 
 const VIRTUAL_ID = 'virtual:webenv/content'
@@ -55,24 +59,55 @@ function generate(root: string): string {
   ].join('\n')
 }
 
-async function body(request: IncomingMessage): Promise<unknown> {
+async function bytes(request: IncomingMessage): Promise<Buffer> {
   const chunks: Buffer[] = []
   for await (const chunk of request)
     chunks.push(chunk as Buffer)
 
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'))
+  return Buffer.concat(chunks)
 }
 
-async function handle(root: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
+async function body(request: IncomingMessage): Promise<unknown> {
+  return JSON.parse((await bytes(request)).toString('utf8'))
+}
+
+function json(response: ServerResponse, payload: unknown): void {
+  response.statusCode = 200
+  response.setHeader('content-type', 'application/json')
+  response.end(JSON.stringify(payload))
+}
+
+async function media(options: Options | undefined, root: string, path: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
+  const store = createMediaStore(root, options?.media)
+  const name = decodeURIComponent(path.slice('/media/'.length))
+
+  if (request.method === 'GET')
+    return json(response, await store.list())
+
+  if (request.method !== 'DELETE')
+    return json(response, await store.write({ name, data: await bytes(request) }))
+
+  await store.remove(name)
+
+  response.statusCode = 204
+  response.end()
+}
+
+async function handle(options: Options | undefined, root: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
   const path = (request.url ?? '').slice(ENDPOINT.length)
   const writer = createWriter(root)
 
+  if (path === '/media' || path.startsWith('/media/'))
+    return media(options, root, path, request, response)
+
   if (path === '/schema')
     await writer.writeSchema(await body(request) as WebenvSchema)
-  else if (path.startsWith('/content/'))
-    await writer.writeContent(decodeURIComponent(path.slice('/content/'.length)), await body(request) as ContentRow[])
-  else
+  else if (!path.startsWith('/content/'))
     throw new Error(`unknown endpoint "${path}"`)
+  else if (request.method === 'DELETE')
+    await writer.removeContent(decodeURIComponent(path.slice('/content/'.length)))
+  else
+    await writer.writeContent(decodeURIComponent(path.slice('/content/'.length)), await body(request) as ContentRow[])
 
   response.statusCode = 204
   response.end()
@@ -94,10 +129,13 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
           return
 
         server.middlewares.use((request, response, next) => {
-          if (request.method !== 'POST' || !request.url?.startsWith(`${ENDPOINT}/`))
+          const method = request.method ?? ''
+          const handled = method === 'POST' || method === 'DELETE' || method === 'GET'
+
+          if (!handled || !request.url?.startsWith(`${ENDPOINT}/`))
             return next()
 
-          handle(root, request, response).catch((error: unknown) => {
+          handle(options, root, request, response).catch((error: unknown) => {
             response.statusCode = 500
             response.end(error instanceof Error ? error.message : String(error))
           })

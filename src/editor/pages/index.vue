@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRouter } from '../router'
+import { useRouter } from '../composables/useRouter'
 
 const { href } = useRouter()
 </script>

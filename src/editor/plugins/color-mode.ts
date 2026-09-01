@@ -1,6 +1,6 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue'
 
-import { computed, inject, ref, watchEffect } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 
 export type ColorMode = 'light' | 'dark'
 
@@ -65,8 +65,4 @@ export function createColorMode(container: Element): EditorColorMode {
       query.removeEventListener('change', onChange)
     },
   }
-}
-
-export function useColorMode(): EditorColorMode {
-  return inject(colorModeKey)!
 }

@@ -7,6 +7,8 @@ export default defineBuildConfig({
       input: [
         './src/index.ts',
         './src/unplugin.ts',
+        './src/content/source.ts',
+        './src/content/reader/node.ts',
       ],
       dts: true,
       rolldown: {

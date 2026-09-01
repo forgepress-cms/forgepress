@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import type { TableColumn } from '@nuxt/ui'
+import type { Column } from '../../utils/table'
 
+import { h } from 'vue'
 import { source } from '../../../content/source'
-import { useRouter } from '../../router'
+import DataTable from '../../components/DataTable.vue'
+import { useRouter } from '../../composables/useRouter'
 
 interface ComponentRow {
   id: string
@@ -22,9 +24,13 @@ const components: ComponentRow[] = await Promise.all(Object.entries(schema.compo
   entries: (await source.list(name)).length,
 })))
 
-const columns: TableColumn<ComponentRow>[] = [
+const columns: Column<ComponentRow>[] = [
   { accessorKey: 'name', header: 'Component' },
-  { accessorKey: 'description', header: 'Description' },
+  {
+    accessorKey: 'description',
+    header: 'Description',
+    cell: ({ row }) => h('span', { class: 'block max-w-96 truncate', title: row.original.description }, row.original.description),
+  },
   { accessorKey: 'entries', header: 'Entries' },
 ]
 </script>
@@ -40,12 +46,12 @@ const columns: TableColumn<ComponentRow>[] = [
       Click on a component to see its entries and details.
     </p>
 
-    <UTable
+    <DataTable
       :data="components"
       :columns="columns"
+      :row-id="row => row.id"
       empty="No components in the schema"
-      class="rounded-lg border border-default bg-default"
-      @select="(_, row) => navigate(`content/${row.original.id}`)"
+      @select="row => navigate(`content/${row.id}`)"
     />
   </div>
 </template>

@@ -39,10 +39,6 @@ export function createSource(start?: string): ContentSource {
 const disk = createSource()
 let active: Promise<ContentSource> | undefined
 
-/**
- * Prefers the content the webenv plugin compiled into the build and falls back
- * to the local `.webenv` directory when no bundler provided it.
- */
 function select(): Promise<ContentSource> {
   active ??= bundle.schema().then(() => bundle, () => disk)
   return active

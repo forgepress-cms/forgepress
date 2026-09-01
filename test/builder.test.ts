@@ -41,6 +41,7 @@ function fixtures(): Record<string, ContentRow[]> {
 function backend(content: Record<string, ContentRow[]>): QueryBackend {
   return {
     reader: {
+      schema: async () => schema,
       list: async component => content[component] ?? [],
       get: async (component, id) => (content[component] ?? []).find(row => row.id === id),
     },

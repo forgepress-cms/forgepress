@@ -8,7 +8,6 @@ function loadBundle(): Promise<typeof import('virtual:webenv/content')> {
   return bundle
 }
 
-/** Reads the content the webenv plugin compiled into the build, one component chunk at a time. */
 export const source: ContentSource = {
   schema: async () => (await loadBundle()).schema,
   list: async (component) => {
@@ -17,7 +16,6 @@ export const source: ContentSource = {
   },
 }
 
-/** Adds row lookup on top of any source, so a backend only has to implement listing. */
 export function createReader(source: ContentSource): ContentReader {
   return {
     schema: source.schema,

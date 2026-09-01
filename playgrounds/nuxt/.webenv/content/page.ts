@@ -2,7 +2,7 @@ import { defineWebenvContent } from 'webenv'
 
 export default defineWebenvContent<'page'>([
   {
-    id: 'page-1',
+    id: 'page_bf7b3cd6eb44',
     status: 'published',
     slug: {
       de: '/',
@@ -15,15 +15,15 @@ export default defineWebenvContent<'page'>([
     content: [
       {
         type: 'hero',
-        component: 'hero-1',
+        component: 'hero_003027eb4f56',
       },
       {
         type: 'textBlock',
-        component: 'textBlock-1',
+        component: 'textBlock_ae2a95eb4c31',
       },
       {
         type: 'textBlock',
-        component: 'textBlock-2',
+        component: 'textBlock_2bc34e465080',
       },
     ],
     createdAt: '2024-01-01T00:00:00Z',

@@ -38,7 +38,6 @@ type RequiredOptions<TOptions> = {
   [TKey in keyof TOptions]: TOptions[TKey] extends { required: true } ? TKey : never
 }[keyof TOptions]
 
-/** The schema shape an element definition accepts, so every option is declared once. */
 export type ElementOf<TDefinition extends ElementDefinition> = TDefinition extends ElementDefinition
   ? Element
   & { type: TDefinition['type'] }

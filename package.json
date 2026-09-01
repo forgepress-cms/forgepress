@@ -4,25 +4,28 @@
   "description": "The fully-static, git based CMS.",
   "imports": {
     "#content-source": {
-      "node": "./src/content/reader/node.ts",
-      "default": "./src/content/source.ts"
+      "node": "./dist/content/reader/node.mjs",
+      "default": "./dist/content/source.mjs"
     }
   },
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
     },
     "./unplugin": {
-      "types": "./src/unplugin.ts",
-      "default": "./src/unplugin.ts"
+      "types": "./dist/unplugin.d.mts",
+      "default": "./dist/unplugin.mjs"
     },
     "./editor": {
       "types": "./dist/editor/index.d.mts",
       "default": "./dist/editor/index.mjs"
     }
   },
-  "types": "./src/index.ts",
+  "types": "./dist/index.d.mts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "lint": "eslint .",
     "typecheck": "vue-tsc --noEmit && bun --filter=playground-nuxt run typecheck",
@@ -37,22 +40,32 @@
     ".",
     "playgrounds/*"
   ],
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "peerDependenciesMeta": {
+    "vue": {
+      "optional": true
+    }
+  },
   "dependencies": {
-    "unplugin": "^3.0.0",
-    "vue": "^3.5.38"
+    "unplugin": "^3.0.0"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^9.0.0",
     "@iconify-json/lucide": "^1.2.123",
     "@nuxt/ui": "^4.10.0",
+    "@tanstack/vue-table": "^8.21.3",
     "@types/node": "^26.0.0",
     "@vitejs/plugin-vue": "^6.0.7",
     "eslint": "^10.5.0",
+    "happy-dom": "^20.12.0",
     "obuild": "^0.4.36",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
     "vitest": "^4.1.9",
+    "vue": "^3.5.38",
     "vue-tsc": "^3.3.5"
   }
 }

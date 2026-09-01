@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { ColorMode } from '../../color-mode'
+import type { ColorMode } from '../../plugins/color-mode'
 
-import { useColorMode } from '../../color-mode'
-import { useRouter } from '../../router'
+import { useColorMode } from '../../composables/useColorMode'
+import { useRouter } from '../../composables/useRouter'
 
 import Logo from './Logo.vue'
 

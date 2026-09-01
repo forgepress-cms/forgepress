@@ -6,17 +6,17 @@
 @theme static {
   --font-sans: ui-sans-serif, system-ui, sans-serif;
 
-  --color-brand-50: #FFF1F1;
-  --color-brand-100: #FCE2E2;
-  --color-brand-200: #F9CACC;
-  --color-brand-300: #FA9DA2;
-  --color-brand-400: #F85F6D;
-  --color-brand-500: #F21B3F;
-  --color-brand-600: #E20026;
-  --color-brand-700: #BF0021;
-  --color-brand-800: #A00028;
-  --color-brand-900: #89062C;
-  --color-brand-950: #4E0213;
+  --color-brand-50: #fff1f1;
+  --color-brand-100: #fce2e2;
+  --color-brand-200: #f9cacc;
+  --color-brand-300: #fa9da2;
+  --color-brand-400: #f85f6d;
+  --color-brand-500: #f21b3f;
+  --color-brand-600: #e20026;
+  --color-brand-700: #bf0021;
+  --color-brand-800: #a00028;
+  --color-brand-900: #89062c;
+  --color-brand-950: #4e0213;
 }
 
 @layer theme {
@@ -58,7 +58,6 @@
     background-color: var(--ui-bg);
   }
 
-  /* Scrollbars and native controls follow the mode the editor is in, not the OS. */
   .webenv-root {
     color-scheme: light;
   }
