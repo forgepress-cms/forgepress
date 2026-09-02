@@ -82,6 +82,7 @@ export default defineWebenvSchema({
           type: 'image',
           label: 'Background Image',
           description: 'A background image for the hero section',
+          multiple: true,
         },
       },
     },

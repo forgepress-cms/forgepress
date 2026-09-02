@@ -43,7 +43,7 @@ const fields = reactive(elements.map(field => ({ ...field, locale: fieldLocale(f
 const entries = await useEntries()
 const nested = await useNestedEntries()
 
-const { values, status, draft, dirty, leaving, commit, cancel, discard } = useEntryDraft(row, fields, locales, back)
+const { values, status, draft, dirty, leaving, commit, cancel, discard, proceed } = useEntryDraft(row, fields, locales, back)
 
 const title = computed(() => {
   const first = titleField(fields)
@@ -83,7 +83,7 @@ async function submit(): Promise<void> {
   nested.clear()
   commit()
 
-  back()
+  proceed()
 }
 </script>
 
@@ -118,6 +118,9 @@ async function submit(): Promise<void> {
     <DiscardDialog
       v-model:open="leaving"
       :description="creating ? 'This entry has not been saved yet and is lost if you leave now.' : undefined"
+      :saveable="!missing.length"
+      :loading="saving"
+      @save="submit()"
       @confirm="discard()"
     />
 

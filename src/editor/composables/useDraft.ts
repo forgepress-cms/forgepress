@@ -7,6 +7,7 @@ export interface Draft {
   commit: () => void
   cancel: () => void
   discard: () => void
+  proceed: () => void
 }
 
 export function useDraft(snapshot: () => unknown, leave: () => void): Draft {
@@ -31,5 +32,6 @@ export function useDraft(snapshot: () => unknown, leave: () => void): Draft {
     },
 
     discard: leave,
+    proceed: leave,
   }
 }

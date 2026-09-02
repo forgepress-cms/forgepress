@@ -114,6 +114,38 @@ describe('useLeaveGuard', () => {
     expect(router.route.value.path).toBe('')
   })
 
+  it('continues to the held link after saving', async () => {
+    const { form, back, draft } = edit()
+
+    form.label = 'Title'
+
+    window.location.hash = '#/schema'
+    await settle()
+
+    expect(draft.leaving.value).toBe(true)
+
+    draft.commit()
+    draft.proceed()
+    await settle()
+
+    expect(router.route.value.path).toBe('schema')
+    expect(back).toEqual([])
+  })
+
+  it('returns to the page itself when saving without a held link', async () => {
+    const { form, back, draft } = edit()
+
+    form.label = 'Title'
+
+    draft.cancel()
+    draft.commit()
+    draft.proceed()
+    await settle()
+
+    expect(back).toEqual(['back'])
+    expect(draft.leaving.value).toBe(false)
+  })
+
   it('stops guarding once the page is gone', async () => {
     const { form } = edit()
 

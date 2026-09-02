@@ -78,6 +78,27 @@ export default defineWebenvContent<'blogPost'>([
 `)
   })
 
+  it('writes a list of media objects one per entry', () => {
+    const row: ContentRow = {
+      id: 'a',
+      status: 'draft',
+      createdAt: '',
+      updatedAt: '',
+      gallery: [{ url: '/uploads/a.png', width: 800, height: 600 }, { url: '/uploads/b.png' }],
+    }
+
+    expect(serializeContent('page', [row])).toContain(`    gallery: [
+      {
+        url: '/uploads/a.png',
+        width: 800,
+        height: 600,
+      },
+      {
+        url: '/uploads/b.png',
+      },
+    ],`)
+  })
+
   it('escapes quotes and newlines', () => {
     const row: ContentRow = { id: 'a', status: 'draft', createdAt: '', updatedAt: '', body: 'it\'s\nfine' }
 

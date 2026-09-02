@@ -6,10 +6,10 @@ export function useLeaveGuard(draft: Draft): Draft {
   const { block } = useRouter()
 
   let resume: (() => void) | undefined
-  let leaving = false
+  let allowed = false
 
   const release = block((proceed) => {
-    if (leaving || !draft.dirty.value)
+    if (allowed || !draft.dirty.value)
       return false
 
     resume = proceed
@@ -19,7 +19,7 @@ export function useLeaveGuard(draft: Draft): Draft {
   })
 
   function onUnload(event: BeforeUnloadEvent): void {
-    if (!leaving && draft.dirty.value)
+    if (!allowed && draft.dirty.value)
       event.preventDefault()
   }
 
@@ -35,20 +35,18 @@ export function useLeaveGuard(draft: Draft): Draft {
     window.removeEventListener('beforeunload', onUnload)
   })
 
-  return {
-    ...draft,
+  function go(): void {
+    const pending = resume
 
-    discard: () => {
-      const pending = resume
+    allowed = true
+    resume = undefined
+    draft.leaving.value = false
 
-      leaving = true
-      resume = undefined
-      draft.leaving.value = false
-
-      if (pending)
-        pending()
-      else
-        draft.discard()
-    },
+    if (pending)
+      pending()
+    else
+      draft.proceed()
   }
+
+  return { ...draft, discard: go, proceed: go }
 }

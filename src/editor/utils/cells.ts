@@ -4,6 +4,7 @@ import type { Entries } from '../composables/useEntries'
 import type { MediaValue } from './media'
 import type { Field } from './schema'
 import { h } from 'vue'
+import { asList } from '../../content/value'
 import MediaPreview from '../components/media/MediaPreview.vue'
 import { markdownInline, markdownText } from './markdown'
 import { toList } from './media'
@@ -46,12 +47,8 @@ export function thumbnails(items: MediaValue[], kind: MediaKind): VNode {
   ])
 }
 
-function many(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : value ? [value] : []
-}
-
 function blocks(value: unknown): Block[] {
-  return many(value).filter((item): item is Block => typeof item === 'object' && item !== null)
+  return asList(value).filter((item): item is Block => typeof item === 'object' && item !== null)
 }
 
 export function fieldCell(field: Field, value: unknown, entries: Entries): VNode {
@@ -64,7 +61,7 @@ export function fieldCell(field: Field, value: unknown, entries: Entries): VNode
     return clampMarkdown(String(value ?? ''))
 
   if (element.type === 'relation')
-    return clamp(line(many(value).map(id => entries.label(element.component, id))))
+    return clamp(line(asList(value).map(id => entries.label(element.component, id))))
 
   if (element.type === 'dynamic')
     return clamp(line(blocks(value).map(block => entries.label(block.type, block.component))))

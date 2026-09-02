@@ -2,8 +2,11 @@
 import type { ElementType } from '../../../../elements'
 import type { ElementOption } from '../../../../types/core/element'
 
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { migrate } from '../../../../content/migrate'
+import { source } from '../../../../content/source'
 import { elements, elementTypes } from '../../../../elements'
+import ConfirmDialog from '../../../components/ConfirmDialog.vue'
 import DiscardDialog from '../../../components/DiscardDialog.vue'
 import ErrorAlert from '../../../components/ErrorAlert.vue'
 import ListSelect from '../../../components/fields/ListSelect.vue'
@@ -15,6 +18,7 @@ import { useLeaveGuard } from '../../../composables/useLeaveGuard'
 import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
 import { useSchema } from '../../../composables/useSchema'
+import { writer } from '../../../writer'
 
 const BASE_KEYS = new Set(['type', 'label', 'description', 'optional', 'translate'])
 
@@ -26,24 +30,27 @@ const field = useParam('field')
 const { schema, saving, error, write } = await useSchema()
 
 const component = schema.value.components[name]
-const element = component?.elements[field]
+const current = component?.elements[field]
 
-if (!component || !element) {
+if (!component || !current) {
   throw new Error(`[webenv] ${name} has no field named ${field}`)
 }
 
-const translatable = (schema.value.locales?.length ?? 0) > 0
+const locales = schema.value.locales ?? []
+const translatable = locales.length > 0
+
+const rows = await source.list(name)
 
 const form = reactive({
-  label: element.label ?? '',
-  description: element.description ?? '',
-  type: element.type as ElementType['type'],
-  required: !element.optional,
-  translate: element.translate ?? false,
+  label: current.label ?? '',
+  description: current.description ?? '',
+  type: current.type as ElementType['type'],
+  required: !current.optional,
+  translate: current.translate ?? false,
 })
 
 const options = reactive<Record<string, unknown>>(
-  Object.fromEntries(Object.entries(element).filter(([option]) => !BASE_KEYS.has(option))),
+  Object.fromEntries(Object.entries(current).filter(([option]) => !BASE_KEYS.has(option))),
 )
 
 const definition = computed(() => elements[form.type])
@@ -76,39 +83,65 @@ function back(): void {
   navigate(`schema/${name}`)
 }
 
-const { dirty, leaving, commit, cancel, discard } = useLeaveGuard(useDraft(() => ({ form, options }), back))
+const { dirty, leaving, commit, cancel, discard, proceed } = useLeaveGuard(useDraft(() => ({ form, options }), back))
 
 const valid = computed(() => Object.entries(definition.value.options)
   .every(([option, spec]) => !('required' in spec) || filled(options[option])))
 
-async function submit(): Promise<void> {
-  const next: Record<string, unknown> = { type: form.type }
+function next(): ElementType {
+  const element: Record<string, unknown> = { type: form.type }
 
   if (form.label)
-    next.label = form.label
+    element.label = form.label
 
   if (form.description)
-    next.description = form.description
+    element.description = form.description
 
   if (!form.required)
-    next.optional = true
+    element.optional = true
 
   if (form.translate)
-    next.translate = true
+    element.translate = true
 
   for (const option of Object.keys(definition.value.options)) {
     if (filled(options[option]))
-      next[option] = options[option]
+      element[option] = options[option]
   }
 
-  const written = await write((draft) => {
-    draft.components[name]!.elements[field] = next as unknown as ElementType
+  return element as unknown as ElementType
+}
+
+const migration = computed(() => migrate(rows, field, current, next(), locales))
+
+const confirming = ref(false)
+
+async function save(): Promise<void> {
+  confirming.value = false
+
+  const element = next()
+  const { rows: migrated, changed } = migration.value
+
+  const written = await write(async (draft) => {
+    draft.components[name]!.elements[field] = element
+
+    if (changed)
+      await writer.writeContent(name, migrated)
   })
 
-  if (written) {
-    commit()
-    back()
-  }
+  if (!written)
+    return
+
+  rows.splice(0, rows.length, ...migrated)
+
+  commit()
+  proceed()
+}
+
+function submit(): void {
+  if (migration.value.lost)
+    confirming.value = true
+  else
+    void save()
 }
 </script>
 
@@ -128,7 +161,7 @@ async function submit(): Promise<void> {
           label="Save"
           icon="i-lucide-save"
           :loading="saving"
-          :disabled="!valid || !dirty"
+          :disabled="!valid || !dirty || !!migration.missing"
           @click="submit()"
         />
       </template>
@@ -136,7 +169,30 @@ async function submit(): Promise<void> {
 
     <ErrorAlert title="The schema could not be saved" :error="error" />
 
-    <DiscardDialog v-model:open="leaving" @confirm="discard()" />
+    <p v-if="migration.missing" class="text-sm text-muted">
+      {{ migration.missing }} {{ migration.missing === 1 ? 'entry has' : 'entries have' }} no value for every locale of a
+      required field. Fill {{ migration.missing === 1 ? 'it' : 'them' }} in first, or leave the field optional.
+    </p>
+
+    <p v-else-if="migration.changed" class="text-sm text-muted">
+      Saving rewrites {{ migration.changed }} {{ migration.changed === 1 ? 'entry' : 'entries' }} to match the field.
+    </p>
+
+    <DiscardDialog
+      v-model:open="leaving"
+      :saveable="valid && !migration.missing && !migration.lost"
+      :loading="saving"
+      @save="save()"
+      @confirm="discard()"
+    />
+
+    <ConfirmDialog
+      v-model:open="confirming"
+      title="Content does not fit"
+      :description="`${migration.lost} ${migration.lost === 1 ? 'entry loses content' : 'entries lose content'} that the field can no longer hold. This cannot be undone.`"
+      label="Save anyway"
+      @confirm="save()"
+    />
 
     <FormLayout>
       <UFormField label="Label" description="How the field is titled in the editor." :ui="{ container: 'mt-2' }">

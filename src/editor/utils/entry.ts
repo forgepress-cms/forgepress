@@ -1,7 +1,10 @@
 import type { ContentRow } from '../../types/content/reader'
 import type { Field } from './schema'
+import { filled } from '../../content/value'
 import { markdownLines } from './markdown'
 import { chips, localized } from './preview'
+
+export { filled }
 
 export const SINGLE = ''
 
@@ -58,13 +61,6 @@ export function titleField<TField extends Field>(fields: TField[]): TField | und
 
 export function fieldLocale(field: Field, locales: readonly string[]): string {
   return field.translated ? locales[0] ?? SINGLE : SINGLE
-}
-
-export function filled(value: unknown): boolean {
-  if (Array.isArray(value))
-    return value.length > 0
-
-  return !(value === undefined || value === null || value === '' || (typeof value === 'number' && Number.isNaN(value)))
 }
 
 function empty(field: Field): unknown {
