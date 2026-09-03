@@ -9,6 +9,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { createUnplugin } from 'unplugin'
+import { resolveMedia } from './content/media'
 import { createMediaStore } from './content/media/node'
 import { AUGMENTATION_FILE, CONTENT_DIR, ENDPOINT, SCHEMA_FILE, toComponentName } from './content/paths'
 import { findRoot } from './content/root'
@@ -47,12 +48,17 @@ function writeAugmentation(root: string): void {
 }
 
 /** Content is exposed as one loader per component so a query only pulls the chunks it touches. */
-function generate(root: string): string {
+async function generate(root: string, local: boolean, config?: MediaConfig): Promise<string> {
   const dir = join(root, CONTENT_DIR)
   const files = readdirSync(dir).filter(file => file.endsWith('.ts'))
   const entries = files.map(file => `  ${JSON.stringify(toComponentName(file))}: () => import(${JSON.stringify(join(dir, file))}),`)
 
+  const media = resolveMedia(config)
+  const assets = await createMediaStore(root, config).list()
+
   return [
+    `export const local = ${local}`,
+    `export const media = ${JSON.stringify({ url: media.url, maxSize: media.maxSize, assets })}`,
     `export { default as schema } from ${JSON.stringify(join(root, SCHEMA_FILE))}`,
     `export const content = {\n${entries.join('\n')}\n}`,
     '',
@@ -115,6 +121,7 @@ async function handle(options: Options | undefined, root: string, request: Incom
 
 export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) => {
   let root = options?.root ?? findRoot(process.cwd())
+  let local = false
 
   return {
     name: 'unplugin-webenv',
@@ -122,6 +129,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
     vite: {
       configResolved(config) {
         root = options?.root ?? findRoot(config.root)
+        local = config.command === 'serve' && options?.write !== false
       },
 
       configureServer(server) {
@@ -154,7 +162,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
 
     load(id) {
       if (id === RESOLVED_ID)
-        return generate(root)
+        return generate(root, local, options?.media)
     },
   }
 }

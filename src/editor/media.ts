@@ -1,11 +1,7 @@
-import type { MediaAsset } from '../types/content/media'
+import type { MediaAsset, MediaClient } from '../types/content/media'
 import { ENDPOINT } from '../content/paths'
 
-export interface MediaClient {
-  list: () => Promise<MediaAsset[]>
-  upload: (file: File) => Promise<MediaAsset>
-  remove: (name: string) => Promise<void>
-}
+export type { MediaClient }
 
 async function request(method: string, path: string, file?: File): Promise<unknown> {
   const response = await fetch(`${ENDPOINT}${path}`, {

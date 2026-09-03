@@ -32,7 +32,7 @@ function toggle(asset: MediaAsset): void {
       @click="toggle(asset)"
     >
       <div class="aspect-video bg-elevated">
-        <MediaPreview :url="asset.url" :kind="mediaKind(asset.name) ?? 'image'" :alt="asset.name" />
+        <MediaPreview :url="asset.preview ?? asset.url" :kind="mediaKind(asset.name) ?? 'image'" :alt="asset.name" />
       </div>
 
       <div class="grid gap-0.5 px-2 py-1.5">

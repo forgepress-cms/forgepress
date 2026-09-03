@@ -2,8 +2,7 @@ import type { Ref } from 'vue'
 import type { Component } from '../../types/core/component'
 import type { WebenvSchema } from '../../types/core/schema'
 import { ref, toRaw } from 'vue'
-import { source } from '../../content/source'
-import { writer } from '../writer'
+import { useContent } from './useContent'
 import { useSave } from './useSave'
 
 export interface SchemaDraft {
@@ -23,7 +22,8 @@ function clone(schema: SchemaDraft | WebenvSchema): SchemaDraft {
 }
 
 export async function useSchema(): Promise<SchemaEditor> {
-  const bundled = await source.schema()
+  const { store } = useContent()
+  const bundled = await store.schema()
   const schema = ref<SchemaDraft>(clone(bundled))
 
   const { saving, error, save } = useSave()
@@ -33,7 +33,7 @@ export async function useSchema(): Promise<SchemaEditor> {
 
     const written = await save(async () => {
       await mutate(next)
-      await writer.writeSchema(next as unknown as WebenvSchema)
+      await store.writeSchema(next as unknown as WebenvSchema)
     })
 
     if (!written)

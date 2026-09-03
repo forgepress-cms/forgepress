@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { ElementType } from '../../../../elements'
 import type { ElementOption } from '../../../../types/core/element'
-
 import { computed, reactive, ref, watch } from 'vue'
+
 import { migrate } from '../../../../content/migrate'
-import { source } from '../../../../content/source'
 import { elements, elementTypes } from '../../../../elements'
 import ConfirmDialog from '../../../components/ConfirmDialog.vue'
 import DiscardDialog from '../../../components/DiscardDialog.vue'
@@ -13,16 +12,18 @@ import ListSelect from '../../../components/fields/ListSelect.vue'
 import FormLayout from '../../../components/layout/FormLayout.vue'
 import PageHeader from '../../../components/layout/PageHeader.vue'
 import MetaItem from '../../../components/MetaItem.vue'
+import { useContent } from '../../../composables/useContent'
 import { useDraft } from '../../../composables/useDraft'
 import { useLeaveGuard } from '../../../composables/useLeaveGuard'
 import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
 import { useSchema } from '../../../composables/useSchema'
-import { writer } from '../../../writer'
 
 const BASE_KEYS = new Set(['type', 'label', 'description', 'optional', 'translate'])
 
 const { navigate, href } = useRouter()
+
+const { store } = useContent()
 
 const name = useParam('component')
 const field = useParam('field')
@@ -39,7 +40,7 @@ if (!component || !current) {
 const locales = schema.value.locales ?? []
 const translatable = locales.length > 0
 
-const rows = await source.list(name)
+const rows = await store.list(name)
 
 const form = reactive({
   label: current.label ?? '',
@@ -125,7 +126,7 @@ async function save(): Promise<void> {
     draft.components[name]!.elements[field] = element
 
     if (changed)
-      await writer.writeContent(name, migrated)
+      await store.writeContent(name, migrated)
   })
 
   if (!written)

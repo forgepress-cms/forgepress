@@ -1,7 +1,8 @@
 import type { Ref } from 'vue'
 import type { MediaAsset } from '../../types/content/media'
 import { ref, shallowRef } from 'vue'
-import { media } from '../media'
+import { fileName } from '../utils/media'
+import { useContent } from './useContent'
 
 export interface MediaLibrary {
   assets: Ref<MediaAsset[]>
@@ -11,6 +12,7 @@ export interface MediaLibrary {
   refresh: () => Promise<void>
   upload: (files: File[]) => Promise<MediaAsset[]>
   remove: (name: string) => Promise<void>
+  resolve: (url: string) => string
 }
 
 const assets = shallowRef<MediaAsset[]>([])
@@ -43,6 +45,8 @@ function merge(added: MediaAsset[]): void {
 }
 
 export function useMedia(): MediaLibrary {
+  const { media } = useContent()
+
   async function refresh(): Promise<void> {
     assets.value = await run(() => media.list(), assets.value)
     loaded = true
@@ -79,6 +83,12 @@ export function useMedia(): MediaLibrary {
       await run(() => media.remove(name), undefined)
 
       assets.value = assets.value.filter(asset => asset.name !== name)
+    },
+
+    resolve: (url) => {
+      const name = fileName(url)
+
+      return assets.value.find(asset => asset.name === name)?.preview ?? url
     },
   }
 }

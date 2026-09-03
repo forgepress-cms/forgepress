@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue'
-import { source } from '../../../../content/source'
 import DiscardDialog from '../../../components/DiscardDialog.vue'
 import ErrorAlert from '../../../components/ErrorAlert.vue'
 import FieldList from '../../../components/fields/FieldList.vue'
@@ -8,6 +7,7 @@ import FormLayout from '../../../components/layout/FormLayout.vue'
 import PageHeader from '../../../components/layout/PageHeader.vue'
 import MetaItem from '../../../components/MetaItem.vue'
 import { useComponent } from '../../../composables/useComponent'
+import { useContent } from '../../../composables/useContent'
 import { useEntries } from '../../../composables/useEntries'
 import { useEntryDraft } from '../../../composables/useEntryDraft'
 import { useNestedEntries } from '../../../composables/useNestedEntries'
@@ -15,9 +15,10 @@ import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
 import { useSave } from '../../../composables/useSave'
 import { condense, fieldLocale, missingFields, newEntry, statusColor, STATUSES, titleField } from '../../../utils/entry'
-import { writer } from '../../../writer'
 
 const { route, navigate, href } = useRouter()
+
+const { store } = useContent()
 
 const name = useParam('component')
 const id = route.value.params.id
@@ -28,7 +29,7 @@ function back(): void {
   navigate(`content/${name}`)
 }
 
-const rows = await source.list(name)
+const rows = await store.list(name)
 const index = id ? rows.findIndex(row => row.id === id) : -1
 
 if (id && index < 0) {
@@ -66,14 +67,14 @@ async function submit(): Promise<void> {
 
   const written = await save(async () => {
     for (const [component, created] of Object.entries(nested.rows())) {
-      const existing = await source.list(component)
+      const existing = await store.list(component)
       const updated = [...existing, ...created]
 
-      await writer.writeContent(component, updated)
+      await store.writeContent(component, updated)
       existing.splice(0, existing.length, ...updated)
     }
 
-    await writer.writeContent(name, list)
+    await store.writeContent(name, list)
   })
 
   if (!written)

@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { ContentRow } from '../../../../types/content/reader'
 import type { Field } from '../../../utils/schema'
-
 import type { Column } from '../../../utils/table'
 
 import { computed, reactive, ref } from 'vue'
-import { source } from '../../../../content/source'
+
 import { elements, elementTypes } from '../../../../elements'
 import ConfirmDialog from '../../../components/ConfirmDialog.vue'
 import DataTable from '../../../components/DataTable.vue'
 import DragHandle from '../../../components/DragHandle.vue'
 import ErrorAlert from '../../../components/ErrorAlert.vue'
 import PageHeader from '../../../components/layout/PageHeader.vue'
+import { useContent } from '../../../composables/useContent'
 import { useDragOrder } from '../../../composables/useDragOrder'
 import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
@@ -19,9 +19,10 @@ import { useSchema } from '../../../composables/useSchema'
 import { flag } from '../../../utils/cells'
 import { KEY_PATTERN, moveKey, seedElement, toFields, toKey } from '../../../utils/schema'
 import { actionsColumn, dragColumn } from '../../../utils/table'
-import { writer } from '../../../writer'
 
 const { navigate, href } = useRouter()
+
+const { store } = useContent()
 
 const name = useParam('component')
 
@@ -98,14 +99,14 @@ async function create(): Promise<void> {
 
 async function remove(): Promise<void> {
   const key = removing.value
-  const rows = await source.list(name)
+  const rows = await store.list(name)
   const stripped = rows.map(({ [key]: _, ...rest }) => rest as ContentRow)
 
   const written = await write(async (draft) => {
     delete draft.components[name]!.elements[key]
 
     if (rows.some(row => key in row))
-      await writer.writeContent(name, stripped)
+      await store.writeContent(name, stripped)
   })
 
   if (!written)

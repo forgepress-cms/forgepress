@@ -4,6 +4,7 @@ import ui from '@nuxt/ui/vue-plugin'
 import { createApp } from 'vue'
 import App from './App.vue'
 import { colorModeKey, createColorMode } from './plugins/color-mode'
+import { contentKey, createContent } from './plugins/content'
 import { createRouter, routerKey } from './plugins/router'
 import { routes } from './routes'
 import styles from './styles.css?inline'
@@ -57,10 +58,12 @@ export const mountEditor: MountEditor = (target) => {
   const app = createApp(App, { container })
   const router = createRouter(routes)
   const colorMode = createColorMode(container)
+  const content = createContent()
 
   app.use(ui)
   app.provide(routerKey, router)
   app.provide(colorModeKey, colorMode)
+  app.provide(contentKey, content)
   app.mount(container)
 
   return () => {

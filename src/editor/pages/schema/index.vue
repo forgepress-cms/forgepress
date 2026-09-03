@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import type { Column } from '../../utils/table'
-
 import { computed, reactive, ref } from 'vue'
+
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import DataTable from '../../components/DataTable.vue'
 import DragHandle from '../../components/DragHandle.vue'
 import ErrorAlert from '../../components/ErrorAlert.vue'
 import PageHeader from '../../components/layout/PageHeader.vue'
+import { useContent } from '../../composables/useContent'
 import { useDragOrder } from '../../composables/useDragOrder'
 import { useRouter } from '../../composables/useRouter'
 import { useSchema } from '../../composables/useSchema'
 import { clamp } from '../../utils/cells'
 import { KEY_PATTERN, moveKey, toKey } from '../../utils/schema'
 import { actionsColumn, dragColumn } from '../../utils/table'
-import { writer } from '../../writer'
 
 interface ComponentRow {
   key: string
@@ -23,6 +23,8 @@ interface ComponentRow {
 }
 
 const { navigate } = useRouter()
+
+const { store } = useContent()
 
 const { schema, saving, error, write } = await useSchema()
 
@@ -106,7 +108,7 @@ async function remove(): Promise<void> {
 
   const written = await write(async (draft) => {
     delete draft.components[key]
-    await writer.removeContent(key)
+    await store.removeContent(key)
   })
 
   if (written)

@@ -1,8 +1,8 @@
 import type { ContentRow } from '../../types/content/reader'
 import type { Field } from '../utils/schema'
-import { source } from '../../content/source'
 import { entryLabel, statusColor, titleField } from '../utils/entry'
 import { toFields } from '../utils/schema'
+import { useContent } from './useContent'
 
 export interface EntryOption {
   label: string
@@ -18,12 +18,13 @@ export interface Entries {
 }
 
 export async function useEntries(): Promise<Entries> {
-  const schema = await source.schema()
+  const { store } = useContent()
+  const schema = await store.schema()
   const locales = schema.locales ?? []
 
   const loaded = await Promise.all(Object.entries(schema.components).map(async ([name, component]) => {
     const title = titleField(toFields(component, locales))
-    const rows: ContentRow[] = await source.list(name)
+    const rows: ContentRow[] = await store.list(name)
 
     return [name, rows.map(row => ({
       value: String(row.id),

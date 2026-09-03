@@ -1,7 +1,7 @@
 import type { WebenvSchema } from '../../types/core/schema'
 import type { Field, SchemaComponent } from '../utils/schema'
-import { source } from '../../content/source'
 import { toFields } from '../utils/schema'
+import { useContent } from './useContent'
 
 export interface ComponentSchema {
   schema: WebenvSchema
@@ -11,7 +11,8 @@ export interface ComponentSchema {
 }
 
 export async function useComponent(name: string): Promise<ComponentSchema> {
-  const schema = await source.schema()
+  const { store } = useContent()
+  const schema = await store.schema()
   const component = schema.components[name]
 
   if (!component)

@@ -1,4 +1,5 @@
 /// <reference path="../types/query/virtual.d.ts" />
+import type { BakedMedia } from '../types/content/media'
 import type { ContentReader, ContentSource } from '../types/content/reader'
 
 let bundle: Promise<typeof import('virtual:webenv/content')> | undefined
@@ -6,6 +7,14 @@ let bundle: Promise<typeof import('virtual:webenv/content')> | undefined
 function loadBundle(): Promise<typeof import('virtual:webenv/content')> {
   bundle ??= import('virtual:webenv/content')
   return bundle
+}
+
+export async function isLocal(): Promise<boolean> {
+  return (await loadBundle()).local === true
+}
+
+export async function bakedMedia(): Promise<BakedMedia> {
+  return (await loadBundle()).media
 }
 
 export const source: ContentSource = {

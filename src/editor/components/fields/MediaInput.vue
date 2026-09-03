@@ -4,6 +4,7 @@ import type { MediaAsset } from '../../../types/content/media'
 import type { MediaValue } from '../../utils/media'
 import { computed, ref } from 'vue'
 import { useDragOrder } from '../../composables/useDragOrder'
+import { useMedia } from '../../composables/useMedia'
 import { fileName, measure, toList, toMedia } from '../../utils/media'
 import DragHandle from '../DragHandle.vue'
 import MediaLibrary from '../media/MediaLibrary.vue'
@@ -16,6 +17,8 @@ const props = defineProps<{
 }>()
 
 const model = defineModel<unknown>({ required: true })
+
+const { resolve } = useMedia()
 
 const picking = ref(false)
 const linking = ref(false)
@@ -86,7 +89,7 @@ async function link(): Promise<void> {
         <DragHandle v-if="sortable" class="self-center" @pointerdown="order.start(String(index), index, $event)" />
 
         <div class="h-16 w-24 shrink-0 overflow-hidden rounded-md bg-elevated">
-          <MediaPreview :url="item.url" :kind="kind" :alt="item.alt" />
+          <MediaPreview :url="resolve(item.url)" :kind="kind" :alt="item.alt" />
         </div>
 
         <div class="grid min-w-0 flex-1 content-start gap-1.5">

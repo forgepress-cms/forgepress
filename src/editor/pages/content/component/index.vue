@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import type { ContentRow } from '../../../../types/content/reader'
-
 import type { Column } from '../../../utils/table'
-import UBadge from '@nuxt/ui/components/Badge.vue'
 
+import UBadge from '@nuxt/ui/components/Badge.vue'
 import { computed, h, ref } from 'vue'
-import { source } from '../../../../content/source'
+
 import ConfirmDialog from '../../../components/ConfirmDialog.vue'
 import DataTable from '../../../components/DataTable.vue'
 import DragHandle from '../../../components/DragHandle.vue'
@@ -13,6 +12,7 @@ import ErrorAlert from '../../../components/ErrorAlert.vue'
 import PageHeader from '../../../components/layout/PageHeader.vue'
 import { useColumnVisibility } from '../../../composables/useColumnVisibility'
 import { useComponent } from '../../../composables/useComponent'
+import { useContent } from '../../../composables/useContent'
 import { useDragOrder } from '../../../composables/useDragOrder'
 import { useEntries } from '../../../composables/useEntries'
 import { useParam } from '../../../composables/useParam'
@@ -22,15 +22,16 @@ import { clamp, fieldCell } from '../../../utils/cells'
 import { entryLabel, statusColor, titleField } from '../../../utils/entry'
 import { localized } from '../../../utils/preview'
 import { actionsColumn, dragColumn, selectionColumn } from '../../../utils/table'
-import { writer } from '../../../writer'
 
 const { navigate, href } = useRouter()
+
+const { store } = useContent()
 
 const name = useParam('component')
 
 const { component, locales, fields } = await useComponent(name)
 
-const rows = ref(await source.list(name))
+const rows = ref(await store.list(name))
 const locale = locales[0]
 
 const primary = titleField(fields)
@@ -85,7 +86,7 @@ const removing = ref<string[]>([])
 const { saving, error, save } = useSave()
 
 function write(): Promise<boolean> {
-  return save(() => writer.writeContent(name, rows.value))
+  return save(() => store.writeContent(name, rows.value))
 }
 
 async function move(id: string, offset: number): Promise<void> {

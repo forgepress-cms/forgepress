@@ -2,8 +2,8 @@
 import type { Column } from '../../utils/table'
 
 import { h } from 'vue'
-import { source } from '../../../content/source'
 import DataTable from '../../components/DataTable.vue'
+import { useContent } from '../../composables/useContent'
 import { useRouter } from '../../composables/useRouter'
 
 interface ComponentRow {
@@ -15,13 +15,15 @@ interface ComponentRow {
 
 const { navigate } = useRouter()
 
-const schema = await source.schema()
+const { store } = useContent()
+
+const schema = await store.schema()
 
 const components: ComponentRow[] = await Promise.all(Object.entries(schema.components).map(async ([name, component]) => ({
   id: name,
   name: component.label ?? name,
   description: component.description ?? '',
-  entries: (await source.list(name)).length,
+  entries: (await store.list(name)).length,
 })))
 
 const columns: Column<ComponentRow>[] = [

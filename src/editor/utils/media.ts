@@ -44,7 +44,7 @@ export function measure(url: string, kind: MediaKind): Promise<Size | undefined>
 }
 
 export async function toMedia(asset: MediaAsset, kind: MediaKind): Promise<MediaValue> {
-  const size = await measure(asset.url, kind)
+  const size = await measure(asset.preview ?? asset.url, kind)
 
   return { url: asset.url, ...size }
 }

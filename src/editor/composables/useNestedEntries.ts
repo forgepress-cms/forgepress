@@ -2,9 +2,9 @@ import type { ContentRow } from '../../types/content/reader'
 import type { EntryValues } from '../utils/entry'
 import type { Field } from '../utils/schema'
 import { reactive } from 'vue'
-import { source } from '../../content/source'
 import { fieldLocale, fromValues, missingFields, newEntry, toValues } from '../utils/entry'
 import { toFields } from '../utils/schema'
+import { useContent } from './useContent'
 
 export interface NestedField extends Field {
   locale: string
@@ -28,7 +28,8 @@ export interface NestedEntries {
 }
 
 export async function useNestedEntries(): Promise<NestedEntries> {
-  const schema = await source.schema()
+  const { store } = useContent()
+  const schema = await store.schema()
   const locales = schema.locales ?? []
 
   const drafts = reactive<Record<string, NestedDraft>>({})
