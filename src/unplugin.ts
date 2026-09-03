@@ -1,6 +1,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { UnpluginFactory } from 'unplugin'
+import type { WebenvConfig } from './types/config'
+import type { ContentConfig } from './types/config/content'
 import type { MediaConfig } from './types/config/media'
+import type { ProviderConfig } from './types/config/provider'
 import type { ContentRow } from './types/content/reader'
 import type { WebenvSchema } from './types/core/schema'
 
@@ -8,6 +11,7 @@ import { Buffer } from 'node:buffer'
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
+import { pathToFileURL } from 'node:url'
 import { createUnplugin } from 'unplugin'
 import { resolveMedia } from './content/media'
 import { createMediaStore } from './content/media/node'
@@ -22,6 +26,40 @@ export interface Options {
   write?: boolean
   /** Where uploads are written and how content references them. Defaults to `public/uploads` served at `/uploads`. */
   media?: MediaConfig
+}
+
+const CONFIG_FILES = ['webenv.config.mjs', 'webenv.config.js']
+
+interface Settings {
+  media?: MediaConfig
+  content?: ContentConfig
+  provider?: ProviderConfig
+}
+
+async function loadSettings(root: string, options: Options | undefined): Promise<Settings> {
+  let config: WebenvConfig | undefined
+
+  for (const file of CONFIG_FILES) {
+    const path = join(root, file)
+
+    if (!existsSync(path))
+      continue
+
+    try {
+      config = ((await import(pathToFileURL(path).href)) as { default?: WebenvConfig }).default
+    }
+    catch (cause) {
+      console.warn(`[webenv] could not load ${file}: ${cause instanceof Error ? cause.message : String(cause)}`)
+    }
+
+    break
+  }
+
+  return {
+    ...config?.provider ? { provider: config.provider } : {},
+    ...config?.content ? { content: config.content } : {},
+    media: { ...config?.media, ...options?.media },
+  }
 }
 
 const VIRTUAL_ID = 'virtual:webenv/content'
@@ -48,17 +86,19 @@ function writeAugmentation(root: string): void {
 }
 
 /** Content is exposed as one loader per component so a query only pulls the chunks it touches. */
-async function generate(root: string, local: boolean, config?: MediaConfig): Promise<string> {
+async function generate(root: string, local: boolean, settings: Settings): Promise<string> {
   const dir = join(root, CONTENT_DIR)
   const files = readdirSync(dir).filter(file => file.endsWith('.ts'))
   const entries = files.map(file => `  ${JSON.stringify(toComponentName(file))}: () => import(${JSON.stringify(join(dir, file))}),`)
 
-  const media = resolveMedia(config)
-  const assets = await createMediaStore(root, config).list()
+  const media = resolveMedia(settings.media)
+  const assets = await createMediaStore(root, settings.media).list()
 
   return [
     `export const local = ${local}`,
-    `export const media = ${JSON.stringify({ url: media.url, maxSize: media.maxSize, assets })}`,
+    `export const provider = ${JSON.stringify(settings.provider ?? null)}`,
+    `export const format = ${JSON.stringify(settings.content ?? null)}`,
+    `export const media = ${JSON.stringify({ ...media, assets })}`,
     `export { default as schema } from ${JSON.stringify(join(root, SCHEMA_FILE))}`,
     `export const content = {\n${entries.join('\n')}\n}`,
     '',
@@ -83,8 +123,8 @@ function json(response: ServerResponse, payload: unknown): void {
   response.end(JSON.stringify(payload))
 }
 
-async function media(options: Options | undefined, root: string, path: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
-  const store = createMediaStore(root, options?.media)
+async function media(settings: Settings, root: string, path: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
+  const store = createMediaStore(root, settings.media)
   const name = decodeURIComponent(path.slice('/media/'.length))
 
   if (request.method === 'GET')
@@ -99,12 +139,12 @@ async function media(options: Options | undefined, root: string, path: string, r
   response.end()
 }
 
-async function handle(options: Options | undefined, root: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
+async function handle(settings: Settings, root: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
   const path = (request.url ?? '').slice(ENDPOINT.length)
-  const writer = createWriter(root)
+  const writer = createWriter(root, settings.content)
 
   if (path === '/media' || path.startsWith('/media/'))
-    return media(options, root, path, request, response)
+    return media(settings, root, path, request, response)
 
   if (path === '/schema')
     await writer.writeSchema(await body(request) as WebenvSchema)
@@ -122,6 +162,14 @@ async function handle(options: Options | undefined, root: string, request: Incom
 export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) => {
   let root = options?.root ?? findRoot(process.cwd())
   let local = false
+
+  let settings: Promise<Settings> | undefined
+
+  function resolve(): Promise<Settings> {
+    settings ??= loadSettings(root, options)
+
+    return settings
+  }
 
   return {
     name: 'unplugin-webenv',
@@ -143,7 +191,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
           if (!handled || !request.url?.startsWith(`${ENDPOINT}/`))
             return next()
 
-          handle(options, root, request, response).catch((error: unknown) => {
+          resolve().then(current => handle(current, root, request, response)).catch((error: unknown) => {
             response.statusCode = 500
             response.end(error instanceof Error ? error.message : String(error))
           })
@@ -160,9 +208,9 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
         return RESOLVED_ID
     },
 
-    load(id) {
+    async load(id) {
       if (id === RESOLVED_ID)
-        return generate(root, local, options?.media)
+        return generate(root, local, await resolve())
     },
   }
 }

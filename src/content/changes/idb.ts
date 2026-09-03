@@ -21,6 +21,7 @@ function open(): Promise<IDBDatabase> {
 
     opening.onsuccess = () => resolve(opening.result)
     opening.onerror = () => reject(opening.error ?? new Error('[webenv] IndexedDB is unavailable'))
+    opening.onblocked = () => reject(new Error('[webenv] IndexedDB is blocked by another open tab'))
   })
 }
 

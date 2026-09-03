@@ -1,4 +1,6 @@
 /// <reference path="../types/query/virtual.d.ts" />
+import type { ContentConfig } from '../types/config/content'
+import type { ProviderConfig } from '../types/config/provider'
 import type { BakedMedia } from '../types/content/media'
 import type { ContentReader, ContentSource } from '../types/content/reader'
 
@@ -15,6 +17,14 @@ export async function isLocal(): Promise<boolean> {
 
 export async function bakedMedia(): Promise<BakedMedia> {
   return (await loadBundle()).media
+}
+
+export async function bakedProvider(): Promise<ProviderConfig | null> {
+  return (await loadBundle()).provider
+}
+
+export async function bakedFormat(): Promise<ContentConfig | null> {
+  return (await loadBundle()).format
 }
 
 export const source: ContentSource = {

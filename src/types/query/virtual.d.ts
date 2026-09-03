@@ -2,6 +2,8 @@
 declare module 'virtual:webenv/content' {
   export const local: boolean
   export const media: import('../content/media').BakedMedia
+  export const provider: import('../config/provider').ProviderConfig | null
+  export const format: import('../config/content').ContentConfig | null
   export const schema: import('../core/schema').WebenvSchema
   export const content: Record<string, () => Promise<{ default: import('../content/reader').ContentRow[] }>>
 }

@@ -12,7 +12,7 @@ const hero = {
 }
 
 function baked(maxSize = 1024): BakedMedia {
-  return { url: '/uploads', maxSize, assets: [hero] }
+  return { dir: 'public/uploads', url: '/uploads', maxSize, assets: [hero] }
 }
 
 function buffer(maxSize?: number, store = createMemoryStore<StoredMedia>()) {

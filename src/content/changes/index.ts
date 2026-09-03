@@ -38,6 +38,8 @@ export function createChangeSet(base: ContentSource, store: ChangeStore): Change
 
     apply(changes)
 
+    delete changes.published
+
     await store.write(changes)
   }
 
@@ -76,10 +78,21 @@ export function createChangeSet(base: ContentSource, store: ChangeStore): Change
       const entries = Object.entries(changes.components)
 
       return {
+        ...changes.published === undefined ? {} : { published: changes.published },
         schema: changes.schema !== undefined,
         written: entries.filter(([, rows]) => rows !== null).map(([component]) => component),
         removed: entries.filter(([, rows]) => rows === null).map(([component]) => component),
       }
+    },
+
+    snapshot: ready,
+
+    published: async (commit) => {
+      const changes = await ready()
+
+      changes.published = commit
+
+      await store.write(changes)
     },
 
     publish: async (writer: ContentWriter) => {

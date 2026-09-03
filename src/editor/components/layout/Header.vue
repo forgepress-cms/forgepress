@@ -1,13 +1,28 @@
 <script setup lang="ts">
 import type { ColorMode } from '../../plugins/color-mode'
+import { computed, onMounted, ref } from 'vue'
 
 import { useColorMode } from '../../composables/useColorMode'
+import { usePublish } from '../../composables/usePublish'
 import { useRouter } from '../../composables/useRouter'
+import { useSession } from '../../composables/useSession'
+import PublishDialog from '../PublishDialog.vue'
 
 import Logo from './Logo.vue'
 
 const { route, href } = useRouter()
 const { mode, cycle } = useColorMode()
+const { identity, signOut } = useSession()
+const { count, refresh } = usePublish()
+
+const showPublish = ref(false)
+
+onMounted(refresh)
+
+const account = computed(() => [[
+  { label: identity.value?.login ?? '', type: 'label' as const },
+  { label: 'Sign out', icon: 'i-lucide-log-out', onSelect: () => void signOut() },
+]])
 
 const links = [
   { label: 'Content', to: 'content' },
@@ -40,6 +55,17 @@ const icons: Record<ColorMode, string> = {
       />
 
       <UButton
+        v-if="identity"
+        icon="i-lucide-upload"
+        :label="count ? `Publish (${count})` : 'Publish'"
+        @click="showPublish = true"
+      />
+
+      <UDropdownMenu v-if="identity" :items="account">
+        <UButton :label="identity.login" icon="i-lucide-user" color="neutral" variant="ghost" />
+      </UDropdownMenu>
+
+      <UButton
         :icon="icons[mode]"
         color="neutral"
         variant="ghost"
@@ -49,4 +75,6 @@ const icons: Record<ColorMode, string> = {
       />
     </template>
   </UHeader>
+
+  <PublishDialog v-model:open="showPublish" />
 </template>

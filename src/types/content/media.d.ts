@@ -16,11 +16,13 @@ export interface PendingUpload {
 }
 
 export interface StoredMedia {
+  published?: string
   uploads: Record<string, PendingUpload>
   removed: string[]
 }
 
 export interface BakedMedia {
+  dir: string
   url: string
   maxSize: number
   assets: MediaAsset[]

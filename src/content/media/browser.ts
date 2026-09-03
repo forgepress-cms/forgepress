@@ -4,6 +4,7 @@ import { assetUrl, mediaType, toAssetName } from './index'
 
 export interface MediaBuffer extends MediaClient {
   pending: () => Promise<StoredMedia>
+  published: (commit: string) => Promise<void>
   discard: () => Promise<void>
 }
 
@@ -32,6 +33,8 @@ export function createMediaBuffer(baked: () => Promise<BakedMedia>, store: KeyVa
     const media = await ready()
 
     apply(media)
+
+    delete media.published
 
     await store.write(media)
   }
@@ -126,6 +129,14 @@ export function createMediaBuffer(baked: () => Promise<BakedMedia>, store: KeyVa
     },
 
     pending: ready,
+
+    published: async (commit) => {
+      const media = await ready()
+
+      media.published = commit
+
+      await store.write(media)
+    },
 
     discard: async () => {
       for (const name of [...previews.keys()])

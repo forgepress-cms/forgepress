@@ -1,5 +1,11 @@
 import type { MediaClient } from '../types/content/media'
-import type { ContentStore } from '../types/content/store'
+import type { ContentStore, KeyValueStore } from '../types/content/store'
+import { createMemoryStore } from './changes'
+import { createIdbStore } from './changes/idb'
+
+export function persist<TValue>(key: string): KeyValueStore<TValue> {
+  return typeof indexedDB === 'undefined' ? createMemoryStore<TValue>() : createIdbStore<TValue>(key)
+}
 
 export function lazyStore(select: () => Promise<ContentStore>): ContentStore {
   let selected: Promise<ContentStore> | undefined
