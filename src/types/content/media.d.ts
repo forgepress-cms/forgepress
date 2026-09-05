@@ -15,12 +15,6 @@ export interface PendingUpload {
   data: ArrayBuffer
 }
 
-export interface StoredMedia {
-  published?: string
-  uploads: Record<string, PendingUpload>
-  removed: string[]
-}
-
 export interface BakedMedia {
   dir: string
   url: string

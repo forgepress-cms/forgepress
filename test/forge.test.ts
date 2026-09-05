@@ -1,17 +1,12 @@
-import type { StoredMedia } from '../src/types/content/media'
-import type { StoredChanges } from '../src/types/content/store'
+import type { Draft } from '../src/types/content/draft'
 import type { WebenvSchema } from '../src/types/core/schema'
 import { describe, expect, it } from 'vitest'
 import { commitMessage, toBase64, toFiles } from '../src/content/forge'
 
 const schema = { components: { hero: { elements: {} } }, locales: ['en'] } as WebenvSchema
 
-function changes(partial: Partial<StoredChanges> = {}): StoredChanges {
-  return { components: {}, ...partial }
-}
-
-function media(partial: Partial<StoredMedia> = {}): StoredMedia {
-  return { uploads: {}, removed: [], ...partial }
+function draft(partial: Partial<Draft> = {}): Draft {
+  return { components: {}, uploads: {}, removed: [], ...partial }
 }
 
 function upload(name: string, text: string) {
@@ -35,40 +30,39 @@ describe('commit message', () => {
 
 describe('file changes', () => {
   it('writes the schema to its source file', () => {
-    const [file] = toFiles(changes({ schema }), media(), { mediaDir: 'public/uploads' })
+    const [file] = toFiles(draft({ schema }), { mediaDir: 'public/uploads' })
 
     expect(file).toMatchObject({ path: '.webenv/schema.ts', encoding: 'utf-8' })
     expect(file && 'data' in file && file.data).toContain('defineWebenvSchema')
   })
 
   it('maps a component onto its kebab-case content file', () => {
-    const [file] = toFiles(changes({ components: { blogPost: [] } }), media(), { mediaDir: 'public/uploads' })
+    const [file] = toFiles(draft({ components: { blogPost: [] } }), { mediaDir: 'public/uploads' })
 
     expect(file?.path).toBe('.webenv/content/blog-post.ts')
   })
 
   it('marks a removed component for deletion', () => {
-    const [file] = toFiles(changes({ components: { blogPost: null } }), media(), { mediaDir: 'public/uploads' })
+    const [file] = toFiles(draft({ components: { blogPost: null } }), { mediaDir: 'public/uploads' })
 
     expect(file).toEqual({ path: '.webenv/content/blog-post.ts', removed: true })
   })
 
   it('writes uploads into the media directory as base64', () => {
-    const [file] = toFiles(changes(), media({ uploads: { 'a.png': upload('a.png', 'hi') } }), { mediaDir: 'public/uploads' })
+    const [file] = toFiles(draft({ uploads: { 'a.png': upload('a.png', 'hi') } }), { mediaDir: 'public/uploads' })
 
     expect(file).toEqual({ path: 'public/uploads/a.png', data: btoa('hi'), encoding: 'base64' })
   })
 
   it('marks removed assets for deletion', () => {
-    const [file] = toFiles(changes(), media({ removed: ['old.png'] }), { mediaDir: 'public/uploads' })
+    const [file] = toFiles(draft({ removed: ['old.png'] }), { mediaDir: 'public/uploads' })
 
     expect(file).toEqual({ path: 'public/uploads/old.png', removed: true })
   })
 
   it('gathers content, schema and media into one commit', () => {
     const files = toFiles(
-      changes({ schema, components: { hero: [], gone: null } }),
-      media({ uploads: { 'a.png': upload('a.png', 'hi') }, removed: ['old.png'] }),
+      draft({ schema, components: { hero: [], gone: null }, uploads: { 'a.png': upload('a.png', 'hi') }, removed: ['old.png'] }),
       { mediaDir: 'public/uploads' },
     )
 
@@ -83,8 +77,7 @@ describe('file changes', () => {
 
   it('prefixes every path when the project sits inside a larger repo', () => {
     const files = toFiles(
-      changes({ schema, components: { hero: [] } }),
-      media({ uploads: { 'a.png': upload('a.png', 'hi') }, removed: ['old.png'] }),
+      draft({ schema, components: { hero: [] }, uploads: { 'a.png': upload('a.png', 'hi') }, removed: ['old.png'] }),
       { mediaDir: 'public/uploads', base: 'playgrounds/nuxt' },
     )
 
@@ -97,13 +90,13 @@ describe('file changes', () => {
   })
 
   it('tolerates a base with stray slashes', () => {
-    const [file] = toFiles(changes({ schema }), media(), { mediaDir: 'public/uploads', base: '/apps/site/' })
+    const [file] = toFiles(draft({ schema }), { mediaDir: 'public/uploads', base: '/apps/site/' })
 
     expect(file?.path).toBe('apps/site/.webenv/schema.ts')
   })
 
   it('produces nothing when there is nothing pending', () => {
-    expect(toFiles(changes(), media(), { mediaDir: 'public/uploads' })).toEqual([])
+    expect(toFiles(draft(), { mediaDir: 'public/uploads' })).toEqual([])
   })
 })
 

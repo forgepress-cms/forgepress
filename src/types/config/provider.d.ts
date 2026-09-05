@@ -11,5 +11,8 @@ export interface ProviderConfig {
   repository: ProviderRepository
   base?: string
   url?: string
+  clientId?: string
+  scopes?: readonly string[]
+  redirectUri?: string
   commitMessage?: string
 }

@@ -1,36 +1,32 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { usePublish } from '../composables/usePublish'
 import { useSession } from '../composables/useSession'
+import DiffView from './DiffView.vue'
 
 const open = defineModel<boolean>('open', { required: true })
 
-const { summary, count, publishing, error, refresh, publish } = usePublish()
+const { summary, diff, count, publishing, error, refresh, publish } = usePublish()
 const { branch } = useSession()
 
 const name = ref('')
 const commit = ref('')
+const loading = ref(false)
 
 watch(open, async (value) => {
   if (!value)
     return
 
   commit.value = ''
+  loading.value = true
 
-  await refresh()
+  try {
+    await refresh()
+  }
+  finally {
+    loading.value = false
+  }
 }, { immediate: true })
-
-const entries = computed(() => {
-  const current = summary.value
-
-  return [
-    ...current.schema ? [{ label: 'Schema', detail: 'changed' }] : [],
-    ...current.written.map(component => ({ label: component, detail: 'content' })),
-    ...current.removed.map(component => ({ label: component, detail: 'removed' })),
-    ...current.uploads.map(asset => ({ label: asset, detail: 'upload' })),
-    ...current.deleted.map(asset => ({ label: asset, detail: 'deleted' })),
-  ]
-})
 
 async function submit(): Promise<void> {
   const published = await publish(name.value)
@@ -48,6 +44,7 @@ async function submit(): Promise<void> {
     v-model:open="open"
     title="Publish changes"
     :description="branch ? `Commits straight to ${branch}.` : 'Commits straight to the default branch.'"
+    :ui="{ content: 'max-w-2xl' }"
   >
     <template #body>
       <div class="flex flex-col gap-4">
@@ -67,17 +64,15 @@ async function submit(): Promise<void> {
           description="Waiting for the site to rebuild. Editing again starts a new change."
         />
 
-        <p v-if="!entries.length" class="text-sm text-muted">
+        <div v-if="loading" class="flex justify-center py-6">
+          <UIcon name="i-lucide-loader-circle" class="size-5 animate-spin text-muted" />
+        </div>
+
+        <p v-else-if="!count" class="py-2 text-sm text-muted">
           Nothing has changed yet.
         </p>
 
-        <ul v-else class="flex flex-col gap-1">
-          <li v-for="entry in entries" :key="`${entry.detail}:${entry.label}`" class="flex items-center justify-between gap-3 text-sm">
-            <span class="truncate font-medium text-highlighted">{{ entry.label }}</span>
-
-            <UBadge :label="entry.detail" color="neutral" variant="subtle" size="sm" />
-          </li>
-        </ul>
+        <DiffView v-else :diff="diff" />
 
         <UFormField label="What changed?" help="Becomes the commit message.">
           <UInput v-model="name" placeholder="new pricing page" class="w-full" :disabled="!count" />
@@ -88,12 +83,7 @@ async function submit(): Promise<void> {
     </template>
 
     <template #footer>
-      <UButton
-        label="Publish"
-        :loading="publishing"
-        :disabled="!count"
-        @click="submit()"
-      />
+      <UButton label="Publish" :loading="publishing" :disabled="!count" @click="submit()" />
 
       <UButton label="Close" color="neutral" variant="ghost" @click="open = false" />
     </template>

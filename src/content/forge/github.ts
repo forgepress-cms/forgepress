@@ -1,24 +1,23 @@
 import type { ProviderConfig } from '../../types/config/provider'
-import type { Forge, ForgeAccess } from '../../types/content/forge'
-
-const API = 'https://api.github.com'
+import type { Forge, ForgeAccess, TokenGetter } from '../../types/content/forge'
+import { describe } from './index'
 
 interface Repository {
   default_branch: string
   permissions?: { push?: boolean }
 }
 
-export function createGitHubForge(config: ProviderConfig, token: () => string): Forge {
-  const root = config.url ?? API
+export function createGitHubForge(config: ProviderConfig, token: TokenGetter): Forge {
+  const { api } = describe(config)
   const { owner, name } = config.repository
-  const base = `${root}/repos/${owner}/${name}`
+  const base = `${api}/repos/${owner}/${name}`
 
   async function call<TResult>(path: string, init?: RequestInit): Promise<TResult> {
     const response = await fetch(path.startsWith('http') ? path : `${base}${path}`, {
       ...init,
       headers: {
         'accept': 'application/vnd.github+json',
-        'authorization': `Bearer ${token()}`,
+        'authorization': `Bearer ${await token()}`,
         'x-github-api-version': '2022-11-28',
         ...init?.body === undefined ? {} : { 'content-type': 'application/json' },
       },
@@ -41,7 +40,7 @@ export function createGitHubForge(config: ProviderConfig, token: () => string): 
   return {
     async access(): Promise<ForgeAccess> {
       const [user, repository] = await Promise.all([
-        call<{ login: string, name: string | null, avatar_url: string }>(`${root}/user`),
+        call<{ login: string, name: string | null, avatar_url: string }>(`${api}/user`),
         call<Repository>(''),
       ])
 

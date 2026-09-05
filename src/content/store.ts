@@ -1,7 +1,7 @@
 import type { MediaClient } from '../types/content/media'
 import type { ContentStore, KeyValueStore } from '../types/content/store'
-import { createMemoryStore } from './changes'
-import { createIdbStore } from './changes/idb'
+import { createIdbStore } from './storage/idb'
+import { createMemoryStore } from './storage/memory'
 
 export function persist<TValue>(key: string): KeyValueStore<TValue> {
   return typeof indexedDB === 'undefined' ? createMemoryStore<TValue>() : createIdbStore<TValue>(key)

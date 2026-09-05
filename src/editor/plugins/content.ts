@@ -1,10 +1,9 @@
 import type { InjectionKey } from 'vue'
-import type { MediaBuffer } from '../../content/media/browser'
-import type { MediaClient, StoredMedia } from '../../types/content/media'
-import type { ChangeSet, ContentStore, StoredChanges } from '../../types/content/store'
+import type { Draft, DraftService } from '../../types/content/draft'
+import type { MediaClient } from '../../types/content/media'
+import type { ContentStore } from '../../types/content/store'
 
-import { createChangeSet } from '../../content/changes'
-import { createMediaBuffer } from '../../content/media/browser'
+import { createDraft } from '../../content/draft'
 import { bakedMedia, isLocal, source } from '../../content/source'
 import { lazyMedia, lazyStore, persist } from '../../content/store'
 import { media } from '../media'
@@ -12,22 +11,17 @@ import { writer } from '../writer'
 
 export type EditorMode = 'development' | 'static'
 
-export interface EditorDraft {
-  changes: ChangeSet
-  uploads: MediaBuffer
-}
-
 export interface EditorContent {
   mode: () => Promise<EditorMode>
   store: ContentStore
   media: MediaClient
-  draft: () => Promise<EditorDraft | undefined>
+  draft: () => Promise<DraftService | undefined>
 }
 
 interface Resolved {
   store: ContentStore
   media: MediaClient
-  draft?: EditorDraft
+  draft?: DraftService
 }
 
 export const contentKey: InjectionKey<EditorContent> = Symbol('webenv:editor:content')
@@ -38,10 +32,9 @@ async function build(): Promise<Resolved> {
   if (await isLocal())
     return { store: { schema: source.schema, list: source.list, ...writer }, media }
 
-  const changes = createChangeSet(source, persist<StoredChanges>('content'))
-  const uploads = createMediaBuffer(bakedMedia, persist<StoredMedia>('media'))
+  const draft = createDraft(source, bakedMedia, persist<Draft>('draft'))
 
-  return { store: changes, media: uploads, draft: { changes, uploads } }
+  return { store: draft.content, media: draft.media, draft }
 }
 
 function resolve(): Promise<Resolved> {

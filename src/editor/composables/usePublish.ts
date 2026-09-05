@@ -1,21 +1,15 @@
 import type { ComputedRef, Ref } from 'vue'
+import type { PublishTarget } from '../../content/forge'
+import type { DraftSummary, FileDiff } from '../../types/content/draft'
 import { computed, ref, shallowRef } from 'vue'
 import { commitMessage, toFiles } from '../../content/forge'
 import { bakedFormat, bakedMedia } from '../../content/source'
 import { useContent } from './useContent'
 import { useSession } from './useSession'
 
-export interface PublishSummary {
-  published?: string
-  schema: boolean
-  written: string[]
-  removed: string[]
-  uploads: string[]
-  deleted: string[]
-}
-
 export interface Publisher {
-  summary: Ref<PublishSummary>
+  summary: Ref<DraftSummary>
+  diff: Ref<FileDiff[]>
   count: ComputedRef<number>
   publishing: Ref<boolean>
   error: Ref<string>
@@ -23,19 +17,20 @@ export interface Publisher {
   publish: (name: string) => Promise<string | undefined>
 }
 
-function empty(): PublishSummary {
-  return { schema: false, written: [], removed: [], uploads: [], deleted: [] }
+function empty(): DraftSummary {
+  return { schema: false, written: [], dropped: [], uploaded: [], deleted: [] }
 }
 
-const summary = shallowRef<PublishSummary>(empty())
+const summary = shallowRef<DraftSummary>(empty())
+const diff = shallowRef<FileDiff[]>([])
 const publishing = ref(false)
 const error = ref('')
 
 const count = computed(() => {
   const current = summary.value
 
-  return current.written.length + current.removed.length
-    + current.uploads.length + current.deleted.length
+  return current.written.length + current.dropped.length
+    + current.uploaded.length + current.deleted.length
     + (current.schema ? 1 : 0)
 })
 
@@ -43,29 +38,33 @@ export function usePublish(): Publisher {
   const content = useContent()
   const session = useSession()
 
+  async function target(): Promise<PublishTarget> {
+    const [format, baked] = await Promise.all([bakedFormat(), bakedMedia()])
+
+    return {
+      mediaDir: baked.dir,
+      base: session.provider.value?.base,
+      format: format ?? undefined,
+    }
+  }
+
   async function refresh(): Promise<void> {
     const draft = await content.draft()
 
     if (!draft) {
       summary.value = empty()
+      diff.value = []
 
       return
     }
 
-    const [changes, media] = await Promise.all([draft.changes.pending(), draft.uploads.pending()])
-
-    summary.value = {
-      ...changes.published === undefined ? {} : { published: changes.published },
-      schema: changes.schema,
-      written: changes.written,
-      removed: changes.removed,
-      uploads: Object.keys(media.uploads),
-      deleted: media.removed,
-    }
+    summary.value = await draft.summary()
+    diff.value = await draft.diff(await target())
   }
 
   return {
     summary,
+    diff,
     count,
     publishing,
     error,
@@ -92,18 +91,7 @@ export function usePublish(): Publisher {
       error.value = ''
 
       try {
-        const [changes, media, format, baked] = await Promise.all([
-          draft.changes.snapshot(),
-          draft.uploads.pending(),
-          bakedFormat(),
-          bakedMedia(),
-        ])
-
-        const files = toFiles(changes, media, {
-          mediaDir: baked.dir,
-          base: session.provider.value?.base,
-          format: format ?? undefined,
-        })
+        const files = toFiles(await draft.snapshot(), await target())
 
         if (files.length === 0) {
           error.value = 'There is nothing to publish.'
@@ -113,8 +101,7 @@ export function usePublish(): Publisher {
 
         const commit = await forge.commit(files, commitMessage(session.provider.value?.commitMessage, name))
 
-        await draft.changes.published(commit)
-        await draft.uploads.published(commit)
+        await draft.published(commit)
         await refresh()
 
         return commit
