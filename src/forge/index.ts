@@ -54,6 +54,14 @@ export function textToBase64(text: string): string {
   return toBase64(new TextEncoder().encode(text).buffer as ArrayBuffer)
 }
 
+export function base64ToText(data: string): string {
+  return new TextDecoder().decode(Uint8Array.from(atob(data.replace(/\s/g, '')), char => char.charCodeAt(0)))
+}
+
+export function encodePath(path: string): string {
+  return path.split('/').map(encodeURIComponent).join('/')
+}
+
 export function commitMessage(template: string | undefined, name: string): string {
   const trimmed = name.trim()
 

@@ -16,6 +16,10 @@ const schema = {
         author: { type: 'relation', collection: 'author' },
         related: { type: 'relation', collection: 'post', multiple: true, optional: true },
         blocks: { type: 'dynamic', collections: ['hero'], optional: true },
+        slug: { type: 'text', validation: '^[a-z0-9-]+$', optional: true },
+        code: { type: 'text', validation: '^[A-Z]{2}$', translate: true, optional: true },
+        score: { type: 'number', min: 1, max: 5, step: 0.5, optional: true },
+        amount: { type: 'number', step: 0.1, optional: true },
       },
     },
     author: { fields: {} },
@@ -126,6 +130,29 @@ describe('validateEntry', () => {
     ])
 
     expect(issues({ ...post, rating: Number.NaN })).toHaveLength(1)
+  })
+
+  it('wants text to match the pattern of its field', () => {
+    expect(issues({ ...post, slug: 'hello-world', code: { en: 'EN', de: 'DE' } })).toEqual([])
+
+    expect(issues({ ...post, slug: 'Hello World', code: { en: 'EN', de: 'de' } })).toEqual([
+      { path: ['slug'], message: 'Field "slug" has to match the pattern ^[a-z0-9-]+$' },
+      { path: ['code', 'de'], message: 'Field "code" (de) has to match the pattern ^[A-Z]{2}$' },
+    ])
+  })
+
+  it('wants numbers within the range and steps of their field', () => {
+    expect(issues({ ...post, score: 1, amount: 0.3 })).toEqual([])
+    expect(issues({ ...post, score: 4.5, amount: -1.2 })).toEqual([])
+
+    expect(issues({ ...post, score: 0.5 })).toEqual([{ path: ['score'], message: 'Field "score" has to be at least 1' }])
+    expect(issues({ ...post, score: 2.25 })).toEqual([{ path: ['score'], message: 'Field "score" has to be in steps of 0.5 from 1, such as 2 or 2.5' }])
+    expect(issues({ ...post, amount: 0.35 })).toEqual([{ path: ['amount'], message: 'Field "amount" has to be in steps of 0.1, such as 0.3 or 0.4' }])
+
+    expect(issues({ ...post, score: 5.2 })).toEqual([
+      { path: ['score'], message: 'Field "score" has to be at most 5' },
+      { path: ['score'], message: 'Field "score" has to be in steps of 0.5 from 1, such as 5' },
+    ])
   })
 
   it('checks media', () => {

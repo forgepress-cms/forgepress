@@ -1,32 +1,34 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import Header from './components/layout/Header.vue'
+import PageView from './components/layout/PageView.vue'
 import SignIn from './components/SignIn.vue'
 import { useContent } from './composables/useContent'
-import { useRouter } from './composables/useRouter'
 import { useSession } from './composables/useSession'
 
 defineProps<{
   container: HTMLElement
 }>()
 
-const { route } = useRouter()
 const content = useContent()
-const { identity, provider, restore } = useSession()
+const { identity, restore } = useSession()
 
 const ready = ref(false)
+const deployed = ref(false)
 
 onMounted(async () => {
   try {
-    if (await content.mode() === 'static')
+    if (await content.mode() === 'static') {
+      deployed.value = true
       await restore()
+    }
   }
   finally {
     ready.value = true
   }
 })
 
-const locked = computed(() => ready.value && provider.value !== undefined && identity.value === undefined)
+const locked = computed(() => ready.value && deployed.value && identity.value === undefined)
 </script>
 
 <template>
@@ -43,9 +45,7 @@ const locked = computed(() => ready.value && provider.value !== undefined && ide
 
         <main class="pt-6 pb-16">
           <UContainer>
-            <Suspense>
-              <component :is="route.page" :key="route.path" />
-            </Suspense>
+            <PageView />
           </UContainer>
         </main>
       </template>

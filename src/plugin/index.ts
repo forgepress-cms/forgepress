@@ -145,7 +145,10 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
             return next()
 
           handle(current, root, request, response)
-            .then(invalidate)
+            .then(() => {
+              if (method !== 'GET')
+                invalidate()
+            })
             .catch((error: unknown) => {
               response.statusCode = 500
               response.end(error instanceof Error ? error.message : String(error))
@@ -180,7 +183,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
         return generateRoot(root, local, current)
 
       if (id.startsWith(resolved(LIST_PREFIX))) {
-        const collection = findCollection(root, current, id.slice(resolved(LIST_PREFIX).length))
+        const collection = await findCollection(root, current, id.slice(resolved(LIST_PREFIX).length))
 
         return collection ? generateList(collection) : 'export default []\n'
       }

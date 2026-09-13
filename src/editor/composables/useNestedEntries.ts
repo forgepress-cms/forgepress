@@ -1,4 +1,4 @@
-import type { ContentRow } from '../../types/entry'
+import type { ContentRow, EntryStatus } from '../../types/entry'
 import type { EntryValues } from '../utils/entry'
 import type { FormField } from '../utils/schema'
 import { reactive } from 'vue'
@@ -24,7 +24,7 @@ export interface NestedEntries {
   discard: (id: string) => void
   clear: () => void
   missing: () => string[]
-  rows: () => Record<string, ContentRow[]>
+  rows: (status: EntryStatus) => Record<string, ContentRow[]>
 }
 
 export async function useNestedEntries(): Promise<NestedEntries> {
@@ -54,8 +54,8 @@ export async function useNestedEntries(): Promise<NestedEntries> {
     delete drafts[id]
   }
 
-  function draft(entry: NestedDraft): ContentRow {
-    const next: ContentRow = { ...entry.row }
+  function draft(entry: NestedDraft, status: EntryStatus): ContentRow {
+    const next: ContentRow = { ...entry.row, status }
 
     for (const field of entry.fields) {
       const value = fromValues(field, entry.values)
@@ -82,8 +82,8 @@ export async function useNestedEntries(): Promise<NestedEntries> {
       missingFields(entry.fields, entry.values).map(field => `${field.label} of the new ${entry.collection}`),
     ),
 
-    rows: () => Object.values(drafts).reduce<Record<string, ContentRow[]>>((created, entry) => {
-      created[entry.collection] = [...created[entry.collection] ?? [], draft(entry)]
+    rows: status => Object.values(drafts).reduce<Record<string, ContentRow[]>>((created, entry) => {
+      created[entry.collection] = [...created[entry.collection] ?? [], draft(entry, status)]
 
       return created
     }, {}),

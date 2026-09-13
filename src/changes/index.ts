@@ -1,4 +1,4 @@
-import type { BakedMedia } from '../media/types'
+import type { BakedMedia, PendingUpload } from '../media/types'
 import type { ContentSource, KeyValueStore } from '../store/types'
 import type { Changes, ChangeService, ChangeSummary, EntryRef } from './types'
 import { createContentChanges } from './content'
@@ -33,8 +33,6 @@ export function createChanges(base: ContentSource, baked: () => Promise<BakedMed
 
     apply(changes)
 
-    delete changes.published
-
     await store.write(changes)
   }
 
@@ -48,7 +46,6 @@ export function createChanges(base: ContentSource, baked: () => Promise<BakedMed
       const changes = await ready()
 
       return {
-        ...changes.published === undefined ? {} : { published: changes.published },
         schema: changes.schema !== undefined,
         written: refs(changes, true),
         discarded: refs(changes, false),
@@ -60,19 +57,39 @@ export function createChanges(base: ContentSource, baked: () => Promise<BakedMed
 
     diff: async target => diffChanges(await ready(), base, await baked(), previews, target),
 
-    published: async (commit) => {
+    published: async () => {
       const changes = await ready()
+      const deployed = new Set((await baked()).assets.map(asset => asset.name))
+      const media: Record<string, PendingUpload | null> = {}
 
-      changes.published = commit
+      for (const [name, upload] of Object.entries(changes.publishedMedia ?? {})) {
+        if (upload ? !deployed.has(name) : deployed.has(name))
+          media[name] = upload
+        else
+          previews.forget(name)
+      }
 
-      await store.write(changes)
+      for (const [name, upload] of Object.entries(changes.uploads))
+        media[name] = upload
+
+      for (const name of changes.removed)
+        media[name] = null
+
+      const next: Changes = { ...empty(), ...Object.keys(media).length > 0 ? { publishedMedia: media } : {} }
+
+      loaded = Promise.resolve(next)
+
+      await (next.publishedMedia ? store.write(next) : store.clear())
     },
 
     discard: async () => {
-      previews.clear()
-      loaded = Promise.resolve(empty())
+      const { publishedMedia } = await ready()
+      const next: Changes = { ...empty(), ...publishedMedia ? { publishedMedia } : {} }
 
-      await store.clear()
+      previews.clear()
+      loaded = Promise.resolve(next)
+
+      await (publishedMedia ? store.write(next) : store.clear())
     },
   }
 }

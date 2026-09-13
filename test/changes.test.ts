@@ -1,5 +1,5 @@
 import type { Changes } from '../src/changes/types'
-import type { BakedMedia } from '../src/media/types'
+import type { BakedMedia, MediaAsset } from '../src/media/types'
 import type { ContentSource, KeyValueStore } from '../src/store/types'
 import type { ContentRow } from '../src/types/entry'
 import type { ForgePressSchema } from '../src/types/schema'
@@ -8,6 +8,7 @@ import { reactive } from 'vue'
 import { createChanges } from '../src/changes'
 import { createMemoryStore } from '../src/editor/storage/memory'
 import { defaultPaths } from '../src/files/paths'
+import { toFiles } from '../src/forge'
 
 const baseSchema = { collections: { hero: { fields: {} } }, locales: ['en'] } as ForgePressSchema
 const nextSchema = { collections: { hero: { fields: {} }, author: { fields: {} } }, locales: ['en'] } as ForgePressSchema
@@ -35,12 +36,12 @@ function base(): ContentSource {
   }
 }
 
-function baked(): BakedMedia {
-  return { dir: 'public/uploads', url: '/uploads', maxSize: 1024, assets: [banner] }
+function baked(assets: MediaAsset[]): BakedMedia {
+  return { dir: 'public/uploads', url: '/uploads', maxSize: 1024, assets }
 }
 
-function make(store: KeyValueStore<Changes> = createMemoryStore<Changes>()) {
-  return { changes: createChanges(base(), async () => baked(), store), store }
+function make(store: KeyValueStore<Changes> = createMemoryStore<Changes>(), assets: MediaAsset[] = [banner]) {
+  return { changes: createChanges(base(), async () => baked(assets), store), store, assets }
 }
 
 function file(name: string, bytes = 'hello', type = 'image/png'): File {
@@ -135,24 +136,77 @@ describe('one record', () => {
     expect(await resumed.media.list()).toHaveLength(2)
   })
 
-  it('records one published commit for all changes', async () => {
+  it('leaves nothing to publish once everything is published', async () => {
     const { changes } = make()
 
+    await changes.content.writeSchema(nextSchema)
     await changes.content.writeContent('hero', [row('b')])
     await changes.media.upload(file('photo.png'))
-    await changes.published('abc1234')
+    await changes.media.remove(banner.name)
+    await changes.published()
 
-    expect((await changes.summary()).published).toBe('abc1234')
+    expect(toFiles(await changes.snapshot(), { paths: defaultPaths, mediaDir: 'public/uploads' })).toEqual([])
+    expect(await changes.summary()).toEqual({ schema: false, written: [], discarded: [], dropped: [], uploaded: [], deleted: [] })
+    expect(await changes.content.list('hero')).toEqual([row('a')])
+    expect(await changes.content.schema()).toEqual(baseSchema)
   })
 
-  it('clears the published marker on any further edit', async () => {
-    const { changes } = make()
+  it('keeps published media in view until the deployed site has it', async () => {
+    const { changes, assets } = make()
+
+    const photo = await changes.media.upload(file('photo.png'))
+
+    await changes.media.remove(banner.name)
+    await changes.published()
+
+    expect((await changes.media.list()).map(asset => asset.name)).toEqual([photo.name])
+
+    assets.splice(0, assets.length, { ...banner, name: photo.name, url: photo.url })
+
+    expect(await changes.media.list()).toEqual([{ ...banner, name: photo.name, url: photo.url }])
+  })
+
+  it('forgets published media the deployed site has caught up with', async () => {
+    const { changes, store, assets } = make()
+
+    const photo = await changes.media.upload(file('photo.png'))
+
+    await changes.media.remove(banner.name)
+    await changes.published()
+
+    expect((await store.read())?.publishedMedia).toEqual({ [photo.name]: expect.objectContaining({ name: photo.name }), [banner.name]: null })
+
+    assets.splice(0, assets.length, { ...banner, name: photo.name, url: photo.url })
 
     await changes.content.writeContent('hero', [row('b')])
-    await changes.published('abc1234')
-    await changes.media.upload(file('photo.png'))
+    await changes.published()
 
-    expect((await changes.summary()).published).toBeUndefined()
+    expect(await store.read()).toBeUndefined()
+  })
+
+  it('lets published media be deleted again before the site has it', async () => {
+    const { changes } = make()
+
+    const photo = await changes.media.upload(file('photo.png'))
+
+    await changes.published()
+    await changes.media.remove(photo.name)
+
+    expect((await changes.media.list()).map(asset => asset.name)).toEqual([banner.name])
+    expect((await changes.summary()).deleted).toEqual([photo.name])
+  })
+
+  it('keeps published media when pending changes are discarded', async () => {
+    const { changes } = make()
+
+    const photo = await changes.media.upload(file('photo.png'))
+
+    await changes.published()
+    await changes.content.writeContent('hero', [row('b')])
+    await changes.discard()
+
+    expect(await changes.content.list('hero')).toEqual([row('a')])
+    expect((await changes.media.list()).map(asset => asset.name)).toEqual([photo.name, banner.name])
   })
 
   it('discards everything at once', async () => {

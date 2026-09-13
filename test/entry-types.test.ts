@@ -23,7 +23,8 @@ const schema = {
         title: { type: 'text', translate: true },
         summary: { type: 'text', translate: true, optional: true },
         body: { type: 'richtext' },
-        rating: { type: 'number', optional: true },
+        slug: { type: 'text', validation: '^[a-z-]+$', optional: true },
+        rating: { type: 'number', min: 0, max: 5, step: 0.5, optional: true },
         cover: { type: 'image', optional: true },
         gallery: { type: 'image', multiple: true, optional: true },
         teaser: { type: 'video', optional: true },
@@ -61,6 +62,7 @@ const accepted: Case[] = [
     name: 'every optional field',
     entry: change({
       summary: { en: 'Short' },
+      slug: 'hello-world',
       rating: 4.5,
       cover: { url: '/uploads/a.png', alt: 'A', width: 800, height: 600 },
       gallery: [{ url: '/uploads/a.png' }],
@@ -103,6 +105,10 @@ const rejected: Case[] = [
 const stricter: Case[] = [
   { name: 'a date that is not ISO 8601', entry: change({ createdAt: 'yesterday' }) },
   { name: 'an id that cannot be a file name', entry: change({ id: 'post 1' }) },
+  { name: 'a text that does not match its pattern', entry: change({ slug: 'Hello World' }) },
+  { name: 'a number below its minimum', entry: change({ rating: -1 }) },
+  { name: 'a number above its maximum', entry: change({ rating: 6 }) },
+  { name: 'a number between its steps', entry: change({ rating: 4.25 }) },
 ]
 
 const cases = [...accepted, ...rejected, ...stricter]

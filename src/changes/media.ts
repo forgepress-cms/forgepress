@@ -19,10 +19,14 @@ export function createMediaChanges(
     list: async () => {
       const { url, assets } = await baked()
       const changes = await ready()
-      const removed = new Set(changes.removed)
+      const deployed = new Set(assets.map(asset => asset.name))
+      const published = Object.entries(changes.publishedMedia ?? {})
+      const removed = new Set([...changes.removed, ...published.filter(([, upload]) => upload === null).map(([name]) => name)])
 
-      const uploaded = Object.values(changes.uploads).map(upload => previews.asset(upload, url))
-      const existing = assets.filter(item => !removed.has(item.name) && !(item.name in changes.uploads))
+      const waiting = published.flatMap(([name, upload]) => upload && !deployed.has(name) && !removed.has(name) && !(name in changes.uploads) ? [upload] : [])
+      const uploaded = [...Object.values(changes.uploads), ...waiting].map(upload => previews.asset(upload, url))
+      const shown = new Set(uploaded.map(asset => asset.name))
+      const existing = assets.filter(item => !removed.has(item.name) && !shown.has(item.name))
 
       return [...uploaded, ...existing].sort((left, right) =>
         right.modifiedAt.localeCompare(left.modifiedAt) || left.name.localeCompare(right.name))

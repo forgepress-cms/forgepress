@@ -4,8 +4,9 @@ import type { ContentRow } from '../types/entry'
 import type { ForgePressSchema } from '../types/schema'
 import { Buffer } from 'node:buffer'
 import { createMediaStore } from '../disk/media'
+import { createSource } from '../disk/source'
 import { createWriter } from '../disk/writer'
-import { ENDPOINT } from '../files/paths'
+import { ENDPOINT, isEntryId } from '../files/paths'
 
 async function bytes(request: IncomingMessage): Promise<Buffer> {
   const chunks: Buffer[] = []
@@ -45,12 +46,41 @@ function segments(path: string, prefix: string): string[] {
   return path.slice(prefix.length).split('/').filter(Boolean).map(decodeURIComponent)
 }
 
+async function read(config: ResolvedConfig, root: string, path: string, response: ServerResponse): Promise<void> {
+  const source = createSource(root, config.paths, { unpublished: true })
+  const schema = await source.schema()
+
+  if (path === '/schema')
+    return json(response, schema)
+
+  if (path.startsWith('/content/')) {
+    const [collection = ''] = segments(path, '/content/')
+
+    return json(response, Object.hasOwn(schema.collections, collection) ? await source.list(collection) : [])
+  }
+
+  if (!path.startsWith('/entry/'))
+    throw new Error(`unknown endpoint "${path}"`)
+
+  const [collection = '', id = ''] = segments(path, '/entry/')
+  const row = Object.hasOwn(schema.collections, collection) && isEntryId(id) ? await source.entry(collection, id) : undefined
+
+  if (row)
+    return json(response, row)
+
+  response.statusCode = 404
+  response.end()
+}
+
 export async function handle(config: ResolvedConfig, root: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
   const path = (request.url ?? '').slice(ENDPOINT.length)
   const writer = createWriter(root, config.paths, config.content)
 
   if (path === '/media' || path.startsWith('/media/'))
     return media(config, root, path, request, response)
+
+  if (request.method === 'GET')
+    return read(config, root, path, response)
 
   if (path === '/schema') {
     await writer.writeSchema(await body(request) as ForgePressSchema)

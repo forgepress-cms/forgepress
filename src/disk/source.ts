@@ -13,12 +13,17 @@ import { source as bundle } from '../store/bundle'
 import { readEntryIds } from './collections'
 import { findRoot } from './root'
 
-export function createSource(start?: string, paths: ContentPaths = defaultPaths): ContentSource {
+export interface SourceOptions {
+  unpublished?: boolean
+}
+
+export function createSource(start?: string, paths: ContentPaths = defaultPaths, options: SourceOptions = {}): ContentSource {
   const rows = new Map<string, Promise<ContentRow[]>>()
   let root: string | undefined
   let schema: Promise<ForgePressSchema> | undefined
 
   const resolve = (): string => (root ??= findRoot(start, paths.dir))
+  const visible = (row: ContentRow): boolean => options.unpublished === true || row.status === 'published'
 
   async function read(collection: string, id: string): Promise<ContentRow> {
     const file = paths.entry(collection, id)
@@ -29,7 +34,7 @@ export function createSource(start?: string, paths: ContentPaths = defaultPaths)
   async function load(collection: string): Promise<ContentRow[]> {
     const ids = readEntryIds(join(resolve(), paths.collection(collection)))
 
-    return sortByCreation(await Promise.all(ids.map(id => read(collection, id))))
+    return sortByCreation((await Promise.all(ids.map(id => read(collection, id)))).filter(visible))
   }
 
   function all(collection: string): Promise<ContentRow[]> {
@@ -54,7 +59,9 @@ export function createSource(start?: string, paths: ContentPaths = defaultPaths)
       if (!existsSync(join(resolve(), paths.entry(collection, id))))
         return undefined
 
-      return read(collection, id)
+      const row = await read(collection, id)
+
+      return visible(row) ? row : undefined
     },
   }
 }

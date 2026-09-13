@@ -65,7 +65,7 @@ async function submit(): Promise<void> {
   const next = { ...draft(), updatedAt: new Date().toISOString() }
 
   const written = await save(async () => {
-    for (const [collection, created] of Object.entries(nested.rows())) {
+    for (const [collection, created] of Object.entries(nested.rows(next.status))) {
       for (const entry of created)
         await store.writeEntry(collection, entry)
     }

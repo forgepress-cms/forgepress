@@ -102,7 +102,7 @@ export function usePublish(): Publisher {
 
         const commit = await forge.commit(files, commitMessage(session.provider.value?.commitMessage, name))
 
-        await changes.published(commit)
+        await content.published(commit)
         await refresh()
 
         return commit

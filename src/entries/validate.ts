@@ -1,8 +1,11 @@
 import type { Field } from '../schema/fields'
 import type { DynamicField } from '../schema/fields/dynamic'
+import type { NumberField } from '../schema/fields/number'
+import type { TextField } from '../schema/fields/text'
 import type { ValueIssue, ValuePath } from '../types/issues'
 import type { ForgePressSchema } from '../types/schema'
 import { isEntryId } from '../files/paths'
+import { compilePattern } from '../schema/fields/text'
 import { isRecord, quote } from '../utils/value'
 import { META_KEYS } from './meta'
 
@@ -97,9 +100,47 @@ function checkBlock(report: Report, path: ValuePath, label: string, field: Dynam
   }
 }
 
+function checkPattern(report: Report, path: ValuePath, label: string, field: TextField, value: string): void {
+  const pattern = field.validation === undefined ? undefined : compilePattern(field.validation)
+
+  if (pattern instanceof RegExp && !pattern.test(value))
+    report(path, `Field ${label} has to match the pattern ${field.validation}`)
+}
+
+function checkRange(report: Report, path: ValuePath, label: string, field: NumberField, value: number): void {
+  const { min, max, step } = field
+
+  if (min !== undefined && value < min)
+    report(path, `Field ${label} has to be at least ${min}`)
+
+  if (max !== undefined && value > max)
+    report(path, `Field ${label} has to be at most ${max}`)
+
+  if (step === undefined || step <= 0)
+    return
+
+  const base = min ?? 0
+  const steps = (value - base) / step
+
+  if (Math.abs(steps - Math.round(steps)) <= 1e-9 * Math.max(1, Math.abs(steps)))
+    return
+
+  const nearest = [Math.floor(steps), Math.ceil(steps)]
+    .map(count => Number((base + count * step).toPrecision(12)))
+    .filter(candidate => (min === undefined || candidate >= min) && (max === undefined || candidate <= max))
+
+  report(path, `Field ${label} has to be in steps of ${step}${base === 0 ? '' : ` from ${base}`}${nearest.length > 0 ? `, such as ${nearest.join(' or ')}` : ''}`)
+}
+
 function checkValue(report: Report, path: ValuePath, label: string, field: Field, value: unknown): void {
   switch (field.type) {
     case 'text':
+      if (typeof value !== 'string')
+        report(path, `Field ${label} has to be a string`)
+      else
+        checkPattern(report, path, label, field, value)
+      return
+
     case 'richtext':
       if (typeof value !== 'string')
         report(path, `Field ${label} has to be a string`)
@@ -108,6 +149,8 @@ function checkValue(report: Report, path: ValuePath, label: string, field: Field
     case 'number':
       if (typeof value !== 'number' || !Number.isFinite(value))
         report(path, `Field ${label} has to be a number`)
+      else
+        checkRange(report, path, label, field, value)
       return
 
     case 'image':

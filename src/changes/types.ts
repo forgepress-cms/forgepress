@@ -10,16 +10,15 @@ export interface EntryRef {
 }
 
 export interface Changes {
-  published?: string
   schema?: ForgePressSchema
   entries: Record<string, Record<string, ContentRow | null>>
   dropped: string[]
   uploads: Record<string, PendingUpload>
   removed: string[]
+  publishedMedia?: Record<string, PendingUpload | null>
 }
 
 export interface ChangeSummary {
-  published?: string
   schema: boolean
   written: EntryRef[]
   discarded: EntryRef[]
@@ -49,6 +48,6 @@ export interface ChangeService {
   snapshot: () => Promise<Changes>
   summary: () => Promise<ChangeSummary>
   diff: (target: RepoTarget) => Promise<FileDiff[]>
-  published: (commit: string) => Promise<void>
+  published: () => Promise<void>
   discard: () => Promise<void>
 }

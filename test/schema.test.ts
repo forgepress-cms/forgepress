@@ -123,6 +123,23 @@ describe('validateSchema', () => {
     ])
   })
 
+  it('checks the field constraints', () => {
+    expect(issues(withField({ type: 'text', validation: '[a-z' }))).toEqual([
+      { path: ['collections', 'post', 'fields', 'field', 'validation'], message: '"validation" of field "post.field" is not a valid regular expression: /[a-z/u: Unterminated character class' },
+    ])
+
+    expect(issues(withField({ type: 'number', min: 5, max: 1, step: 0 }))).toEqual([
+      { path: ['collections', 'post', 'fields', 'field', 'step'], message: '"step" of field "post.field" has to be greater than 0' },
+      { path: ['collections', 'post', 'fields', 'field', 'min'], message: '"min" of field "post.field" can\'t be greater than "max"' },
+    ])
+
+    expect(issues(withField({ type: 'number', min: Number.NaN }))).toEqual([
+      { path: ['collections', 'post', 'fields', 'field', 'min'], message: '"min" of field "post.field" has to be a number' },
+    ])
+
+    expect(issues(withField({ type: 'number', min: 1, max: 1, step: 0.25 }))).toEqual([])
+  })
+
   it('wants the required options', () => {
     expect(issues(withField({ type: 'relation' }))).toEqual([
       { path: ['collections', 'post', 'fields', 'field'], message: 'Field "post.field" needs "collection"' },

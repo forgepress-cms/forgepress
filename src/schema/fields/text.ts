@@ -12,4 +12,13 @@ export type TextField = FieldOf<typeof text>
 
 export type TextFieldContent = string
 
+export function compilePattern(validation: string): RegExp | SyntaxError {
+  try {
+    return new RegExp(validation, 'u')
+  }
+  catch (error) {
+    return error as SyntaxError
+  }
+}
+
 export default text

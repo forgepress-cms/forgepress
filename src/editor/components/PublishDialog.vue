@@ -6,7 +6,7 @@ import DiffView from './DiffView.vue'
 
 const open = defineModel<boolean>('open', { required: true })
 
-const { summary, diff, count, publishing, error, refresh, publish } = usePublish()
+const { diff, count, publishing, error, refresh, publish } = usePublish()
 const { branch } = useSession()
 
 const name = ref('')
@@ -53,15 +53,7 @@ async function submit(): Promise<void> {
           color="success"
           variant="soft"
           :title="`Published as ${commit.slice(0, 7)}`"
-          description="The site rebuilds from this commit. Your local copy stays until it does."
-        />
-
-        <UAlert
-          v-else-if="summary.published"
-          color="neutral"
-          variant="soft"
-          :title="`Already published as ${summary.published.slice(0, 7)}`"
-          description="Waiting for the site to rebuild. Editing again starts a new change."
+          description="The site rebuilds from this commit. New media keeps its preview here until it does."
         />
 
         <div v-if="loading" class="flex justify-center py-6">

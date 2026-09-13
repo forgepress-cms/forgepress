@@ -3,6 +3,7 @@ import type { ValueIssue, ValuePath } from '../types/issues'
 import { META_KEYS } from '../entries/meta'
 import { isRecord, quote } from '../utils/value'
 import { fieldTypeNames, fieldTypes } from './fields'
+import { compilePattern } from './fields/text'
 
 export const COLLECTION_NAME = /^[a-z][a-zA-Z\d]*$/
 export const LOCALE_CODE = /^[a-z][\w-]*$/i
@@ -40,9 +41,13 @@ function isFieldType(type: unknown): type is FieldType {
   return typeof type === 'string' && (fieldTypeNames as string[]).includes(type)
 }
 
+function finite(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
 function fits(kind: FieldOptionType, value: unknown): boolean {
   if (kind === 'number')
-    return typeof value === 'number'
+    return finite(value)
 
   if (kind === 'boolean')
     return typeof value === 'boolean'
@@ -97,6 +102,24 @@ function checkOption(context: Context, path: ValuePath, label: string, option: s
     checkReferences(context, path, label, kind === 'collection' ? [value as string] : value as string[], kind === 'collections')
 }
 
+function checkConstraints(report: Report, path: ValuePath, label: string, field: Record<string, unknown>): void {
+  if (field.type === 'text' && typeof field.validation === 'string') {
+    const pattern = compilePattern(field.validation)
+
+    if (pattern instanceof SyntaxError)
+      report([...path, 'validation'], `"validation" of field ${quote(label)} is not a valid regular expression: ${pattern.message.replace(/^Invalid regular expression: /, '')}`)
+  }
+
+  if (field.type !== 'number')
+    return
+
+  if (finite(field.step) && field.step <= 0)
+    report([...path, 'step'], `"step" of field ${quote(label)} has to be greater than 0`)
+
+  if (finite(field.min) && finite(field.max) && field.min > field.max)
+    report([...path, 'min'], `"min" of field ${quote(label)} can't be greater than "max"`)
+}
+
 function checkField(context: Context, path: ValuePath, collection: string, key: string, field: unknown): void {
   const { report } = context
   const label = `${collection}.${key}`
@@ -131,6 +154,8 @@ function checkField(context: Context, path: ValuePath, collection: string, key: 
     if ('required' in spec && field[option] === undefined)
       report(path, `Field ${quote(label)} needs ${quote(option)}`)
   }
+
+  checkConstraints(report, path, label, field)
 
   if (field.translate === true && context.locales.length === 0)
     report([...path, 'translate'], `Field ${quote(label)} is translated, but the schema has no locales`)

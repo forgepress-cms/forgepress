@@ -37,8 +37,16 @@ export interface OAuthTokens {
   expires?: number
 }
 
+export interface ForgeFile {
+  path: string
+  sha: string
+}
+
 export interface Forge {
   access: () => Promise<ForgeAccess>
+  head: () => Promise<string>
+  files: (commit: string, directory: string) => Promise<ForgeFile[]>
+  read: (sha: string) => Promise<string>
   commit: (files: FileChange[], message: string) => Promise<string>
 }
 

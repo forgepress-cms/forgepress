@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createSource } from '../src/disk/source'
+import { defaultPaths } from '../src/files/paths'
 
 const root = fileURLToPath(new URL('./fixtures/project', import.meta.url))
 
@@ -47,6 +48,20 @@ describe('node reader', () => {
     expect(await createSource(root).index('author')).toEqual([
       { id: 'author-1', status: 'published', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
     ])
+  })
+
+  it('leaves unpublished entries out', async () => {
+    const source = createSource(root)
+
+    expect((await source.list('author')).map(row => row.id)).toEqual(['author-1'])
+    expect(await source.entry('author', 'author-2')).toBeUndefined()
+  })
+
+  it('reads unpublished entries when asked to', async () => {
+    const source = createSource(root, defaultPaths, { unpublished: true })
+
+    expect((await source.list('author')).map(row => row.id)).toEqual(['author-1', 'author-2'])
+    expect((await source.entry('author', 'author-2'))?.name).toBe('Bob')
   })
 })
 
