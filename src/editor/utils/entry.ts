@@ -1,6 +1,6 @@
-import type { ContentRow } from '../../types/content/reader'
+import type { ContentRow } from '../../types/entry'
 import type { FormField } from './schema'
-import { filled } from '../../content/value'
+import { filled } from '../../utils/value'
 import { markdownLines } from './markdown'
 import { chips, localized } from './preview'
 

@@ -1,7 +1,7 @@
-import type { Field } from '../fields'
-import type { ContentRow } from '../types/content/reader'
-import type { ForgePressSchema } from '../types/core/schema'
-import type { Operator, QueryBackend, QueryPlan } from '../types/query'
+import type { Field } from '../schema/fields'
+import type { ContentRow } from '../types/entry'
+import type { ForgePressSchema } from '../types/schema'
+import type { Operator, QueryBackend, QueryPlan } from './types'
 import { evaluate, localize } from './evaluator'
 
 type Fields = Record<string, Field>

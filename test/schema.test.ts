@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { validateSchema } from '../src/content/validate/schema'
+import { validateSchema } from '../src/schema/validate'
 
 function issues(schema: unknown): { path: readonly (string | number)[], message: string }[] {
   return validateSchema(schema)

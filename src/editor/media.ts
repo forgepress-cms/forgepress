@@ -1,5 +1,5 @@
-import type { MediaAsset, MediaClient } from '../types/content/media'
-import { ENDPOINT } from '../content/paths'
+import type { MediaAsset, MediaClient } from '../media/types'
+import { ENDPOINT } from '../files/paths'
 
 export type { MediaClient }
 

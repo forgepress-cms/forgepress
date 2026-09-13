@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { counts, diffLines } from '../src/content/diff'
+import { counts, diffLines } from '../src/changes/lines'
 
 function render(lines: ReturnType<typeof diffLines>): string {
   return lines.map(line => `${line.kind === 'add' ? '+' : line.kind === 'remove' ? '-' : ' '}${line.text}`).join('\n')

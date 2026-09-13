@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { MediaKind } from '../../../content/media'
-import type { MediaAsset } from '../../../types/content/media'
+import type { MediaKind } from '../../../media'
+import type { MediaAsset } from '../../../media/types'
 import { computed, ref, watch } from 'vue'
-import { mediaKind } from '../../../content/media'
+import { mediaKind } from '../../../media'
 import { useMedia } from '../../composables/useMedia'
 import ErrorAlert from '../ErrorAlert.vue'
 import MediaGrid from './MediaGrid.vue'

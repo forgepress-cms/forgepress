@@ -7,7 +7,7 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      '#content-source': fileURLToPath(new URL('./src/content/reader/node.ts', import.meta.url)),
+      '#content-source': fileURLToPath(new URL('./src/disk/source.ts', import.meta.url)),
     },
   },
 

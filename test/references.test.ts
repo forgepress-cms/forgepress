@@ -1,7 +1,7 @@
-import type { ContentRow } from '../src/types/content/reader'
-import type { ForgePressSchema } from '../src/types/core/schema'
+import type { ContentRow } from '../src/types/entry'
+import type { ForgePressSchema } from '../src/types/schema'
 import { describe, expect, it } from 'vitest'
-import { validateReferences } from '../src/content/validate/references'
+import { validateReferences } from '../src/entries/references'
 
 const schema = {
   locales: ['en', 'de'],

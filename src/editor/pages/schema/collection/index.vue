@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { ContentRow } from '../../../../types/content/reader'
+import type { ContentRow } from '../../../../types/entry'
 import type { FormField } from '../../../utils/schema'
 import type { Column } from '../../../utils/table'
 
 import { computed, reactive, ref } from 'vue'
 
-import { RESERVED_FIELDS } from '../../../../content/validate/schema'
-import { fieldTypeNames, fieldTypes } from '../../../../fields'
+import { fieldTypeNames, fieldTypes } from '../../../../schema/fields'
+import { RESERVED_FIELDS } from '../../../../schema/validate'
 import ConfirmDialog from '../../../components/ConfirmDialog.vue'
 import DataTable from '../../../components/DataTable.vue'
 import DragHandle from '../../../components/DragHandle.vue'

@@ -1,8 +1,8 @@
 import type { UnpluginContextMeta } from 'unplugin'
-import type { ContentStore } from '../src/types/content/store'
+import type { ContentStore } from '../src/store/types'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { lazyStore } from '../src/content/store'
+import { lazyStore } from '../src/store/lazy'
 import { unpluginFactory } from '../src/unplugin'
 
 const root = fileURLToPath(new URL('./fixtures/project', import.meta.url))

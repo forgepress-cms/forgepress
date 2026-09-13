@@ -1,5 +1,5 @@
-import type { ContentWriter } from '../types/content/writer'
-import { ENDPOINT } from '../content/paths'
+import type { ContentWriter } from '../store/types'
+import { ENDPOINT } from '../files/paths'
 
 async function request(method: string, path: string, body?: unknown): Promise<void> {
   const response = await fetch(`${ENDPOINT}${path}`, {

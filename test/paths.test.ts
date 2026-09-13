@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createPaths, defaultPaths, normalizeDir, toCollectionDir, toCollectionName } from '../src/content/paths'
+import { createPaths, defaultPaths, normalizeDir, toCollectionDir, toCollectionName } from '../src/files/paths'
 
 describe('createPaths', () => {
   it('defaults to the .forgepress directory', () => {

@@ -1,13 +1,13 @@
-import type { Changes } from '../src/types/content/changes'
-import type { BakedMedia } from '../src/types/content/media'
-import type { ContentRow, ContentSource } from '../src/types/content/reader'
-import type { KeyValueStore } from '../src/types/content/store'
-import type { ForgePressSchema } from '../src/types/core/schema'
+import type { Changes } from '../src/changes/types'
+import type { BakedMedia } from '../src/media/types'
+import type { ContentSource, KeyValueStore } from '../src/store/types'
+import type { ContentRow } from '../src/types/entry'
+import type { ForgePressSchema } from '../src/types/schema'
 import { describe, expect, it } from 'vitest'
 import { reactive } from 'vue'
-import { createChanges } from '../src/content/changes'
-import { defaultPaths } from '../src/content/paths'
-import { createMemoryStore } from '../src/content/storage/memory'
+import { createChanges } from '../src/changes'
+import { createMemoryStore } from '../src/editor/storage/memory'
+import { defaultPaths } from '../src/files/paths'
 
 const baseSchema = { collections: { hero: { fields: {} } }, locales: ['en'] } as ForgePressSchema
 const nextSchema = { collections: { hero: { fields: {} }, author: { fields: {} } }, locales: ['en'] } as ForgePressSchema

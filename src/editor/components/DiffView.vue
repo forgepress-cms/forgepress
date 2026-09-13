@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { FileDiff } from '../../types/content/changes'
+import type { FileDiff } from '../../changes/types'
 import { computed, ref } from 'vue'
-import { counts } from '../../content/diff'
-import { mediaKind } from '../../content/media'
+import { counts } from '../../changes/lines'
+import { mediaKind } from '../../media'
 import MediaPreview from './media/MediaPreview.vue'
 
 const props = defineProps<{

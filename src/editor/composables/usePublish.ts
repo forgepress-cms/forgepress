@@ -1,9 +1,9 @@
 import type { ComputedRef, Ref } from 'vue'
-import type { ChangeSummary, FileDiff } from '../../types/content/changes'
-import type { RepoTarget } from '../../types/content/target'
+import type { ChangeSummary, FileDiff } from '../../changes/types'
+import type { RepoTarget } from '../../forge/types'
 import { computed, ref, shallowRef } from 'vue'
-import { commitMessage, toFiles } from '../../content/forge'
-import { baked } from '../../content/source'
+import { commitMessage, toFiles } from '../../forge'
+import { baked } from '../../store/bundle'
 import { useContent } from './useContent'
 import { useSession } from './useSession'
 

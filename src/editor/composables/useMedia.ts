@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import type { MediaAsset } from '../../types/content/media'
+import type { MediaAsset } from '../../media/types'
 import { ref, shallowRef } from 'vue'
 import { fileName } from '../utils/media'
 import { useContent } from './useContent'

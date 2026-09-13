@@ -1,4 +1,4 @@
-import type { MountEditor } from '../types/editor'
+import type { MountEditor } from './types'
 
 import ui from '@nuxt/ui/vue-plugin'
 import { createApp } from 'vue'

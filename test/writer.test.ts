@@ -1,10 +1,10 @@
-import type { ContentRow } from '../src/types/content/reader'
+import type { ContentRow } from '../src/types/entry'
 import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { defaultPaths } from '../src/content/paths'
-import { createWriter } from '../src/content/writer/node'
+import { createWriter } from '../src/disk/writer'
+import { defaultPaths } from '../src/files/paths'
 
 const roots: string[] = []
 

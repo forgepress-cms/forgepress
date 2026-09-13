@@ -1,4 +1,4 @@
-import type { ContentRow } from '../../types/content/reader'
+import type { ContentRow } from '../../types/entry'
 import type { EntryValues } from '../utils/entry'
 import type { FormField } from '../utils/schema'
 import { reactive } from 'vue'

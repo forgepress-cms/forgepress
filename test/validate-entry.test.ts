@@ -1,6 +1,6 @@
-import type { ForgePressSchema } from '../src/types/core/schema'
+import type { ForgePressSchema } from '../src/types/schema'
 import { describe, expect, it } from 'vitest'
-import { validateEntry } from '../src/content/validate/entry'
+import { validateEntry } from '../src/entries/validate'
 
 const schema = {
   locales: ['en', 'de'],

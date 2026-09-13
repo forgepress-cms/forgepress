@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { MediaKind } from '../../../content/media'
-import type { MediaAsset } from '../../../types/content/media'
+import type { MediaKind } from '../../../media'
+import type { MediaAsset } from '../../../media/types'
 import type { MediaValue } from '../../utils/media'
 import { computed, ref } from 'vue'
 import { useDragOrder } from '../../composables/useDragOrder'

@@ -1,4 +1,4 @@
-import type { ForgePressSchema } from '../../types/core/schema'
+import type { ForgePressSchema } from '../../types/schema'
 import type { FormField, SchemaCollection } from '../utils/schema'
 import { toFields } from '../utils/schema'
 import { useContent } from './useContent'

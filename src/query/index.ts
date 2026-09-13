@@ -1,5 +1,6 @@
-import type { EntryOf } from '../types/core/content'
-import type { QueryBackend, QueryBuilder, RegisteredSchema } from '../types/query'
+import type { EntryOf } from '../types/entry'
+import type { RegisteredSchema } from '../types/schema'
+import type { QueryBackend, QueryBuilder } from './types'
 import { source } from '#content-source'
 import { createBuilder } from './builder'
 

@@ -1,8 +1,8 @@
-import type { ContentRow } from '../src/types/content/reader'
-import type { ForgePressSchema } from '../src/types/core/schema'
+import type { ContentRow } from '../src/types/entry'
+import type { ForgePressSchema } from '../src/types/schema'
 import { describe, expect, it } from 'vitest'
-import { parseEntry, parseSchema } from '../src/content/parse'
-import { serializeEntry, serializeSchema } from '../src/content/serialize'
+import { parseEntry, parseSchema } from '../src/files/parse'
+import { serializeEntry, serializeSchema } from '../src/files/serialize'
 
 const schema = {
   locales: ['en', 'de'],

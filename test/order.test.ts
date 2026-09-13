@@ -1,6 +1,6 @@
-import type { EntryMeta } from '../src/types/core/entry'
+import type { EntryMeta } from '../src/types/entry'
 import { describe, expect, it } from 'vitest'
-import { sortByCreation } from '../src/content/entry/order'
+import { sortByCreation } from '../src/entries/order'
 
 function entry(id: string, createdAt: string): EntryMeta {
   return { id, status: 'published', createdAt, updatedAt: createdAt }

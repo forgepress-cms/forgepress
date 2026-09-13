@@ -1,4 +1,4 @@
-import type { ContentRow } from '../../types/content/reader'
+import type { ContentRow } from '../../types/entry'
 import type { FormField } from '../utils/schema'
 import { entryLabel, statusColor, titleField } from '../utils/entry'
 import { toFields } from '../utils/schema'

@@ -1,6 +1,6 @@
-import type { ContentRow } from '../src/types/content/reader'
-import type { ForgePressSchema } from '../src/types/core/schema'
-import type { QueryBackend } from '../src/types/query'
+import type { QueryBackend } from '../src/query/types'
+import type { ContentRow } from '../src/types/entry'
+import type { ForgePressSchema } from '../src/types/schema'
 import { describe, expect, it } from 'vitest'
 import { createBuilder } from '../src/query/builder'
 

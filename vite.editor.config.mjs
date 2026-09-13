@@ -4,7 +4,7 @@ import ui from '@nuxt/ui/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 
-const TYPES = fileURLToPath(new URL('./src/types/editor/index.ts', import.meta.url))
+const TYPES = fileURLToPath(new URL('./src/editor/types.ts', import.meta.url))
 
 function Types() {
   return {

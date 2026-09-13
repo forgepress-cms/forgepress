@@ -1,6 +1,6 @@
-import type { MediaKind } from '../../content/media'
-import type { ImageContent } from '../../fields/image'
-import type { MediaAsset } from '../../types/content/media'
+import type { MediaKind } from '../../media'
+import type { MediaAsset } from '../../media/types'
+import type { ImageContent } from '../../schema/fields/image'
 
 export type MediaValue = ImageContent
 

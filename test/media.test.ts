@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assetUrl, isAssetName, mediaAccept, mediaKind, mediaType, resolveMedia, slugify, toAssetName } from '../src/content/media'
+import { assetUrl, isAssetName, mediaAccept, mediaKind, mediaType, resolveMedia, slugify, toAssetName } from '../src/media'
 
 const HASH = 'a3f19c2b7d4e5f60'
 

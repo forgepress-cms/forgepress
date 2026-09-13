@@ -1,9 +1,9 @@
-import type { Changes } from '../src/types/content/changes'
-import type { ContentRow } from '../src/types/content/reader'
-import type { ForgePressSchema } from '../src/types/core/schema'
+import type { Changes } from '../src/changes/types'
+import type { ContentRow } from '../src/types/entry'
+import type { ForgePressSchema } from '../src/types/schema'
 import { describe, expect, it } from 'vitest'
-import { commitMessage, toBase64, toFiles } from '../src/content/forge'
-import { defaultPaths } from '../src/content/paths'
+import { defaultPaths } from '../src/files/paths'
+import { commitMessage, toBase64, toFiles } from '../src/forge'
 
 const schema = { collections: { hero: { fields: {} } }, locales: ['en'] } as ForgePressSchema
 

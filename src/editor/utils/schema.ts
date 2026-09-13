@@ -1,6 +1,6 @@
-import type { Field } from '../../fields'
-import type { ForgePressSchema } from '../../types/core/schema'
-import { fieldTypes } from '../../fields'
+import type { Field } from '../../schema/fields'
+import type { ForgePressSchema } from '../../types/schema'
+import { fieldTypes } from '../../schema/fields'
 
 export const FIELD_ICONS: Record<string, string> = {
   text: 'i-lucide-type',

@@ -3,8 +3,8 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import { checkContent } from '../src/content/check/node'
-import { formatIssue } from '../src/content/issues'
+import { checkContent } from '../src/disk/check'
+import { formatIssue } from '../src/files/issues'
 import { unpluginFactory } from '../src/unplugin'
 
 const scratch = fileURLToPath(new URL('../node_modules/.forgepress-check-test', import.meta.url))

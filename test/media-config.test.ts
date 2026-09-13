@@ -1,6 +1,6 @@
-import type { MediaConfig } from '../src/types/config/media'
+import type { MediaConfig } from '../src/types/config'
 import { describe, expect, it } from 'vitest'
-import { MEDIA_DEFAULTS, resolveMedia } from '../src/content/media'
+import { MEDIA_DEFAULTS, resolveMedia } from '../src/media'
 
 describe('resolveMedia', () => {
   it('falls back to the defaults', () => {

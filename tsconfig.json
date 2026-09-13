@@ -6,7 +6,7 @@
     "module": "preserve",
     "moduleResolution": "bundler",
     "paths": {
-      "#content-source": ["./src/content/reader/node.ts"]
+      "#content-source": ["./src/disk/source.ts"]
     },
     "resolveJsonModule": true,
     "types": ["node"],

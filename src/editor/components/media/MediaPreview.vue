@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MediaKind } from '../../../content/media'
+import type { MediaKind } from '../../../media'
 
 defineProps<{
   url: string

@@ -1,7 +1,7 @@
-import type { ProviderConfig } from '../src/types/config/provider'
+import type { ProviderConfig } from '../src/types/config'
 import { expect, describe as group, it } from 'vitest'
-import { describe as descriptor } from '../src/content/forge'
-import { authorizeUrl, createChallenge, createVerifier, expired, toTokens } from '../src/content/forge/oauth'
+import { describe as descriptor } from '../src/forge'
+import { authorizeUrl, createChallenge, createVerifier, expired, toTokens } from '../src/forge/oauth'
 
 function config(partial: Partial<ProviderConfig> = {}): ProviderConfig {
   return { type: 'gitlab', repository: { owner: 'acme', name: 'site' }, ...partial }

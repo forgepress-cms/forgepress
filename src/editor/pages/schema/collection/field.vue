@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { Field } from '../../../../fields'
-import type { FieldOption } from '../../../../types/core/field'
+import type { Field } from '../../../../schema/fields'
+import type { FieldOption } from '../../../../types/field'
 import { computed, reactive, ref, watch } from 'vue'
 
-import { migrate } from '../../../../content/migrate'
-import { fieldTypeNames, fieldTypes } from '../../../../fields'
+import { fieldTypeNames, fieldTypes } from '../../../../schema/fields'
+import { migrate } from '../../../../schema/migrate'
 import ConfirmDialog from '../../../components/ConfirmDialog.vue'
 import DiscardDialog from '../../../components/DiscardDialog.vue'
 import ErrorAlert from '../../../components/ErrorAlert.vue'

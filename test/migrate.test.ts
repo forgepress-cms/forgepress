@@ -1,7 +1,7 @@
-import type { Field } from '../src/fields'
-import type { ContentRow } from '../src/types/content/reader'
+import type { Field } from '../src/schema/fields'
+import type { ContentRow } from '../src/types/entry'
 import { describe, expect, it } from 'vitest'
-import { migrate } from '../src/content/migrate'
+import { migrate } from '../src/schema/migrate'
 
 const locales = ['en', 'de']
 

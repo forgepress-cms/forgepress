@@ -2,7 +2,7 @@
 import type { VNode } from 'vue'
 import type { Entries } from '../src/editor/composables/useEntries'
 import type { FormField } from '../src/editor/utils/schema'
-import type { Field } from '../src/fields'
+import type { Field } from '../src/schema/fields'
 import { describe, expect, it } from 'vitest'
 import { createApp } from 'vue'
 import { clampMarkdown, fieldCell, flag, thumbnails } from '../src/editor/utils/cells'

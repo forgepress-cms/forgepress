@@ -1,12 +1,12 @@
-import type { ForgePressSchema } from '../src/types/core/schema'
+import type { ForgePressSchema } from '../src/types/schema'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { parseEntry, parseSchema } from '../src/content/parse'
-import { serializeSchema } from '../src/content/serialize'
-import { validateEntry } from '../src/content/validate/entry'
+import { validateEntry } from '../src/entries/validate'
+import { parseEntry, parseSchema } from '../src/files/parse'
+import { serializeSchema } from '../src/files/serialize'
 
 interface Case {
   name: string
@@ -106,7 +106,7 @@ const stricter: Case[] = [
 ]
 
 const cases = [...accepted, ...rejected, ...stricter]
-const schemaText = serializeSchema(schema).replace('from \'forgepress\'', 'from \'../../src/types/core/schema\'')
+const schemaText = serializeSchema(schema).replace('from \'forgepress\'', 'from \'../../src/types/schema\'')
 const typeErrors = new Map<string, string[]>()
 
 function file(index: number): string {
@@ -118,7 +118,7 @@ beforeAll(() => {
   writeFileSync(join(scratch, 'schema.ts'), schemaText)
 
   cases.forEach((item, index) => writeFileSync(file(index), [
-    'import type { EntryOf } from \'../../src/types/core/content\'',
+    'import type { EntryOf } from \'../../src/types/entry\'',
     'import type schema from \'./schema\'',
     '',
     `export default ${JSON.stringify(item.entry, null, 2)} satisfies EntryOf<typeof schema, 'post'>`,

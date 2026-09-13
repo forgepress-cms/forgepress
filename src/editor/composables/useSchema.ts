@@ -1,8 +1,7 @@
 import type { Ref } from 'vue'
-import type { Collection } from '../../types/core/collection'
-import type { ForgePressSchema } from '../../types/core/schema'
+import type { Collection, ForgePressSchema } from '../../types/schema'
 import { ref, toRaw } from 'vue'
-import { validateSchema } from '../../content/validate/schema'
+import { validateSchema } from '../../schema/validate'
 import { useContent } from './useContent'
 import { useSave } from './useSave'
 

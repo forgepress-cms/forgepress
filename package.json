@@ -7,8 +7,8 @@
   "sideEffects": false,
   "imports": {
     "#content-source": {
-      "node": "./dist/content/reader/node.mjs",
-      "default": "./dist/content/source.mjs"
+      "node": "./dist/disk/source.mjs",
+      "default": "./dist/store/bundle.mjs"
     }
   },
   "exports": {

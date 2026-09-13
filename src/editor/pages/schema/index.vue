@@ -2,7 +2,7 @@
 import type { Column } from '../../utils/table'
 import { computed, reactive, ref } from 'vue'
 
-import { COLLECTION_NAME } from '../../../content/validate/schema'
+import { COLLECTION_NAME } from '../../../schema/validate'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import DataTable from '../../components/DataTable.vue'
 import DragHandle from '../../components/DragHandle.vue'

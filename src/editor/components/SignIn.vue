@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { ProviderType } from '../../types/config/provider'
+import type { ProviderType } from '../../types/config'
 import { computed, ref } from 'vue'
-import { describe } from '../../content/forge'
+import { describe } from '../../forge'
 import { useSession } from '../composables/useSession'
 
 const { provider, pending, error, redirects, signIn, signInWithForge } = useSession()

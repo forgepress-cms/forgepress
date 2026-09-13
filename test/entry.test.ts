@@ -1,5 +1,5 @@
 import type { FormField } from '../src/editor/utils/schema'
-import type { Field } from '../src/fields'
+import type { Field } from '../src/schema/fields'
 import { describe, expect, it } from 'vitest'
 import { entryLabel, fieldLocale, fromValues, missingFields, newEntry, SINGLE, titleField, toValues } from '../src/editor/utils/entry'
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DynamicBlock } from '../../../fields/dynamic'
+import type { DynamicBlock } from '../../../schema/fields/dynamic'
 import type { Entries } from '../../composables/useEntries'
 import type { NestedEntries } from '../../composables/useNestedEntries'
 import { ref } from 'vue'

@@ -1,8 +1,8 @@
 import { runInNewContext } from 'node:vm'
 import { describe, expect, it } from 'vitest'
-import { ContentError } from '../src/content/issues'
-import { parseEntry, parseSchema } from '../src/content/parse'
-import { parseModule } from '../src/content/parse/module'
+import { ContentError } from '../src/files/issues'
+import { parseModule } from '../src/files/module'
+import { parseEntry, parseSchema } from '../src/files/parse'
 
 function parse(text: string): unknown {
   return parseModule(text, 'entry.ts').value

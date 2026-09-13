@@ -2,7 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createSource } from '../src/content/reader/node'
+import { createSource } from '../src/disk/source'
 
 const root = fileURLToPath(new URL('./fixtures/project', import.meta.url))
 

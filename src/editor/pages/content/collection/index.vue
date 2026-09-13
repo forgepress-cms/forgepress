@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ContentRow } from '../../../../types/content/reader'
+import type { ContentRow } from '../../../../types/entry'
 import type { Column } from '../../../utils/table'
 
 import UBadge from '@nuxt/ui/components/Badge.vue'
