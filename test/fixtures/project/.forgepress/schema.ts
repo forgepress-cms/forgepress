@@ -1,6 +1,6 @@
-import { defineForgePressSchema } from '../../../../src/index'
+import type { ForgePressSchema } from '../../../../src/index'
 
-export default defineForgePressSchema({
+export default {
   locales: ['en', 'de'],
 
   collections: {
@@ -19,4 +19,4 @@ export default defineForgePressSchema({
       },
     },
   },
-})
+} as const satisfies ForgePressSchema

@@ -1,4 +1,4 @@
-export { defineForgePressConfig, defineForgePressSchema } from './config'
+export { defineForgePressConfig } from './config'
 export { query } from './query'
 
 export type { ForgePressConfig } from './types/config'

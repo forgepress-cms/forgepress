@@ -39,7 +39,7 @@ describe('file changes', () => {
     const [file] = toFiles(changes({ schema }), { paths: defaultPaths, mediaDir: 'public/uploads' })
 
     expect(file).toMatchObject({ path: '.forgepress/schema.ts', encoding: 'utf-8' })
-    expect(file && 'data' in file && file.data).toContain('defineForgePressSchema')
+    expect(file && 'data' in file && file.data).toContain('satisfies ForgePressSchema')
   })
 
   it('maps an entry onto a file inside the kebab-case collection directory', () => {

@@ -122,9 +122,9 @@ async function save(): Promise<void> {
   const config = next()
   const { rows: migrated, changed } = migration.value
 
-  const written = await write(async (draft) => {
+  const written = await write((draft) => {
     draft.collections[name]!.fields[field] = config
-
+  }, async () => {
     if (changed)
       await store.writeContent(name, migrated)
   })

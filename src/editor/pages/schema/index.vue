@@ -2,6 +2,7 @@
 import type { Column } from '../../utils/table'
 import { computed, reactive, ref } from 'vue'
 
+import { COLLECTION_NAME } from '../../../content/validate/schema'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import DataTable from '../../components/DataTable.vue'
 import DragHandle from '../../components/DragHandle.vue'
@@ -12,7 +13,7 @@ import { useDragOrder } from '../../composables/useDragOrder'
 import { useRouter } from '../../composables/useRouter'
 import { useSchema } from '../../composables/useSchema'
 import { clamp } from '../../utils/cells'
-import { KEY_PATTERN, moveKey, toKey } from '../../utils/schema'
+import { moveKey, toKey } from '../../utils/schema'
 import { actionsColumn, dragColumn } from '../../utils/table'
 
 interface CollectionRow {
@@ -60,8 +61,8 @@ const invalid = computed(() => {
   if (!form.key)
     return 'A key is required'
 
-  if (!KEY_PATTERN.test(form.key))
-    return 'A key has to start with a letter and hold only letters, digits or underscores'
+  if (!COLLECTION_NAME.test(form.key))
+    return 'A key has to start with a lowercase letter and hold only letters and digits'
 
   if (taken.value.includes(form.key))
     return `${form.key} already exists`
@@ -101,15 +102,14 @@ const references = computed(() => Object.entries(schema.value.collections)
     ('collection' in config && config.collection === removing.value)
     || ('collections' in config && config.collections?.includes(removing.value)),
   ))
-  .map(([, collection]) => collection.label ?? ''))
+  .map(([key, collection]) => collection.label ?? key))
 
 async function remove(): Promise<void> {
   const key = removing.value
 
-  const written = await write(async (draft) => {
+  const written = await write((draft) => {
     delete draft.collections[key]
-    await store.removeCollection(key)
-  })
+  }, () => store.removeCollection(key))
 
   if (written)
     removing.value = ''
@@ -185,8 +185,9 @@ function move(key: string, offset: number): Promise<boolean> {
       :open="!!removing"
       title="Delete collection"
       :description="references.length
-        ? `${removing} and its content file are removed. ${references.join(', ')} still reference it.`
+        ? `${removing} can't be deleted while ${references.join(', ')} still reference it. Remove those references first.`
         : `${removing} and its content file are removed. This cannot be undone.`"
+      :disabled="references.length > 0"
       @update:open="removing = ''"
       @confirm="remove()"
     />

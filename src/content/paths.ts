@@ -34,8 +34,12 @@ export function toEntryId(file: string): string {
   return file.replace(ENTRY_FILE, '')
 }
 
+export function isEntryId(id: string): boolean {
+  return ENTRY_ID.test(id)
+}
+
 export function isEntryFile(file: string): boolean {
-  return ENTRY_FILE.test(file) && ENTRY_ID.test(toEntryId(file))
+  return ENTRY_FILE.test(file) && isEntryId(toEntryId(file))
 }
 
 export function prefixer(base?: string): (path: string) => string {

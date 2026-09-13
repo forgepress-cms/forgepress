@@ -5,6 +5,7 @@ import type { Column } from '../../../utils/table'
 
 import { computed, reactive, ref } from 'vue'
 
+import { RESERVED_FIELDS } from '../../../../content/validate/schema'
 import { fieldTypeNames, fieldTypes } from '../../../../fields'
 import ConfirmDialog from '../../../components/ConfirmDialog.vue'
 import DataTable from '../../../components/DataTable.vue'
@@ -61,6 +62,9 @@ const invalid = computed(() => {
   if (!KEY_PATTERN.test(form.key))
     return 'A key has to start with a letter and hold only letters, digits or underscores'
 
+  if (RESERVED_FIELDS.includes(form.key))
+    return `${form.key} is reserved for entry metadata`
+
   if (Object.keys(collection.value.fields).includes(form.key))
     return `${form.key} already exists`
 
@@ -102,9 +106,9 @@ async function remove(): Promise<void> {
   const rows = await store.list(name)
   const stripped = rows.map(({ [key]: _, ...rest }) => rest as ContentRow)
 
-  const written = await write(async (draft) => {
+  const written = await write((draft) => {
     delete draft.collections[name]!.fields[key]
-
+  }, async () => {
     if (rows.some(row => key in row))
       await store.writeContent(name, stripped)
   })

@@ -1,9 +1,7 @@
 import type { ContentRow } from '../src/types/content/reader'
 import type { ForgePressSchema } from '../src/types/core/schema'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { afterAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { parseEntry, parseSchema } from '../src/content/parse'
 import { serializeEntry, serializeSchema } from '../src/content/serialize'
 
 const schema = {
@@ -21,9 +19,9 @@ const schema = {
 
 describe('serializeSchema', () => {
   it('writes a schema module in project style', () => {
-    expect(serializeSchema(schema)).toBe(`import { defineForgePressSchema } from 'forgepress'
+    expect(serializeSchema(schema)).toBe(`import type { ForgePressSchema } from 'forgepress'
 
-export default defineForgePressSchema({
+export default {
   locales: ['en', 'de'],
   collections: {
     blogPost: {
@@ -41,13 +39,19 @@ export default defineForgePressSchema({
       },
     },
   },
-})
+} as const satisfies ForgePressSchema
 `)
   })
 
   it('honours the content config', () => {
     expect(serializeSchema({ collections: {} }, { indent: 4, semi: true }))
-      .toContain('export default defineForgePressSchema({\n    collections: {},\n});')
+      .toContain('export default {\n    collections: {},\n} as const satisfies ForgePressSchema;')
+  })
+
+  it('writes a schema the parser reads back', () => {
+    const complete = { ...schema, collections: { ...schema.collections, hero: { fields: {} }, textBlock: { fields: {} } } }
+
+    expect(parseSchema(serializeSchema(complete), 'schema.ts')).toEqual(complete)
   })
 })
 
@@ -125,56 +129,52 @@ export default {
 
     expect(serializeEntry('page', entry)).toContain('\'meta-data\': 1,')
   })
+
+  it('leaves out values an entry file cannot hold', () => {
+    const entry = { id: 'a', status: 'unpublished', createdAt: '', updatedAt: '', gone: null, count: Number.NaN, list: [1, null, undefined, Infinity, 2] } as ContentRow
+
+    expect(parseEntry(serializeEntry('page', entry), 'a.ts')).toEqual({ id: 'a', status: 'unpublished', createdAt: '', updatedAt: '', list: [1, 2] })
+  })
 })
 
 describe('string escaping', () => {
-  const scratch = fileURLToPath(new URL('../node_modules/.forgepress-test', import.meta.url))
-
-  mkdirSync(scratch, { recursive: true })
-  afterAll(() => rmSync(scratch, { recursive: true, force: true }))
-
-  let count = 0
-
-  async function roundTrip(fields: Record<string, unknown>): Promise<Record<string, unknown>> {
+  function roundTrip(fields: Record<string, unknown>): Record<string, unknown> {
     const row = { id: 'a', status: 'unpublished', createdAt: '', updatedAt: '', ...fields } as ContentRow
-    const file = join(scratch, `entry-${count += 1}.ts`)
 
-    writeFileSync(file, serializeEntry('post', row).replace(' from \'forgepress\'', ' from \'../../src/index\''))
-
-    return (await import(file) as { default: Record<string, unknown> }).default
+    return parseEntry(serializeEntry('post', row), 'post.ts')
   }
 
-  it('emits an importable module for carriage returns', async () => {
+  it('reads carriage returns back', () => {
     const value = 'line1\r\nline2'
 
-    expect((await roundTrip({ value })).value).toBe(value)
+    expect(roundTrip({ value }).value).toBe(value)
   })
 
-  it('emits an importable module for unicode line separators', async () => {
+  it('reads unicode line separators back', () => {
     const value = 'a\u2028b\u2029c'
 
-    expect((await roundTrip({ value })).value).toBe(value)
+    expect(roundTrip({ value }).value).toBe(value)
   })
 
-  it('emits an importable module for control characters', async () => {
+  it('reads control characters back', () => {
     const value = ['\u0000', '\u0007', '\u001B', '\u007F', '\u009F', '\t'].join('|')
 
-    expect((await roundTrip({ value })).value).toBe(value)
+    expect(roundTrip({ value }).value).toBe(value)
   })
 
-  it('keeps quotes and backslashes intact', async () => {
-    const value = 'it\'s a \\ backslash'
+  it('keeps quotes, backslashes and emoji intact', () => {
+    const value = 'it\'s a \\ backslash, "quoted" 😀'
 
-    expect((await roundTrip({ value })).value).toBe(value)
+    expect(roundTrip({ value }).value).toBe(value)
   })
 
-  it('escapes hostile object keys', async () => {
+  it('escapes hostile object keys', () => {
     const key = 'we\'ird\nkey'
 
-    expect((await roundTrip({ [key]: 'value' }))[key]).toBe('value')
+    expect(roundTrip({ [key]: 'value' })[key]).toBe('value')
   })
 
-  it('preserves the entry status as a literal', async () => {
-    expect((await roundTrip({})).status).toBe('unpublished')
+  it('preserves the entry status as a literal', () => {
+    expect(roundTrip({}).status).toBe('unpublished')
   })
 })

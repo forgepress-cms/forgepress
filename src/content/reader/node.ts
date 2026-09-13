@@ -2,18 +2,15 @@ import type { ContentRow, ContentSource } from '../../types/content/reader'
 import type { ForgePressSchema } from '../../types/core/schema'
 import type { ContentPaths } from '../paths'
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { toMeta } from '../entry/meta'
 import { readEntryIds } from '../entry/node'
 import { sortByCreation } from '../entry/order'
+import { parseEntry, parseSchema } from '../parse'
 import { defaultPaths } from '../paths'
 import { findRoot } from '../root'
 import { source as bundle } from '../source'
-
-async function importModule<TModule>(file: string): Promise<TModule> {
-  return await import(/* @vite-ignore */ pathToFileURL(file).href) as TModule
-}
 
 export function createSource(start?: string, paths: ContentPaths = defaultPaths): ContentSource {
   const rows = new Map<string, Promise<ContentRow[]>>()
@@ -22,15 +19,16 @@ export function createSource(start?: string, paths: ContentPaths = defaultPaths)
 
   const resolve = (): string => (root ??= findRoot(start, paths.dir))
 
-  function file(collection: string, id: string): string {
-    return join(resolve(), paths.entry(collection, id))
+  async function read(collection: string, id: string): Promise<ContentRow> {
+    const file = paths.entry(collection, id)
+
+    return parseEntry(await readFile(join(resolve(), file), 'utf8'), file)
   }
 
   async function load(collection: string): Promise<ContentRow[]> {
     const ids = readEntryIds(join(resolve(), paths.collection(collection)))
-    const entries = await Promise.all(ids.map(id => importModule<{ default: ContentRow }>(file(collection, id))))
 
-    return sortByCreation(entries.map(entry => entry.default))
+    return sortByCreation(await Promise.all(ids.map(id => read(collection, id))))
   }
 
   function all(collection: string): Promise<ContentRow[]> {
@@ -45,19 +43,17 @@ export function createSource(start?: string, paths: ContentPaths = defaultPaths)
   }
 
   return {
-    schema: () => (schema ??= importModule<{ default: ForgePressSchema }>(join(resolve(), paths.schema)).then(module => module.default)),
+    schema: () => (schema ??= readFile(join(resolve(), paths.schema), 'utf8').then(text => parseSchema(text, paths.schema))),
 
     list: all,
 
     index: async collection => (await all(collection)).map(toMeta),
 
     entry: async (collection, id) => {
-      const path = file(collection, id)
-
-      if (!existsSync(path))
+      if (!existsSync(join(resolve(), paths.entry(collection, id))))
         return undefined
 
-      return (await importModule<{ default: ContentRow }>(path)).default
+      return read(collection, id)
     },
   }
 }

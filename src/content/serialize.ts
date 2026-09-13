@@ -1,10 +1,10 @@
 import type { ContentConfig } from '../types/config/content'
 import type { ContentRow } from '../types/content/reader'
 import type { ForgePressSchema } from '../types/core/schema'
+import { META_KEYS } from './entry/meta'
 
 const IDENTIFIER = /^[A-Z_$][\w$]*$/i
 const WIDTH = 80
-const META_KEYS: readonly string[] = ['id', 'status', 'createdAt', 'updatedAt']
 
 const ESCAPES: Record<string, string> = {
   '\\': '\\\\',
@@ -52,15 +52,16 @@ function key(value: string): string {
   return IDENTIFIER.test(value) ? value : string(value)
 }
 
-function value(input: unknown, style: Style, depth: number): string {
-  if (input === null || input === undefined)
-    return 'undefined'
+function storable(input: unknown): boolean {
+  return input !== undefined && input !== null && !(typeof input === 'number' && !Number.isFinite(input))
+}
 
+function value(input: unknown, style: Style, depth: number): string {
   if (typeof input === 'string')
     return string(input)
 
   if (typeof input === 'number')
-    return Number.isFinite(input) ? String(input) : 'undefined'
+    return String(input)
 
   if (typeof input === 'boolean')
     return String(input)
@@ -69,19 +70,21 @@ function value(input: unknown, style: Style, depth: number): string {
   const close = style.indent.repeat(depth)
 
   if (Array.isArray(input)) {
-    if (input.length === 0)
+    const kept = input.filter(storable)
+
+    if (kept.length === 0)
       return '[]'
 
-    const items = input.map(item => value(item, style, depth + 1))
+    const items = kept.map(item => value(item, style, depth + 1))
     const inline = `[${items.join(', ')}]`
 
-    if (input.every(item => typeof item !== 'object') && close.length + inline.length <= WIDTH)
+    if (kept.every(item => typeof item !== 'object') && close.length + inline.length <= WIDTH)
       return inline
 
     return `[\n${items.map(item => `${pad}${item},`).join('\n')}\n${close}]`
   }
 
-  const entries = Object.entries(input as Record<string, unknown>).filter(([, item]) => item !== undefined)
+  const entries = Object.entries(input as Record<string, unknown>).filter(([, item]) => storable(item))
   if (entries.length === 0)
     return '{}'
 
@@ -93,17 +96,17 @@ export function serializeSchema(schema: ForgePressSchema, config?: ContentConfig
   const current = style(config)
 
   return [
-    `import { defineForgePressSchema } from 'forgepress'${current.semi}`,
+    `import type { ForgePressSchema } from 'forgepress'${current.semi}`,
     '',
-    `export default defineForgePressSchema(${value(schema, current, 0)})${current.semi}`,
+    `export default ${value(schema, current, 0)} as const satisfies ForgePressSchema${current.semi}`,
     '',
   ].join('\n')
 }
 
 function ordered(row: ContentRow): [string, unknown][] {
-  const entries = Object.entries(row).filter(([, item]) => item !== undefined)
+  const entries = Object.entries(row).filter(([, item]) => storable(item))
   const rank = (name: string): number => {
-    const index = META_KEYS.indexOf(name)
+    const index = (META_KEYS as readonly string[]).indexOf(name)
 
     return index === -1 ? META_KEYS.length : index
   }

@@ -87,7 +87,7 @@ describe('local endpoint detection', () => {
   it('still emits the schema and content bindings', async () => {
     const code = await generated('serve')
 
-    expect(code).toContain('export { default as schema }')
+    expect(code).toContain('export const schema = {"locales":["en","de"]')
     expect(code).toContain('"blogPost"')
   })
 })
@@ -97,21 +97,34 @@ describe('generated content graph', () => {
     const code = await generated('serve')
 
     expect(code).toContain('list: () => import("virtual:forgepress/list/blog-post")')
-    expect(code).toContain('"blog-post-1": () => import(')
+    expect(code).toContain('"blog-post-1": () => import("virtual:forgepress/entry/blog-post/blog-post-1")')
   })
 
-  it('resolves the per-collection module ids', () => {
+  it('resolves the per-collection and per-entry module ids', () => {
     const { resolveId } = loader('serve')
 
     expect(resolveId('virtual:forgepress/list/author')).toBe('\0virtual:forgepress/list/author')
+    expect(resolveId('virtual:forgepress/entry/author/author-1')).toBe('\0virtual:forgepress/entry/author/author-1')
     expect(resolveId('some/other/module')).toBeUndefined()
   })
 
   it('builds a collection list from its entry modules', async () => {
     const code = await loader('serve').load('\0virtual:forgepress/list/author')
 
-    expect(code).toContain('author-1.ts"')
+    expect(code).toContain('import entry0 from "virtual:forgepress/entry/author/author-1"')
     expect(code).toContain('export default [entry0]')
+  })
+
+  it('turns an entry file into data without running it', async () => {
+    const code = await loader('build').load('\0virtual:forgepress/entry/author/author-1')
+
+    expect(code).toBe('export default {"id":"author-1","status":"published","createdAt":"2024-01-01T00:00:00Z","updatedAt":"2024-01-01T00:00:00Z","name":"Alice"}\n')
+  })
+
+  it('refuses entries that do not exist', async () => {
+    await expect(loader('build').load('\0virtual:forgepress/entry/author/../../schema'))
+      .rejects
+      .toThrow('[forgepress] there is no entry "author/../../schema"')
   })
 
   it('treats an unknown collection as empty', async () => {
