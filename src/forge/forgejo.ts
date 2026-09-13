@@ -81,8 +81,8 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
     return tree
   }
 
-  async function sha(path: string, branch: string): Promise<string | undefined> {
-    const response = await send(`/contents/${encodePath(path)}?ref=${encodeURIComponent(branch)}`)
+  async function sha(path: string, ref: string): Promise<string | undefined> {
+    const response = await send(`/contents/${encodePath(path)}?ref=${encodeURIComponent(ref)}`)
 
     if (response.status === 404)
       return undefined
@@ -127,14 +127,12 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
       return base64ToText((await call<{ content: string }>(`/git/blobs/${blob}`)).content)
     },
 
-    async commit(files: FileChange[], message: string): Promise<string> {
+    async commit(files: FileChange[], message: string, parent: string): Promise<string> {
       if (files.length === 0)
         throw new Error('[forgepress] there is nothing to publish')
 
-      const branch = await branchName()
-
       const entries = (await Promise.all(files.map(async (file) => {
-        const found = await sha(file.path, branch)
+        const found = await sha(file.path, parent)
 
         if ('removed' in file)
           return found ? { operation: 'delete', path: file.path, sha: found } : undefined
@@ -151,7 +149,7 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
 
       const created = await call<{ commit: { sha: string } }>('/contents', {
         method: 'POST',
-        body: JSON.stringify({ branch, message, files: entries }),
+        body: JSON.stringify({ branch: await branchName(), message, files: entries }),
       })
 
       return created.commit.sha

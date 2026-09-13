@@ -14,8 +14,13 @@ export interface ForgeAccess {
 }
 
 export type FileChange
-  = { path: string, data: string, encoding: 'utf-8' | 'base64' }
-    | { path: string, removed: true }
+  = { path: string, data: string, encoding: 'utf-8' | 'base64', replaces?: string | null }
+    | { path: string, removed: true, replaces?: string | null }
+
+export interface Conflict {
+  path: string
+  hash: string | null
+}
 
 export type TokenGetter = () => Promise<string>
 
@@ -47,7 +52,7 @@ export interface Forge {
   head: () => Promise<string>
   files: (commit: string, directory: string) => Promise<ForgeFile[]>
   read: (sha: string) => Promise<string>
-  commit: (files: FileChange[], message: string) => Promise<string>
+  commit: (files: FileChange[], message: string, parent: string) => Promise<string>
 }
 
 export interface RepoTarget {

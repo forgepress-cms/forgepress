@@ -15,6 +15,7 @@ export type NavigationGuard = (resume: () => void) => boolean
 export interface EditorRouter {
   route: Ref<EditorRoute>
   navigate: (path?: string) => void
+  reload: () => void
   href: (path?: string) => string
   block: (guard: NavigationGuard) => () => void
   dispose: () => void
@@ -125,6 +126,15 @@ export function createRouter(routes: EditorRoutes): EditorRouter {
 
       if (next !== route.value.path && allowed(next))
         go(next)
+    },
+
+    reload: () => {
+      const again = (): void => {
+        route.value = matchRoute(routes, route.value.path)
+      }
+
+      if (![...guards].some(guard => guard(again)))
+        again()
     },
 
     href: path => `#/${path ?? ''}`,

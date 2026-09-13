@@ -139,3 +139,59 @@ describe('guards', () => {
     expect(router.route.value.path).toBe('schema')
   })
 })
+
+describe('reload', () => {
+  it('opens the current page again', async () => {
+    await follow('content')
+
+    const before = router.route.value
+
+    router.reload()
+
+    expect(router.route.value).not.toBe(before)
+    expect(router.route.value.path).toBe('content')
+  })
+
+  it('asks the guards first and reloads once resumed', async () => {
+    await follow('content')
+
+    const before = router.route.value
+    let resume: (() => void) | undefined
+
+    router.block((proceed) => {
+      resume = proceed
+
+      return true
+    })
+
+    router.reload()
+
+    expect(router.route.value).toBe(before)
+
+    resume?.()
+
+    expect(router.route.value).not.toBe(before)
+    expect(router.route.value.path).toBe('content')
+  })
+
+  it('keeps guarding after a held reload is resumed', async () => {
+    let asked = 0
+
+    await follow('content')
+
+    router.block((proceed) => {
+      asked += 1
+
+      if (asked === 1)
+        proceed()
+
+      return true
+    })
+
+    router.reload()
+    await follow('schema')
+
+    expect(asked).toBe(2)
+    expect(router.route.value.path).toBe('content')
+  })
+})

@@ -64,8 +64,8 @@ export function createGitLabForge(config: ProviderConfig, token: TokenGetter): F
     return config.repository.branch ?? (await call<Project>('')).default_branch
   }
 
-  async function existing(path: string, branch: string): Promise<ExistingFile | undefined> {
-    const response = await send(`/repository/files/${encodeURIComponent(path)}?ref=${encodeURIComponent(branch)}`)
+  async function existing(path: string, ref: string): Promise<ExistingFile | undefined> {
+    const response = await send(`/repository/files/${encodeURIComponent(path)}?ref=${encodeURIComponent(ref)}`)
 
     if (response.status === 404)
       return undefined
@@ -118,14 +118,12 @@ export function createGitLabForge(config: ProviderConfig, token: TokenGetter): F
       return (await check(await send(`/repository/blobs/${sha}/raw`))).text()
     },
 
-    async commit(files: FileChange[], message: string): Promise<string> {
+    async commit(files: FileChange[], message: string, parent: string): Promise<string> {
       if (files.length === 0)
         throw new Error('[forgepress] there is nothing to publish')
 
-      const branch = await branchName()
-
       const actions = (await Promise.all(files.map(async (file) => {
-        const found = await existing(file.path, branch)
+        const found = await existing(file.path, parent)
 
         if ('removed' in file) {
           return found ? { action: 'delete', file_path: file.path, last_commit_id: found.last_commit_id } : undefined
@@ -141,7 +139,7 @@ export function createGitLabForge(config: ProviderConfig, token: TokenGetter): F
 
       const created = await call<{ id: string }>('/repository/commits', {
         method: 'POST',
-        body: JSON.stringify({ branch, commit_message: message, actions }),
+        body: JSON.stringify({ branch: await branchName(), commit_message: message, actions }),
       })
 
       return created.id

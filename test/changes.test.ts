@@ -44,6 +44,17 @@ function make(store: KeyValueStore<Changes> = createMemoryStore<Changes>(), asse
   return { changes: createChanges(base(), async () => baked(assets), store), store, assets }
 }
 
+function tracked(store: KeyValueStore<Changes> = createMemoryStore<Changes>()) {
+  const hashes = new Map([['schema', 'h-schema'], ['hero/a', 'h-a']])
+
+  const changes = createChanges(base(), async () => baked([banner]), store, {
+    schema: async () => hashes.get('schema'),
+    entry: async (collection, id) => hashes.get(`${collection}/${id}`),
+  })
+
+  return { changes, store, hashes }
+}
+
 function file(name: string, bytes = 'hello', type = 'image/png'): File {
   return new File([bytes], name, { type })
 }
@@ -324,5 +335,114 @@ describe('diff', () => {
       'apps/site/.forgepress/content/hero/a.ts',
       'apps/site/.forgepress/content/hero/b.ts',
     ])
+  })
+})
+
+describe('file hashes', () => {
+  const target = { paths: defaultPaths, mediaDir: 'public/uploads' }
+
+  async function replaced(changes: ReturnType<typeof tracked>['changes']) {
+    return toFiles(await changes.snapshot(), target).map(item => [item.path, item.replaces])
+  }
+
+  it('remembers the hash of each file a change was made against', async () => {
+    const { changes, store } = tracked()
+
+    await changes.content.writeEntry('hero', row('a', 'Goodbye'))
+    await changes.content.writeEntry('author', row('x'))
+    await changes.content.writeSchema(nextSchema)
+
+    expect((await store.read())?.hashes).toEqual({ schema: 'h-schema', entries: { hero: { a: 'h-a' }, author: { x: null } } })
+    expect(await replaced(changes)).toEqual([
+      ['.forgepress/schema.ts', 'h-schema'],
+      ['.forgepress/content/hero/a.ts', 'h-a'],
+      ['.forgepress/content/author/x.ts', null],
+    ])
+  })
+
+  it('remembers the hash of a deleted entry', async () => {
+    const { changes } = tracked()
+
+    await changes.content.removeEntry('hero', 'a')
+
+    expect(toFiles(await changes.snapshot(), target)).toEqual([{ path: '.forgepress/content/hero/a.ts', removed: true, replaces: 'h-a' }])
+  })
+
+  it('keeps the hash a change started from until the change is gone', async () => {
+    const { changes, store, hashes } = tracked()
+
+    await changes.content.writeEntry('hero', row('a', 'Goodbye'))
+    hashes.set('hero/a', 'h-a2')
+    await changes.content.writeEntry('hero', row('a', 'Again'))
+
+    expect((await store.read())?.hashes?.entries.hero).toEqual({ a: 'h-a' })
+
+    await changes.content.writeEntry('hero', row('a'))
+
+    expect((await store.read())?.hashes?.entries.hero).toEqual({})
+
+    await changes.content.writeEntry('hero', row('a', 'Later'))
+
+    expect((await store.read())?.hashes?.entries.hero).toEqual({ a: 'h-a2' })
+  })
+
+  it('forgets the hashes once the changes are published or discarded', async () => {
+    const { changes } = tracked()
+
+    await changes.content.writeEntry('hero', row('a', 'Goodbye'))
+    await changes.published()
+
+    expect((await changes.snapshot()).hashes).toBeUndefined()
+
+    await changes.content.writeEntry('hero', row('a', 'Goodbye'))
+    await changes.discard()
+
+    expect((await changes.snapshot()).hashes).toBeUndefined()
+  })
+
+  it('records no hashes without a source for them', async () => {
+    const { changes, store } = make()
+
+    await changes.content.writeEntry('hero', row('a', 'Goodbye'))
+
+    expect((await store.read())?.hashes).toBeUndefined()
+    expect(await replaced(changes)).toEqual([['.forgepress/content/hero/a.ts', undefined]])
+  })
+
+  it('keeps my version of conflicting files to replace their current version', async () => {
+    const { changes } = tracked()
+
+    await changes.content.writeEntry('hero', row('a', 'Goodbye'))
+    await changes.content.writeEntry('author', row('x'))
+    await changes.content.writeSchema(nextSchema)
+    await changes.resolve([
+      { path: '.forgepress/content/hero/a.ts', hash: 'h-theirs' },
+      { path: '.forgepress/content/author/x.ts', hash: 'h-x' },
+    ], target, 'mine')
+
+    expect(await replaced(changes)).toEqual([
+      ['.forgepress/schema.ts', 'h-schema'],
+      ['.forgepress/content/hero/a.ts', 'h-theirs'],
+      ['.forgepress/content/author/x.ts', 'h-x'],
+    ])
+    expect(await changes.content.entry('hero', 'a')).toEqual(row('a', 'Goodbye'))
+  })
+
+  it('drops only my changes to conflicting files', async () => {
+    const { changes } = tracked()
+    const nested = { ...target, base: 'apps/site' }
+
+    await changes.content.writeEntry('hero', row('a', 'Goodbye'))
+    await changes.content.writeEntry('author', row('x'))
+    await changes.content.writeSchema(nextSchema)
+    await changes.resolve([
+      { path: 'apps/site/.forgepress/content/hero/a.ts', hash: null },
+      { path: 'apps/site/.forgepress/schema.ts', hash: 'h-schema2' },
+    ], nested, 'theirs')
+
+    expect(await changes.content.entry('hero', 'a')).toEqual(row('a'))
+    expect(await changes.content.schema()).toEqual(baseSchema)
+    expect(await replaced(changes)).toEqual([['.forgepress/content/author/x.ts', null]])
+    expect((await changes.summary()).written).toEqual([{ collection: 'author', id: 'x' }])
   })
 })

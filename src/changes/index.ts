@@ -1,6 +1,7 @@
 import type { BakedMedia, PendingUpload } from '../media/types'
 import type { ContentSource, KeyValueStore } from '../store/types'
-import type { Changes, ChangeService, ChangeSummary, EntryRef } from './types'
+import type { ChangeHashes, Changes, ChangeService, ChangeSummary, EntryRef, HashSource } from './types'
+import { prefixer } from '../files/paths'
 import { createContentChanges } from './content'
 import { diffChanges } from './diff'
 import { createMediaChanges } from './media'
@@ -17,7 +18,7 @@ function refs(changes: Changes, staged: boolean): EntryRef[] {
       .map(([id]) => ({ collection, id })))
 }
 
-export function createChanges(base: ContentSource, baked: () => Promise<BakedMedia>, store: KeyValueStore<Changes>): ChangeService {
+export function createChanges(base: ContentSource, baked: () => Promise<BakedMedia>, store: KeyValueStore<Changes>, hashes?: HashSource): ChangeService {
   const previews = createPreviews()
 
   let loaded: Promise<Changes> | undefined
@@ -28,11 +29,37 @@ export function createChanges(base: ContentSource, baked: () => Promise<BakedMed
     return loaded
   }
 
+  async function track(changes: Changes): Promise<void> {
+    if (!hashes)
+      return
+
+    const known = changes.hashes
+    const next: ChangeHashes = { entries: {} }
+
+    if (changes.schema !== undefined)
+      next.schema = known?.schema !== undefined ? known.schema : await hashes.schema() ?? null
+
+    for (const [collection, overlay] of Object.entries(changes.entries)) {
+      const recorded: Record<string, string | null> = {}
+
+      for (const id of Object.keys(overlay)) {
+        const hash = known?.entries[collection]?.[id]
+
+        recorded[id] = hash !== undefined ? hash : await hashes.entry(collection, id) ?? null
+      }
+
+      next.entries[collection] = recorded
+    }
+
+    changes.hashes = next
+  }
+
   async function mutate(apply: (changes: Changes) => void): Promise<void> {
     const changes = await ready()
 
     apply(changes)
 
+    await track(changes)
     await store.write(changes)
   }
 
@@ -56,6 +83,37 @@ export function createChanges(base: ContentSource, baked: () => Promise<BakedMed
     },
 
     diff: async target => diffChanges(await ready(), base, await baked(), previews, target),
+
+    resolve: async (conflicts, target, keep) => {
+      const at = prefixer(target.base)
+      const current = new Map(conflicts.map(conflict => [conflict.path, conflict.hash]))
+
+      await mutate((changes) => {
+        const recorded = changes.hashes ??= { entries: {} }
+        const schema = current.get(at(target.paths.schema))
+
+        if (changes.schema !== undefined && schema !== undefined) {
+          if (keep === 'mine')
+            recorded.schema = schema
+          else
+            delete changes.schema
+        }
+
+        for (const [collection, overlay] of Object.entries(changes.entries)) {
+          for (const id of Object.keys(overlay)) {
+            const hash = current.get(at(target.paths.entry(collection, id)))
+
+            if (hash === undefined)
+              continue
+
+            if (keep === 'mine')
+              recorded.entries[collection] = { ...recorded.entries[collection], [id]: hash }
+            else
+              delete overlay[id]
+          }
+        }
+      })
+    },
 
     published: async () => {
       const changes = await ready()

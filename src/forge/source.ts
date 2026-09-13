@@ -1,3 +1,4 @@
+import type { HashSource } from '../changes/types'
 import type { ContentPaths } from '../files/paths'
 import type { ContentSource } from '../store/types'
 import type { ContentRow } from '../types/entry'
@@ -10,6 +11,7 @@ import { isEntryFile, isEntryId, prefixer } from '../files/paths'
 const CONCURRENCY = 8
 
 export interface ForgeSource extends ContentSource {
+  hashes: HashSource
   reset: (commit?: string) => void
 }
 
@@ -89,6 +91,10 @@ export function createForgeSource(forge: () => Forge | undefined, paths: Content
     return pending
   }
 
+  async function hash(path: string): Promise<string | undefined> {
+    return (await files()).get(path)
+  }
+
   async function list(collection: string): Promise<ContentRow[]> {
     const directory = `${at(paths.collection(collection))}/`
 
@@ -102,7 +108,7 @@ export function createForgeSource(forge: () => Forge | undefined, paths: Content
   return {
     schema: async () => {
       const path = at(paths.schema)
-      const sha = (await files()).get(path)
+      const sha = await hash(path)
 
       if (sha === undefined)
         throw new Error(`[forgepress] ${path} does not exist in the repository`)
@@ -116,9 +122,14 @@ export function createForgeSource(forge: () => Forge | undefined, paths: Content
 
     entry: async (collection, id) => {
       const path = at(paths.entry(collection, id))
-      const sha = isEntryId(id) ? (await files()).get(path) : undefined
+      const sha = isEntryId(id) ? await hash(path) : undefined
 
       return sha === undefined ? undefined : parseEntry(await text(sha), path)
+    },
+
+    hashes: {
+      schema: () => hash(at(paths.schema)),
+      entry: async (collection, id) => isEntryId(id) ? hash(at(paths.entry(collection, id))) : undefined,
     },
 
     reset: (commit) => {

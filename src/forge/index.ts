@@ -54,8 +54,12 @@ export function textToBase64(text: string): string {
   return toBase64(new TextEncoder().encode(text).buffer as ArrayBuffer)
 }
 
+export function base64ToBytes(data: string): Uint8Array {
+  return Uint8Array.from(atob(data.replace(/\s/g, '')), char => char.charCodeAt(0))
+}
+
 export function base64ToText(data: string): string {
-  return new TextDecoder().decode(Uint8Array.from(atob(data.replace(/\s/g, '')), char => char.charCodeAt(0)))
+  return new TextDecoder().decode(base64ToBytes(data))
 }
 
 export function encodePath(path: string): string {
@@ -73,22 +77,27 @@ export function commitMessage(template: string | undefined, name: string): strin
     : `${template} ${trimmed}`.trim()
 }
 
+function replacing(hash: string | null | undefined): { replaces?: string | null } {
+  return hash === undefined ? {} : { replaces: hash }
+}
+
 export function toFiles(changes: Changes, target: RepoTarget): FileChange[] {
   const files: FileChange[] = []
 
   const at = prefixer(target.base)
 
   if (changes.schema !== undefined)
-    files.push({ path: at(target.paths.schema), data: serializeSchema(changes.schema, target.format), encoding: 'utf-8' })
+    files.push({ path: at(target.paths.schema), data: serializeSchema(changes.schema, target.format), encoding: 'utf-8', ...replacing(changes.hashes?.schema) })
 
   for (const [collection, overlay] of Object.entries(changes.entries)) {
     for (const [id, row] of Object.entries(overlay)) {
       const path = at(target.paths.entry(collection, id))
+      const known = replacing(changes.hashes?.entries[collection]?.[id])
 
       if (row === null)
-        files.push({ path, removed: true })
+        files.push({ path, removed: true, ...known })
       else
-        files.push({ path, data: serializeEntry(collection, row, target.format), encoding: 'utf-8' })
+        files.push({ path, data: serializeEntry(collection, row, target.format), encoding: 'utf-8', ...known })
     }
   }
 

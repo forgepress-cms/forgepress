@@ -7,8 +7,10 @@ const { route } = useRouter()
 
 const loading = ref(true)
 const failure = ref('')
+const visit = ref(0)
 
-watch(() => route.value.path, () => {
+watch(route, () => {
+  visit.value += 1
   failure.value = ''
 })
 
@@ -26,6 +28,6 @@ onErrorCaptured((error) => {
   <ErrorAlert v-if="failure" title="This page could not be loaded" :error="failure" />
 
   <Suspense v-else @pending="loading = true" @resolve="loading = false">
-    <component :is="route.page" :key="route.path" />
+    <component :is="route.page" :key="visit" />
   </Suspense>
 </template>

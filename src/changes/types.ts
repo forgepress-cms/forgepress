@@ -1,4 +1,4 @@
-import type { RepoTarget } from '../forge/types'
+import type { Conflict, RepoTarget } from '../forge/types'
 import type { MediaAsset, MediaClient, PendingUpload } from '../media/types'
 import type { ContentStore } from '../store/types'
 import type { ContentRow } from '../types/entry'
@@ -16,7 +16,20 @@ export interface Changes {
   uploads: Record<string, PendingUpload>
   removed: string[]
   publishedMedia?: Record<string, PendingUpload | null>
+  hashes?: ChangeHashes
 }
+
+export interface ChangeHashes {
+  schema?: string | null
+  entries: Record<string, Record<string, string | null>>
+}
+
+export interface HashSource {
+  schema: () => Promise<string | undefined>
+  entry: (collection: string, id: string) => Promise<string | undefined>
+}
+
+export type Resolution = 'mine' | 'theirs'
 
 export interface ChangeSummary {
   schema: boolean
@@ -48,6 +61,7 @@ export interface ChangeService {
   snapshot: () => Promise<Changes>
   summary: () => Promise<ChangeSummary>
   diff: (target: RepoTarget) => Promise<FileDiff[]>
+  resolve: (conflicts: readonly Conflict[], target: RepoTarget, keep: Resolution) => Promise<void>
   published: () => Promise<void>
   discard: () => Promise<void>
 }

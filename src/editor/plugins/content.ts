@@ -20,6 +20,7 @@ export interface EditorContent {
   store: ContentStore
   media: MediaClient
   changes: () => Promise<ChangeService | undefined>
+  pin: (commit: string) => Promise<void>
   published: (commit: string) => Promise<void>
 }
 
@@ -42,7 +43,7 @@ async function build(): Promise<Resolved> {
 
   const session = useSession()
   const source = createForgeSource(() => session.forge(), settings.paths, settings.provider?.base)
-  const changes = createChanges(source, async () => (await baked()).media, persist<Changes>('changes'))
+  const changes = createChanges(source, async () => (await baked()).media, persist<Changes>('changes'), source.hashes)
 
   return { store: changes.content, media: changes.media, changes, source }
 }
@@ -63,6 +64,12 @@ export function createContent(): EditorContent {
     store: lazyStore(async () => (await resolve()).store),
     media: lazyMedia(async () => (await resolve()).media),
     changes: async () => (await resolve()).changes,
+
+    pin: async (commit) => {
+      const { source } = await resolve()
+
+      source?.reset(commit)
+    },
 
     published: async (commit) => {
       const { source, changes } = await resolve()

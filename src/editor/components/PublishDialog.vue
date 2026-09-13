@@ -1,21 +1,31 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { usePublish } from '../composables/usePublish'
+import { useRouter } from '../composables/useRouter'
 import { useSession } from '../composables/useSession'
 import DiffView from './DiffView.vue'
 
 const open = defineModel<boolean>('open', { required: true })
 
-const { diff, count, publishing, error, refresh, publish } = usePublish()
+const { diff, count, publishing, error, conflicts, refresh, publish, resolve } = usePublish()
 const { branch } = useSession()
+const { reload } = useRouter()
 
 const name = ref('')
 const commit = ref('')
 const loading = ref(false)
 
+let changed = false
+
 watch(open, async (value) => {
-  if (!value)
+  if (!value) {
+    if (changed)
+      reload()
+
+    changed = false
+
     return
+  }
 
   commit.value = ''
   loading.value = true
@@ -31,11 +41,24 @@ watch(open, async (value) => {
 async function submit(): Promise<void> {
   const published = await publish(name.value)
 
+  if (published || conflicts.value.length > 0)
+    changed = true
+
   if (!published)
     return
 
   commit.value = published
   name.value = ''
+}
+
+async function drop(): Promise<void> {
+  if (await resolve('theirs'))
+    changed = true
+}
+
+async function overwrite(): Promise<void> {
+  if (await resolve('mine'))
+    await submit()
 }
 </script>
 
@@ -55,6 +78,28 @@ async function submit(): Promise<void> {
           :title="`Published as ${commit.slice(0, 7)}`"
           description="The site rebuilds from this commit. New media keeps its preview here until it does."
         />
+
+        <UAlert
+          v-if="conflicts.length"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-triangle-alert"
+          title="Changed in the repository since your edit"
+          :actions="[
+            { label: 'Drop my edits', color: 'neutral', variant: 'outline', disabled: publishing, onClick: drop },
+            { label: 'Publish mine anyway', color: 'warning', loading: publishing, onClick: overwrite },
+          ]"
+        >
+          <template #description>
+            <p>Publishing would undo those changes. Below, your version is now compared with the current one.</p>
+
+            <ul class="mt-2 font-mono text-xs">
+              <li v-for="conflict in conflicts" :key="conflict.path">
+                {{ conflict.path }}{{ conflict.hash === null ? ' (deleted)' : '' }}
+              </li>
+            </ul>
+          </template>
+        </UAlert>
 
         <div v-if="loading" class="flex justify-center py-6">
           <UIcon name="i-lucide-loader-circle" class="size-5 animate-spin text-muted" />

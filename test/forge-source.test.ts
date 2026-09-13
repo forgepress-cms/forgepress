@@ -65,6 +65,7 @@ function repository(commits: Record<string, Record<string, string>>) {
   return {
     forge,
     calls,
+    shaOf,
     reads: () => calls.filter(call => call.startsWith('read')).length,
     move: (commit: string) => {
       state.branch = commit
@@ -143,6 +144,22 @@ describe('forge source', () => {
     await source.list('author')
 
     expect(repo.calls.filter(call => call === 'head')).toHaveLength(2)
+  })
+
+  it('hands out the hash of every file in the commit it reads', async () => {
+    const changed = entry('author_1', 'published', '2024-01-01T00:00:00Z', 'Alice')
+    const repo = repository({ c1: first, c2: { ...first, '.forgepress/content/author/author_1.ts': changed } })
+    const source = createForgeSource(() => repo.forge, defaultPaths)
+
+    expect(await source.hashes.schema()).toBe(repo.shaOf(schema))
+    expect(await source.hashes.entry('author', 'author_1')).toBe(repo.shaOf(first['.forgepress/content/author/author_1.ts']!))
+    expect(await source.hashes.entry('author', 'author_4')).toBeUndefined()
+    expect(await source.hashes.entry('author', '../schema')).toBeUndefined()
+
+    source.reset('c2')
+
+    expect(await source.hashes.entry('author', 'author_1')).toBe(repo.shaOf(changed))
+    expect(repo.reads()).toBe(0)
   })
 
   it('tries again after the forge failed', async () => {

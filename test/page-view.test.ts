@@ -6,8 +6,17 @@ import { createApp, defineComponent, h } from 'vue'
 import PageView from '../src/editor/components/layout/PageView.vue'
 import { createRouter, routerKey } from '../src/editor/plugins/router'
 
+let visits = 0
+
 const routes = {
   '': defineComponent({ render: () => h('p', 'Index page') }),
+  'counted': defineComponent({
+    setup: () => {
+      visits += 1
+
+      return () => h('p', `Visit ${visits}`)
+    },
+  }),
   'broken': defineComponent({
     async setup() {
       throw new Error('GitHub 401: Bad credentials')
@@ -71,6 +80,17 @@ describe('page view', () => {
     await settle()
 
     expect(container.textContent).toBe('Index page')
+  })
+
+  it('opens the page again when it reloads', async () => {
+    const { container } = await open('counted')
+
+    expect(container.textContent).toBe('Visit 1')
+
+    router.reload()
+    await settle()
+
+    expect(container.textContent).toBe('Visit 2')
   })
 
   it('leaves errors after loading to the app', async () => {

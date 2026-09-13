@@ -65,12 +65,6 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
     return sha
   }
 
-  async function tip(branch: string): Promise<string> {
-    const ref = await call<{ object: { sha: string } }>(`/git/ref/heads/${encodeURIComponent(branch)}`)
-
-    return ref.object.sha
-  }
-
   return {
     async access(): Promise<ForgeAccess> {
       const [user, repository] = await Promise.all([
@@ -89,7 +83,9 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
       }
     },
 
-    head: async () => tip(await branchName()),
+    async head(): Promise<string> {
+      return (await call<{ object: { sha: string } }>(`/git/ref/heads/${encodeURIComponent(await branchName())}`)).object.sha
+    },
 
     async files(commit, directory): Promise<ForgeFile[]> {
       const sha = await folder(commit, directory)
@@ -111,13 +107,11 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
       return (await check(await send(`/git/blobs/${sha}`, undefined, 'application/vnd.github.raw+json'))).text()
     },
 
-    async commit(files, message): Promise<string> {
+    async commit(files, message, parent): Promise<string> {
       if (files.length === 0)
         throw new Error('[forgepress] there is nothing to publish')
 
-      const branch = await branchName()
-      const latest = await tip(branch)
-      const parent = await call<{ tree: { sha: string } }>(`/git/commits/${latest}`)
+      const current = await call<{ tree: { sha: string } }>(`/git/commits/${parent}`)
 
       const tree = await Promise.all(files.map(async (file) => {
         if ('removed' in file)
@@ -128,10 +122,10 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
         return { path: file.path, mode: '100644', type: 'blob', sha: blob.sha }
       }))
 
-      const next = await post<{ sha: string }>('/git/trees', { base_tree: parent.tree.sha, tree })
-      const created = await post<{ sha: string }>('/git/commits', { message, tree: next.sha, parents: [latest] })
+      const next = await post<{ sha: string }>('/git/trees', { base_tree: current.tree.sha, tree })
+      const created = await post<{ sha: string }>('/git/commits', { message, tree: next.sha, parents: [parent] })
 
-      await call(`/git/refs/heads/${encodeURIComponent(branch)}`, {
+      await call(`/git/refs/heads/${encodeURIComponent(await branchName())}`, {
         method: 'PATCH',
         body: JSON.stringify({ sha: created.sha, force: false }),
       })
