@@ -1,7 +1,10 @@
 {
-  "name": "webenv",
+  "name": "forgepress",
+  "type": "module",
   "version": "0.0.1",
-  "description": "The fully-static, git based CMS.",
+  "description": "Fully static, git based CMS.",
+  "license": "MIT",
+  "sideEffects": false,
   "imports": {
     "#content-source": {
       "node": "./dist/content/reader/node.mjs",
@@ -28,18 +31,14 @@
   ],
   "scripts": {
     "lint": "eslint .",
-    "typecheck": "vue-tsc --noEmit && bun --filter=playground-nuxt run typecheck",
+    "typecheck": "vue-tsc --noEmit && pnpm --filter=playground-nuxt run typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "obuild && bun run build:editor",
+    "build": "obuild && pnpm run build:editor",
     "build:editor": "vite build --config vite.editor.config.mjs",
     "dev:editor": "vite build --config vite.editor.config.mjs --watch",
-    "dev:nuxt": "bun --filter=playground-nuxt run dev"
+    "dev:nuxt": "pnpm --filter=playground-nuxt run dev"
   },
-  "workspaces": [
-    ".",
-    "playgrounds/*"
-  ],
   "peerDependencies": {
     "vue": "^3.5.0"
   },
@@ -52,20 +51,20 @@
     "unplugin": "^3.0.0"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^9.0.0",
-    "@iconify-json/lucide": "^1.2.123",
-    "@nuxt/ui": "^4.10.0",
+    "@antfu/eslint-config": "^9.5.1",
+    "@iconify-json/lucide": "^1.2.131",
+    "@nuxt/ui": "^4.11.1",
     "@tanstack/vue-table": "^8.21.3",
-    "@types/node": "^26.0.0",
-    "@vitejs/plugin-vue": "^6.0.7",
-    "eslint": "^10.5.0",
-    "happy-dom": "^20.12.0",
-    "obuild": "^0.4.36",
+    "@types/node": "^24.0.0",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "eslint": "^10.10.0",
+    "happy-dom": "^20.14.3",
+    "obuild": "^0.4.39",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16",
-    "vitest": "^4.1.9",
-    "vue": "^3.5.38",
-    "vue-tsc": "^3.3.5"
+    "vite": "^8.3.0",
+    "vitest": "^4.1.11",
+    "vue": "^3.5.42",
+    "vue-tsc": "^3.3.11"
   }
 }

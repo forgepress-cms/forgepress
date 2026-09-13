@@ -1,14 +1,63 @@
-export const WEBENV_DIR = '.webenv'
-export const CONTENT_DIR = `${WEBENV_DIR}/content`
-export const SCHEMA_FILE = `${WEBENV_DIR}/schema.ts`
-export const AUGMENTATION_FILE = `${WEBENV_DIR}/webenv.d.ts`
+export const DEFAULT_CONTENT_PATH = '.forgepress'
+export const ENDPOINT = '/__forgepress'
 
-export const ENDPOINT = '/__webenv'
+const ENTRY_FILE = /\.ts$/
+const ENTRY_ID = /^[\w-]+$/
+const EDGE_SLASHES = /^\/+|\/+$/g
 
-export function toComponentName(file: string): string {
-  return file.replace(/\.ts$/, '').replace(/-(\w)/g, (_, char: string) => char.toUpperCase())
+export interface ContentPaths {
+  readonly dir: string
+  readonly content: string
+  readonly schema: string
+  readonly types: string
+  readonly collection: (collection: string) => string
+  readonly entry: (collection: string, id: string) => string
 }
 
-export function toFileName(component: string): string {
-  return `${component.replace(/[A-Z]/g, char => `-${char.toLowerCase()}`)}.ts`
+export function normalizeDir(path: string | undefined): string {
+  return (path ?? DEFAULT_CONTENT_PATH).replace(/\\/g, '/').replace(EDGE_SLASHES, '') || DEFAULT_CONTENT_PATH
 }
+
+export function toCollectionName(directory: string): string {
+  return directory.replace(/-(\w)/g, (_, char: string) => char.toUpperCase())
+}
+
+export function toCollectionDir(collection: string): string {
+  return collection.replace(/[A-Z]/g, char => `-${char.toLowerCase()}`).replace(/^-/, '')
+}
+
+export function toEntryFile(id: string): string {
+  return `${id}.ts`
+}
+
+export function toEntryId(file: string): string {
+  return file.replace(ENTRY_FILE, '')
+}
+
+export function isEntryFile(file: string): boolean {
+  return ENTRY_FILE.test(file) && ENTRY_ID.test(toEntryId(file))
+}
+
+export function prefixer(base?: string): (path: string) => string {
+  const prefix = base?.replace(EDGE_SLASHES, '') ?? ''
+
+  return path => prefix ? `${prefix}/${path}` : path
+}
+
+export function createPaths(path?: string): ContentPaths {
+  const dir = normalizeDir(path)
+  const content = `${dir}/content`
+
+  const collection = (name: string): string => `${content}/${toCollectionDir(name)}`
+
+  return {
+    dir,
+    content,
+    schema: `${dir}/schema.ts`,
+    types: `${dir}/forgepress.d.ts`,
+    collection,
+    entry: (name, id) => `${collection(name)}/${toEntryFile(id)}`,
+  }
+}
+
+export const defaultPaths: ContentPaths = createPaths()

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mountEditor } from 'webenv/editor'
+import { mountEditor } from 'forgepress/editor'
 
 const host = useTemplateRef('host')
 
@@ -11,5 +11,5 @@ onMounted(() => {
 </script>
 
 <template>
-  <div id="webenv" ref="host" />
+  <div id="forgepress" ref="host" />
 </template>

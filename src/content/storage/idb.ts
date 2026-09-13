@@ -1,12 +1,12 @@
 import type { KeyValueStore } from '../../types/content/store'
 
-const DATABASE = 'webenv'
+const DATABASE = 'forgepress'
 const STORE = 'changes'
 
 function settle<TResult>(request: IDBRequest<TResult>): Promise<TResult> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error ?? new Error('[webenv] IndexedDB request failed'))
+    request.onerror = () => reject(request.error ?? new Error('[forgepress] IndexedDB request failed'))
   })
 }
 
@@ -20,8 +20,8 @@ function open(): Promise<IDBDatabase> {
     }
 
     opening.onsuccess = () => resolve(opening.result)
-    opening.onerror = () => reject(opening.error ?? new Error('[webenv] IndexedDB is unavailable'))
-    opening.onblocked = () => reject(new Error('[webenv] IndexedDB is blocked by another open tab'))
+    opening.onerror = () => reject(opening.error ?? new Error('[forgepress] IndexedDB is unavailable'))
+    opening.onblocked = () => reject(new Error('[forgepress] IndexedDB is blocked by another open tab'))
   })
 }
 

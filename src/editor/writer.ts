@@ -9,11 +9,17 @@ async function request(method: string, path: string, body?: unknown): Promise<vo
   })
 
   if (!response.ok)
-    throw new Error(`[webenv] ${response.status} ${await response.text()}`)
+    throw new Error(`[forgepress] ${response.status} ${await response.text()}`)
+}
+
+function segment(value: string): string {
+  return encodeURIComponent(value)
 }
 
 export const writer: ContentWriter = {
   writeSchema: schema => request('POST', '/schema', schema),
-  writeContent: (component, rows) => request('POST', `/content/${component}`, rows),
-  removeContent: component => request('DELETE', `/content/${component}`),
+  writeEntry: (collection, row) => request('POST', `/entry/${segment(collection)}/${segment(row.id)}`, row),
+  removeEntry: (collection, id) => request('DELETE', `/entry/${segment(collection)}/${segment(id)}`),
+  writeContent: (collection, rows) => request('POST', `/content/${segment(collection)}`, rows),
+  removeCollection: collection => request('DELETE', `/content/${segment(collection)}`),
 }

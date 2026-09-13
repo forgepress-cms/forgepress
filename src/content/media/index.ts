@@ -1,4 +1,5 @@
 import type { MediaConfig } from '../../types/config/media'
+import { defined } from '../value'
 
 export type MediaKind = 'image' | 'video'
 
@@ -30,7 +31,7 @@ const TRIM = /^-+|-+$/g
 const NAME = /^[a-z0-9][\w.-]*$/i
 
 export function resolveMedia(config?: MediaConfig): ResolvedMedia {
-  return { ...MEDIA_DEFAULTS, ...config }
+  return { ...MEDIA_DEFAULTS, ...defined(config) }
 }
 
 export function extension(file: string): string {

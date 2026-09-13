@@ -7,16 +7,21 @@ import { unpluginFactory } from '../src/unplugin'
 
 const root = fileURLToPath(new URL('./fixtures/project', import.meta.url))
 
-async function generated(command: 'serve' | 'build', write?: false): Promise<string> {
+function loader(command: 'serve' | 'build', write?: false) {
   const created = unpluginFactory(write === false ? { root, write } : { root }, { framework: 'vite' } as UnpluginContextMeta)
   const plugin = Array.isArray(created) ? created[0]! : created
 
   const configResolved = (plugin.vite as { configResolved: (config: { command: string, root: string }) => void }).configResolved
   const load = plugin.load as unknown as (id: string) => Promise<string> | string
+  const resolveId = plugin.resolveId as unknown as (id: string) => string | undefined
 
   configResolved({ command, root })
 
-  return await load('\0virtual:webenv/content') ?? ''
+  return { load: async (id: string) => await load(id) ?? '', resolveId }
+}
+
+async function generated(command: 'serve' | 'build', write?: false): Promise<string> {
+  return loader(command, write).load('\0virtual:forgepress/content')
 }
 
 interface Spy extends ContentStore {
@@ -31,21 +36,37 @@ function spy(): Spy {
     schema: async () => {
       calls.push('schema')
 
-      return { components: {}, locales: [] }
+      return { collections: {}, locales: [] }
     },
-    list: async (component) => {
-      calls.push(`list:${component}`)
+    list: async (collection) => {
+      calls.push(`list:${collection}`)
 
       return []
+    },
+    index: async (collection) => {
+      calls.push(`index:${collection}`)
+
+      return []
+    },
+    entry: async (collection, id) => {
+      calls.push(`entry:${collection}/${id}`)
+
+      return undefined
     },
     writeSchema: async () => {
       calls.push('writeSchema')
     },
-    writeContent: async (component) => {
-      calls.push(`writeContent:${component}`)
+    writeEntry: async (collection, row) => {
+      calls.push(`writeEntry:${collection}/${row.id}`)
     },
-    removeContent: async (component) => {
-      calls.push(`removeContent:${component}`)
+    removeEntry: async (collection, id) => {
+      calls.push(`removeEntry:${collection}/${id}`)
+    },
+    writeContent: async (collection) => {
+      calls.push(`writeContent:${collection}`)
+    },
+    removeCollection: async (collection) => {
+      calls.push(`removeCollection:${collection}`)
     },
   }
 }
@@ -68,6 +89,33 @@ describe('local endpoint detection', () => {
 
     expect(code).toContain('export { default as schema }')
     expect(code).toContain('"blogPost"')
+  })
+})
+
+describe('generated content graph', () => {
+  it('gives every collection a list and one loader per entry', async () => {
+    const code = await generated('serve')
+
+    expect(code).toContain('list: () => import("virtual:forgepress/list/blog-post")')
+    expect(code).toContain('"blog-post-1": () => import(')
+  })
+
+  it('resolves the per-collection module ids', () => {
+    const { resolveId } = loader('serve')
+
+    expect(resolveId('virtual:forgepress/list/author')).toBe('\0virtual:forgepress/list/author')
+    expect(resolveId('some/other/module')).toBeUndefined()
+  })
+
+  it('builds a collection list from its entry modules', async () => {
+    const code = await loader('serve').load('\0virtual:forgepress/list/author')
+
+    expect(code).toContain('author-1.ts"')
+    expect(code).toContain('export default [entry0]')
+  })
+
+  it('treats an unknown collection as empty', async () => {
+    expect(await loader('serve').load('\0virtual:forgepress/list/missing')).toBe('export default []\n')
   })
 })
 
@@ -106,10 +154,24 @@ describe('lazy store', () => {
 
     await store.schema()
     await store.list('hero')
-    await store.writeSchema({ components: {}, locales: [] })
+    await store.index('hero')
+    await store.entry('hero', 'a')
+    await store.writeSchema({ collections: {}, locales: [] })
+    await store.writeEntry('hero', { id: 'a', status: 'unpublished', createdAt: '', updatedAt: '' })
+    await store.removeEntry('hero', 'a')
     await store.writeContent('hero', [])
-    await store.removeContent('author')
+    await store.removeCollection('author')
 
-    expect(target.calls).toEqual(['schema', 'list:hero', 'writeSchema', 'writeContent:hero', 'removeContent:author'])
+    expect(target.calls).toEqual([
+      'schema',
+      'list:hero',
+      'index:hero',
+      'entry:hero/a',
+      'writeSchema',
+      'writeEntry:hero/a',
+      'removeEntry:hero/a',
+      'writeContent:hero',
+      'removeCollection:author',
+    ])
   })
 })

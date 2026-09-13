@@ -1,26 +1,49 @@
 import type { ContentConfig } from '../../types/config/content'
+import type { ContentRow } from '../../types/content/reader'
 import type { ContentWriter } from '../../types/content/writer'
+import type { ContentPaths } from '../paths'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { CONTENT_DIR, SCHEMA_FILE, toFileName } from '../paths'
-import { serializeContent, serializeSchema } from '../serialize'
+import { readEntryIds } from '../entry/node'
+import { defaultPaths } from '../paths'
+import { serializeEntry, serializeSchema } from '../serialize'
 
-export function createWriter(root: string, config?: ContentConfig): ContentWriter {
+export function createWriter(root: string, paths: ContentPaths = defaultPaths, config?: ContentConfig): ContentWriter {
+  const directory = (collection: string): string => join(root, paths.collection(collection))
+  const file = (collection: string, id: string): string => join(root, paths.entry(collection, id))
+
+  async function write(collection: string, row: ContentRow): Promise<void> {
+    await writeFile(file(collection, row.id), serializeEntry(collection, row, config))
+  }
+
   return {
     async writeSchema(schema) {
-      await writeFile(join(root, SCHEMA_FILE), serializeSchema(schema, config))
+      await mkdir(join(root, paths.dir), { recursive: true })
+      await writeFile(join(root, paths.schema), serializeSchema(schema, config))
     },
 
-    async writeContent(component, rows) {
-      const dir = join(root, CONTENT_DIR)
-
-      await mkdir(dir, { recursive: true })
-
-      await writeFile(join(dir, toFileName(component)), serializeContent(component, rows, config))
+    async writeEntry(collection, row) {
+      await mkdir(directory(collection), { recursive: true })
+      await write(collection, row)
     },
 
-    async removeContent(component) {
-      await rm(join(root, CONTENT_DIR, toFileName(component)), { force: true })
+    async removeEntry(collection, id) {
+      await rm(file(collection, id), { force: true })
     },
+
+    async writeContent(collection, rows) {
+      await mkdir(directory(collection), { recursive: true })
+
+      const kept = new Set(rows.map(row => row.id))
+      const stale = readEntryIds(directory(collection)).filter(id => !kept.has(id))
+
+      await Promise.all(stale.map(id => rm(file(collection, id), { force: true })))
+      await Promise.all(rows.map(row => write(collection, row)))
+    },
+
+    async removeCollection(collection) {
+      await rm(directory(collection), { recursive: true, force: true })
+    },
+
   }
 }

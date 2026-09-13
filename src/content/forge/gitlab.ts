@@ -36,7 +36,7 @@ export function createGitLabForge(config: ProviderConfig, token: TokenGetter): F
     })
 
     if (!response.ok)
-      throw new Error(`[webenv] GitLab ${response.status}: ${(await response.text()).slice(0, 300)}`)
+      throw new Error(`[forgepress] GitLab ${response.status}: ${(await response.text()).slice(0, 300)}`)
 
     return response.status === 204 ? undefined as TResult : await response.json() as TResult
   }
@@ -49,7 +49,7 @@ export function createGitLabForge(config: ProviderConfig, token: TokenGetter): F
       return undefined
 
     if (!response.ok)
-      throw new Error(`[webenv] GitLab ${response.status}: ${(await response.text()).slice(0, 300)}`)
+      throw new Error(`[forgepress] GitLab ${response.status}: ${(await response.text()).slice(0, 300)}`)
 
     return await response.json() as ExistingFile
   }
@@ -74,7 +74,7 @@ export function createGitLabForge(config: ProviderConfig, token: TokenGetter): F
 
     async commit(files: FileChange[], message: string): Promise<string> {
       if (files.length === 0)
-        throw new Error('[webenv] there is nothing to publish')
+        throw new Error('[forgepress] there is nothing to publish')
 
       const branch = config.repository.branch ?? (await call<Project>('')).default_branch
 
@@ -91,7 +91,7 @@ export function createGitLabForge(config: ProviderConfig, token: TokenGetter): F
       }))).filter(action => action !== undefined)
 
       if (actions.length === 0)
-        throw new Error('[webenv] there is nothing to publish')
+        throw new Error('[forgepress] there is nothing to publish')
 
       const created = await call<{ id: string }>('/repository/commits', {
         method: 'POST',

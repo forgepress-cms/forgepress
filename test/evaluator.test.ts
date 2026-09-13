@@ -10,7 +10,7 @@ function plan(overrides: Partial<QueryPlan> = {}): QueryPlan {
 function rows(): ContentRow[] {
   return [
     { id: 'a', status: 'published', createdAt: '2024-01-01', updatedAt: '2024-01-01', views: 10, slug: 'apple-pie', title: { en: 'Apple', de: 'Apfel' }, tags: ['x', 'y'] },
-    { id: 'b', status: 'draft', createdAt: '2024-03-01', updatedAt: '2024-03-01', views: 30, slug: 'banana-bread', title: { en: 'Banana', de: 'Banane' }, tags: ['y', 'z'] },
+    { id: 'b', status: 'unpublished', createdAt: '2024-03-01', updatedAt: '2024-03-01', views: 30, slug: 'banana-bread', title: { en: 'Banana', de: 'Banane' }, tags: ['y', 'z'] },
     { id: 'c', status: 'published', createdAt: '2024-02-01', updatedAt: '2024-02-01', views: 20, slug: 'cherry-cake', title: { en: 'Cherry', de: 'Kirsche' }, tags: ['z'] },
   ]
 }
@@ -50,7 +50,7 @@ describe('evaluate: where', () => {
   })
 
   it('in', () => {
-    expect(ids(evaluate(rows(), plan({ where: [{ field: 'status', op: 'in', value: ['draft', 'archived'] }] }), new Set()))).toEqual(['b'])
+    expect(ids(evaluate(rows(), plan({ where: [{ field: 'status', op: 'in', value: ['unpublished'] }] }), new Set()))).toEqual(['b'])
   })
 
   it('contains on arrays and strings', () => {
@@ -82,7 +82,7 @@ describe('evaluate: sort', () => {
         { field: 'views', dir: 'desc' },
       ],
     }), new Set())
-    expect(ids(result)).toEqual(['b', 'c', 'a'])
+    expect(ids(result)).toEqual(['c', 'a', 'b'])
   })
 
   it('does not mutate the input array', () => {

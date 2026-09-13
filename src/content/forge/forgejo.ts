@@ -23,7 +23,7 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
     })
 
     if (!response.ok)
-      throw new Error(`[webenv] Forgejo ${response.status}: ${(await response.text()).slice(0, 300)}`)
+      throw new Error(`[forgepress] Forgejo ${response.status}: ${(await response.text()).slice(0, 300)}`)
 
     return response.status === 204 ? undefined as TResult : await response.json() as TResult
   }
@@ -36,7 +36,7 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
       return undefined
 
     if (!response.ok)
-      throw new Error(`[webenv] Forgejo ${response.status}: ${(await response.text()).slice(0, 300)}`)
+      throw new Error(`[forgepress] Forgejo ${response.status}: ${(await response.text()).slice(0, 300)}`)
 
     return (await response.json() as { sha: string }).sha
   }
@@ -61,7 +61,7 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
 
     async commit(files: FileChange[], message: string): Promise<string> {
       if (files.length === 0)
-        throw new Error('[webenv] there is nothing to publish')
+        throw new Error('[forgepress] there is nothing to publish')
 
       const branch = config.repository.branch ?? (await call<Repository>('')).default_branch
 
@@ -79,7 +79,7 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
       }))).filter(entry => entry !== undefined)
 
       if (entries.length === 0)
-        throw new Error('[webenv] there is nothing to publish')
+        throw new Error('[forgepress] there is nothing to publish')
 
       const created = await call<{ commit: { sha: string } }>('/contents', {
         method: 'POST',

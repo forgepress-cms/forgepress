@@ -10,7 +10,7 @@ async function request(method: string, path: string, file?: File): Promise<unkno
   })
 
   if (!response.ok)
-    throw new Error(`[webenv] ${response.status} ${await response.text()}`)
+    throw new Error(`[forgepress] ${response.status} ${await response.text()}`)
 
   return response.status === 204 ? undefined : response.json()
 }

@@ -1,18 +1,18 @@
 import type { ContentRow } from '../../types/content/reader'
 import type { EntryValues } from '../utils/entry'
-import type { Field } from '../utils/schema'
+import type { FormField } from '../utils/schema'
 import { reactive } from 'vue'
 import { fieldLocale, fromValues, missingFields, newEntry, toValues } from '../utils/entry'
 import { toFields } from '../utils/schema'
 import { useContent } from './useContent'
 
-export interface NestedField extends Field {
+export interface NestedField extends FormField {
   locale: string
 }
 
 export interface NestedDraft {
   id: string
-  component: string
+  collection: string
   row: ContentRow
   fields: NestedField[]
   values: EntryValues
@@ -20,7 +20,7 @@ export interface NestedDraft {
 
 export interface NestedEntries {
   drafts: Record<string, NestedDraft>
-  create: (component: string) => string
+  create: (collection: string) => string
   discard: (id: string) => void
   clear: () => void
   missing: () => string[]
@@ -34,14 +34,14 @@ export async function useNestedEntries(): Promise<NestedEntries> {
 
   const drafts = reactive<Record<string, NestedDraft>>({})
 
-  function create(component: string): string {
-    const row = newEntry(component)
-    const fields = toFields(schema.components[component] ?? { elements: {} }, locales)
+  function create(collection: string): string {
+    const row = newEntry(collection)
+    const fields = toFields(schema.collections[collection] ?? { fields: {} }, locales)
       .map(field => ({ ...field, locale: fieldLocale(field, locales) }))
 
     drafts[row.id] = {
       id: row.id,
-      component,
+      collection,
       row,
       fields,
       values: toValues(fields, row, locales),
@@ -79,11 +79,11 @@ export async function useNestedEntries(): Promise<NestedEntries> {
     },
 
     missing: () => Object.values(drafts).flatMap(entry =>
-      missingFields(entry.fields, entry.values).map(field => `${field.label} of the new ${entry.component}`),
+      missingFields(entry.fields, entry.values).map(field => `${field.label} of the new ${entry.collection}`),
     ),
 
     rows: () => Object.values(drafts).reduce<Record<string, ContentRow[]>>((created, entry) => {
-      created[entry.component] = [...created[entry.component] ?? [], draft(entry)]
+      created[entry.collection] = [...created[entry.collection] ?? [], draft(entry)]
 
       return created
     }, {}),

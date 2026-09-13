@@ -1,16 +1,12 @@
-import type { WebenvConfig } from './types/config'
-import type { WebenvContent } from './types/core/content'
-import type { WebenvSchema } from './types/core/schema'
-import type { RegisteredSchema } from './types/query'
+import type { ForgePressConfig } from './types/config'
+import type { ForgePressSchema, ValidateLocales } from './types/core/schema'
 
-export function defineWebenvConfig(config: WebenvConfig) {
+export function defineForgePressConfig(config: ForgePressConfig): ForgePressConfig {
   return config
 }
 
-export function defineWebenvSchema<const T extends WebenvSchema>(schema: T) {
+export function defineForgePressSchema<const TSchema extends ForgePressSchema>(
+  schema: TSchema & ValidateLocales<TSchema>,
+): TSchema {
   return schema
-}
-
-export function defineWebenvContent<TName extends keyof RegisteredSchema['components']>(content: WebenvContent<RegisteredSchema, TName>) {
-  return content
 }

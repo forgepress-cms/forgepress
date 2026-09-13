@@ -79,7 +79,7 @@ watch(picked, (value) => {
       >
         <DragHandle v-if="sortable" @pointerdown="order.start(item.value, index, $event)" />
 
-        <UChip v-if="item.chip" :color="item.chip.color" standalone />
+        <UChip v-if="item.chip" class="pt-2 pe-1" :color="item.chip.color" standalone />
 
         <span class="flex-1 truncate text-sm text-highlighted">{{ item.label }}</span>
 

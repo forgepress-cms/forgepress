@@ -41,7 +41,7 @@ const icons: Record<ColorMode, string> = {
     <template #title>
       <Logo />
 
-      <strong class="font-semibold">Webenv</strong>
+      <strong class="font-semibold">ForgePress</strong>
     </template>
 
     <template #right>

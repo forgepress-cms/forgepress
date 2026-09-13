@@ -1,7 +1,7 @@
 import type { Ref } from 'vue'
 import type { ContentRow } from '../../types/content/reader'
 import type { EntryValues } from '../utils/entry'
-import type { Field } from '../utils/schema'
+import type { FormField } from '../utils/schema'
 import type { Draft } from './useDraft'
 import { reactive, ref } from 'vue'
 import { fromValues, toValues } from '../utils/entry'
@@ -16,7 +16,7 @@ export interface EntryDraft extends Draft {
 
 export function useEntryDraft(
   row: ContentRow,
-  fields: Field[],
+  fields: FormField[],
   locales: readonly string[],
   leave: () => void,
 ): EntryDraft {

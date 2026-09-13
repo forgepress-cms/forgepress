@@ -1,11 +1,11 @@
-import type { Field } from '../src/editor/utils/schema'
-import type { ElementType } from '../src/elements'
+import type { FormField } from '../src/editor/utils/schema'
+import type { Field } from '../src/fields'
 import { describe, expect, it } from 'vitest'
 import { entryLabel, fieldLocale, fromValues, missingFields, newEntry, SINGLE, titleField, toValues } from '../src/editor/utils/entry'
 
 const locales = ['en', 'de']
 
-function field(key: string, translated: boolean, extra: Partial<Field> = {}): Field {
+function field(key: string, translated: boolean, extra: Partial<FormField> = {}): FormField {
   const type = extra.type ?? 'text'
 
   return {
@@ -15,7 +15,7 @@ function field(key: string, translated: boolean, extra: Partial<Field> = {}): Fi
     type,
     typeLabel: type,
     icon: 'i-lucide-type',
-    element: { type } as ElementType,
+    config: { type } as Field,
     translated,
     optional: false,
     ...extra,
@@ -36,7 +36,7 @@ describe('fieldLocale', () => {
 })
 
 describe('entry values', () => {
-  const row = { id: 'author-1', status: 'draft' as const, createdAt: '', updatedAt: '', name: 'Jane', title: { en: 'Hello' } }
+  const row = { id: 'author-1', status: 'unpublished' as const, createdAt: '', updatedAt: '', name: 'Jane', title: { en: 'Hello' } }
 
   it('reads a value under the bucket its input binds to', () => {
     const values = toValues([name, title], row, locales)
@@ -63,7 +63,7 @@ describe('entry values', () => {
 })
 
 describe('missingFields', () => {
-  const row = { id: 'author-1', status: 'draft' as const, createdAt: '', updatedAt: '' }
+  const row = { id: 'author-1', status: 'unpublished' as const, createdAt: '', updatedAt: '' }
 
   it('reports a required field left empty', () => {
     const values = toValues([name], row, locales)
@@ -95,7 +95,7 @@ describe('missingFields', () => {
   })
 
   it('wants a required media field to hold an asset', () => {
-    const portrait = field('portrait', false, { type: 'image', element: { type: 'image' } as ElementType })
+    const portrait = field('portrait', false, { type: 'image', config: { type: 'image' } as Field })
 
     expect(missingFields([portrait], toValues([portrait], row, locales)).map(field => field.key)).toEqual(['portrait'])
     expect(missingFields([portrait], toValues([portrait], { ...row, portrait: { url: 'a.png' } }, locales))).toEqual([])
@@ -107,7 +107,7 @@ describe('newEntry', () => {
     const entry = newEntry('author')
 
     expect(entry.id).toMatch(/^author_[0-9a-f]{12}$/)
-    expect(entry.status).toBe('draft')
+    expect(entry.status).toBe('unpublished')
     expect(newEntry('author').id).not.toBe(entry.id)
   })
 })
@@ -129,7 +129,7 @@ describe('titleField', () => {
 })
 
 describe('entryLabel', () => {
-  const row = { id: 'author_abc', status: 'draft' as const, createdAt: '', updatedAt: '' }
+  const row = { id: 'author_abc', status: 'unpublished' as const, createdAt: '', updatedAt: '' }
 
   it('reads the first meaningful line of a body', () => {
     const rich = field('content', false, { type: 'richtext' })

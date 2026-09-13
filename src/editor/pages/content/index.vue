@@ -6,7 +6,7 @@ import DataTable from '../../components/DataTable.vue'
 import { useContent } from '../../composables/useContent'
 import { useRouter } from '../../composables/useRouter'
 
-interface ComponentRow {
+interface CollectionRow {
   id: string
   name: string
   description: string
@@ -19,15 +19,15 @@ const { store } = useContent()
 
 const schema = await store.schema()
 
-const components: ComponentRow[] = await Promise.all(Object.entries(schema.components).map(async ([name, component]) => ({
+const collections: CollectionRow[] = await Promise.all(Object.entries(schema.collections).map(async ([name, collection]) => ({
   id: name,
-  name: component.label ?? name,
-  description: component.description ?? '',
-  entries: (await store.list(name)).length,
+  name: collection.label ?? name,
+  description: collection.description ?? '',
+  entries: (await store.index(name)).length,
 })))
 
-const columns: Column<ComponentRow>[] = [
-  { accessorKey: 'name', header: 'Component' },
+const columns: Column<CollectionRow>[] = [
+  { accessorKey: 'name', header: 'Collection' },
   {
     accessorKey: 'description',
     header: 'Description',
@@ -44,15 +44,15 @@ const columns: Column<ComponentRow>[] = [
     </h1>
 
     <p class="lg:text-lg mb-12">
-      The content section allows you to view and manage the content entries for each component defined in the schema.<br>
-      Click on a component to see its entries and details.
+      The content section allows you to view and manage the content entries for each collection defined in the schema.<br>
+      Click on a collection to see its entries and details.
     </p>
 
     <DataTable
-      :data="components"
+      :data="collections"
       :columns="columns"
       :row-id="row => row.id"
-      empty="No components in the schema"
+      empty="No collections in the schema"
       @select="row => navigate(`content/${row.id}`)"
     />
   </div>

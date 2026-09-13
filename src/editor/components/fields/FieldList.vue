@@ -52,24 +52,24 @@ const localeTabs = localeItems(props.locales)
     />
 
     <MediaInput
-      v-else-if="field.element.type === 'image' || field.element.type === 'video'"
+      v-else-if="field.config.type === 'image' || field.config.type === 'video'"
       v-model="values[field.key]![field.locale]"
-      :kind="field.element.type"
-      :multiple="field.element.multiple"
+      :kind="field.config.type"
+      :multiple="field.config.multiple"
     />
 
     <RelationInput
-      v-else-if="field.element.type === 'relation'"
+      v-else-if="field.config.type === 'relation'"
       v-model="values[field.key]![field.locale]"
-      :component="field.element.component"
-      :multiple="field.element.multiple"
+      :collection="field.config.collection"
+      :multiple="field.config.multiple"
       :entries="entries"
     />
 
     <DynamicInput
-      v-else-if="field.element.type === 'dynamic'"
+      v-else-if="field.config.type === 'dynamic'"
       v-model="values[field.key]![field.locale]"
-      :components="field.element.components"
+      :collections="field.config.collections"
       :entries="entries"
       :nested="nested"
       :locales="locales"

@@ -18,10 +18,14 @@ export function lazyStore(select: () => Promise<ContentStore>): ContentStore {
 
   return {
     schema: async () => (await store()).schema(),
-    list: async component => (await store()).list(component),
+    list: async collection => (await store()).list(collection),
+    index: async collection => (await store()).index(collection),
+    entry: async (collection, id) => (await store()).entry(collection, id),
     writeSchema: async schema => (await store()).writeSchema(schema),
-    writeContent: async (component, rows) => (await store()).writeContent(component, rows),
-    removeContent: async component => (await store()).removeContent(component),
+    writeEntry: async (collection, row) => (await store()).writeEntry(collection, row),
+    removeEntry: async (collection, id) => (await store()).removeEntry(collection, id),
+    writeContent: async (collection, rows) => (await store()).writeContent(collection, rows),
+    removeCollection: async collection => (await store()).removeCollection(collection),
   }
 }
 

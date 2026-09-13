@@ -24,7 +24,7 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
     })
 
     if (!response.ok)
-      throw new Error(`[webenv] GitHub ${response.status}: ${(await response.text()).slice(0, 300)}`)
+      throw new Error(`[forgepress] GitHub ${response.status}: ${(await response.text()).slice(0, 300)}`)
 
     return response.status === 204 ? undefined as TResult : await response.json() as TResult
   }
@@ -57,7 +57,7 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
 
     async commit(files, message): Promise<string> {
       if (files.length === 0)
-        throw new Error('[webenv] there is nothing to publish')
+        throw new Error('[forgepress] there is nothing to publish')
 
       const branch = await branchName()
       const ref = await call<{ object: { sha: string } }>(`/git/ref/heads/${encodeURIComponent(branch)}`)

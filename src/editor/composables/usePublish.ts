@@ -1,14 +1,14 @@
 import type { ComputedRef, Ref } from 'vue'
-import type { PublishTarget } from '../../content/forge'
-import type { DraftSummary, FileDiff } from '../../types/content/draft'
+import type { ChangeSummary, FileDiff } from '../../types/content/changes'
+import type { RepoTarget } from '../../types/content/target'
 import { computed, ref, shallowRef } from 'vue'
 import { commitMessage, toFiles } from '../../content/forge'
-import { bakedFormat, bakedMedia } from '../../content/source'
+import { baked } from '../../content/source'
 import { useContent } from './useContent'
 import { useSession } from './useSession'
 
 export interface Publisher {
-  summary: Ref<DraftSummary>
+  summary: Ref<ChangeSummary>
   diff: Ref<FileDiff[]>
   count: ComputedRef<number>
   publishing: Ref<boolean>
@@ -17,11 +17,11 @@ export interface Publisher {
   publish: (name: string) => Promise<string | undefined>
 }
 
-function empty(): DraftSummary {
-  return { schema: false, written: [], dropped: [], uploaded: [], deleted: [] }
+function empty(): ChangeSummary {
+  return { schema: false, written: [], discarded: [], dropped: [], uploaded: [], deleted: [] }
 }
 
-const summary = shallowRef<DraftSummary>(empty())
+const summary = shallowRef<ChangeSummary>(empty())
 const diff = shallowRef<FileDiff[]>([])
 const publishing = ref(false)
 const error = ref('')
@@ -29,7 +29,7 @@ const error = ref('')
 const count = computed(() => {
   const current = summary.value
 
-  return current.written.length + current.dropped.length
+  return current.written.length + current.discarded.length + current.dropped.length
     + current.uploaded.length + current.deleted.length
     + (current.schema ? 1 : 0)
 })
@@ -38,28 +38,29 @@ export function usePublish(): Publisher {
   const content = useContent()
   const session = useSession()
 
-  async function target(): Promise<PublishTarget> {
-    const [format, baked] = await Promise.all([bakedFormat(), bakedMedia()])
+  async function target(): Promise<RepoTarget> {
+    const settings = await baked()
 
     return {
-      mediaDir: baked.dir,
+      paths: settings.paths,
+      mediaDir: settings.media.dir,
       base: session.provider.value?.base,
-      format: format ?? undefined,
+      format: settings.format,
     }
   }
 
   async function refresh(): Promise<void> {
-    const draft = await content.draft()
+    const changes = await content.changes()
 
-    if (!draft) {
+    if (!changes) {
       summary.value = empty()
       diff.value = []
 
       return
     }
 
-    summary.value = await draft.summary()
-    diff.value = await draft.diff(await target())
+    summary.value = await changes.summary()
+    diff.value = await changes.diff(await target())
   }
 
   return {
@@ -71,9 +72,9 @@ export function usePublish(): Publisher {
     refresh,
 
     publish: async (name) => {
-      const draft = await content.draft()
+      const changes = await content.changes()
 
-      if (!draft) {
+      if (!changes) {
         error.value = 'Publishing is only available in a deployed editor.'
 
         return undefined
@@ -91,7 +92,7 @@ export function usePublish(): Publisher {
       error.value = ''
 
       try {
-        const files = toFiles(await draft.snapshot(), await target())
+        const files = toFiles(await changes.snapshot(), await target())
 
         if (files.length === 0) {
           error.value = 'There is nothing to publish.'
@@ -101,7 +102,7 @@ export function usePublish(): Publisher {
 
         const commit = await forge.commit(files, commitMessage(session.provider.value?.commitMessage, name))
 
-        await draft.published(commit)
+        await changes.published(commit)
         await refresh()
 
         return commit

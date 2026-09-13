@@ -11,9 +11,9 @@ export interface EditorColorMode {
   dispose: () => void
 }
 
-export const colorModeKey: InjectionKey<EditorColorMode> = Symbol('webenv:editor:color-mode')
+export const colorModeKey: InjectionKey<EditorColorMode> = Symbol('forgepress:editor:color-mode')
 
-const STORAGE_KEY = 'webenv:color-mode'
+const STORAGE_KEY = 'forgepress:color-mode'
 const MODES: ColorMode[] = ['light', 'dark']
 
 function read(): ColorMode {

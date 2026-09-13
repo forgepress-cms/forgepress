@@ -1,15 +1,12 @@
-import type { WebenvContentRow } from '../types/core/content'
+import type { EntryOf } from '../types/core/content'
 import type { QueryBackend, QueryBuilder, RegisteredSchema } from '../types/query'
-import { reader } from '#content-source'
+import { source } from '#content-source'
 import { createBuilder } from './builder'
 
-const backend: QueryBackend = {
-  reader,
-  schema: reader.schema,
-}
+const backend: QueryBackend = { source }
 
-export function query<TName extends keyof RegisteredSchema['components'] & string>(
-  component: TName,
-): QueryBuilder<RegisteredSchema, TName, WebenvContentRow<RegisteredSchema, TName>> {
-  return createBuilder(component, backend) as unknown as QueryBuilder<RegisteredSchema, TName, WebenvContentRow<RegisteredSchema, TName>>
+export function query<TName extends keyof RegisteredSchema['collections'] & string>(
+  collection: TName,
+): QueryBuilder<RegisteredSchema, TName, EntryOf<RegisteredSchema, TName>> {
+  return createBuilder(collection, backend) as unknown as QueryBuilder<RegisteredSchema, TName, EntryOf<RegisteredSchema, TName>>
 }

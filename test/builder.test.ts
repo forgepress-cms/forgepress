@@ -1,56 +1,56 @@
 import type { ContentRow } from '../src/types/content/reader'
-import type { WebenvSchema } from '../src/types/core/schema'
+import type { ForgePressSchema } from '../src/types/core/schema'
 import type { QueryBackend } from '../src/types/query'
 import { describe, expect, it } from 'vitest'
 import { createBuilder } from '../src/query/builder'
 
 const schema = {
   locales: ['en', 'de'],
-  components: {
+  collections: {
     author: {
-      elements: {
+      fields: {
         name: { type: 'text' },
         bio: { type: 'richtext', translate: true },
-        posts: { type: 'relation', component: 'post', multiple: true },
+        posts: { type: 'relation', collection: 'post', multiple: true },
       },
     },
     post: {
-      elements: {
+      fields: {
         title: { type: 'text', translate: true },
         views: { type: 'number' },
-        author: { type: 'relation', component: 'author' },
+        author: { type: 'relation', collection: 'author' },
       },
     },
   },
-} as const satisfies WebenvSchema
+} as const satisfies ForgePressSchema
 
 function fixtures(): Record<string, ContentRow[]> {
   return {
     author: [
       { id: 'a1', status: 'published', createdAt: '2024-01-01', updatedAt: '2024-01-01', name: 'Alice', bio: { en: 'Alice bio', de: 'Alice Bio' }, posts: ['p1', 'p2'] },
-      { id: 'a2', status: 'draft', createdAt: '2024-02-01', updatedAt: '2024-02-01', name: 'Bob', bio: { en: 'Bob bio', de: 'Bob Bio' }, posts: ['p3'] },
+      { id: 'a2', status: 'unpublished', createdAt: '2024-02-01', updatedAt: '2024-02-01', name: 'Bob', bio: { en: 'Bob bio', de: 'Bob Bio' }, posts: ['p3'] },
     ],
     post: [
       { id: 'p1', status: 'published', createdAt: '2024-01-05', updatedAt: '2024-01-05', title: { en: 'First', de: 'Erste' }, views: 10, author: 'a1' },
       { id: 'p2', status: 'published', createdAt: '2024-01-10', updatedAt: '2024-01-10', title: { en: 'Second', de: 'Zweite' }, views: 30, author: 'a1' },
-      { id: 'p3', status: 'archived', createdAt: '2024-01-15', updatedAt: '2024-01-15', title: { en: 'Third', de: 'Dritte' }, views: 20, author: 'a2' },
+      { id: 'p3', status: 'unpublished', createdAt: '2024-01-15', updatedAt: '2024-01-15', title: { en: 'Third', de: 'Dritte' }, views: 20, author: 'a2' },
     ],
   }
 }
 
 function backend(content: Record<string, ContentRow[]>): QueryBackend {
   return {
-    reader: {
+    source: {
       schema: async () => schema,
-      list: async component => content[component] ?? [],
-      get: async (component, id) => (content[component] ?? []).find(row => row.id === id),
+      list: async collection => content[collection] ?? [],
+      index: async collection => content[collection] ?? [],
+      entry: async (collection, id) => (content[collection] ?? []).find(row => row.id === id),
     },
-    schema: async () => schema,
   }
 }
 
-function query(component: string, content = fixtures()) {
-  return createBuilder(component, backend(content))
+function query(collection: string, content = fixtures()) {
+  return createBuilder(collection, backend(content))
 }
 
 const ids = (rows: ContentRow[]) => rows.map(row => row.id)

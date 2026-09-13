@@ -9,7 +9,7 @@ import { createRouter, routerKey } from './plugins/router'
 import { routes } from './routes'
 import styles from './styles.css?inline'
 
-const PROPERTIES_ID = 'webenv-properties'
+const PROPERTIES_ID = 'forgepress-properties'
 const PROPERTY_RULE = /@property\s+--[\w-]+\s*\{[^}]*\}/g
 
 function registerProperties(): (() => void) | undefined {
@@ -33,11 +33,11 @@ function resolve(target?: Element | string | null): Element {
   const el = typeof target === 'string'
     ? document.querySelector(target)
     : typeof target === 'undefined' || target === null
-      ? document.getElementById('webenv')
+      ? document.getElementById('forgepress')
       : target
 
   if (!el)
-    throw new Error(`[webenv] editor mount target not found: ${String(target)}`)
+    throw new Error(`[forgepress] editor mount target not found: ${String(target)}`)
 
   return el
 }
@@ -50,7 +50,7 @@ export const mountEditor: MountEditor = (target) => {
   sheet.textContent = styles
 
   const container = document.createElement('div')
-  container.className = 'webenv-root'
+  container.className = 'forgepress-root'
   root.replaceChildren(sheet, container)
 
   const unregister = registerProperties()

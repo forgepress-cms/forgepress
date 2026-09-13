@@ -1,4 +1,4 @@
-import type { DiffLine } from '../types/content/draft'
+import type { DiffLine } from '../types/content/changes'
 
 const LIMIT = 4000
 

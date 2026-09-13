@@ -1,5 +1,5 @@
 import type { ContentRow } from '../../types/content/reader'
-import type { Field } from '../utils/schema'
+import type { FormField } from '../utils/schema'
 import { entryLabel, statusColor, titleField } from '../utils/entry'
 import { toFields } from '../utils/schema'
 import { useContent } from './useContent'
@@ -11,10 +11,10 @@ export interface EntryOption {
 }
 
 export interface Entries {
-  options: (component: string) => EntryOption[]
-  label: (component: string, id: unknown) => string
-  componentLabel: (component: string) => string
-  fields: (component: string) => Field[]
+  options: (collection: string) => EntryOption[]
+  label: (collection: string, id: unknown) => string
+  collectionLabel: (collection: string) => string
+  fields: (collection: string) => FormField[]
 }
 
 export async function useEntries(): Promise<Entries> {
@@ -22,8 +22,8 @@ export async function useEntries(): Promise<Entries> {
   const schema = await store.schema()
   const locales = schema.locales ?? []
 
-  const loaded = await Promise.all(Object.entries(schema.components).map(async ([name, component]) => {
-    const title = titleField(toFields(component, locales))
+  const loaded = await Promise.all(Object.entries(schema.collections).map(async ([name, collection]) => {
+    const title = titleField(toFields(collection, locales))
     const rows: ContentRow[] = await store.list(name)
 
     return [name, rows.map(row => ({
@@ -36,11 +36,11 @@ export async function useEntries(): Promise<Entries> {
   const index = new Map(loaded)
 
   return {
-    options: component => index.get(component) ?? [],
-    label: (component, id) => index.get(component)?.find(option => option.value === id)?.label ?? String(id ?? ''),
-    componentLabel: component => schema.components[component]?.label ?? component,
-    fields: (component) => {
-      const found = schema.components[component]
+    options: collection => index.get(collection) ?? [],
+    label: (collection, id) => index.get(collection)?.find(option => option.value === id)?.label ?? String(id ?? ''),
+    collectionLabel: collection => schema.collections[collection]?.label ?? collection,
+    fields: (collection) => {
+      const found = schema.collections[collection]
 
       return found ? toFields(found, locales) : []
     },

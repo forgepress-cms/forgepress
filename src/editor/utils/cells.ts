@@ -1,19 +1,15 @@
 import type { VNode } from 'vue'
 import type { MediaKind } from '../../content/media'
+import type { DynamicBlock } from '../../fields/dynamic'
 import type { Entries } from '../composables/useEntries'
 import type { MediaValue } from './media'
-import type { Field } from './schema'
+import type { FormField } from './schema'
 import { h } from 'vue'
 import { asList } from '../../content/value'
 import MediaPreview from '../components/media/MediaPreview.vue'
 import { markdownInline, markdownText } from './markdown'
 import { toList } from './media'
 import { line } from './preview'
-
-interface Block {
-  type: string
-  component: string
-}
 
 const THUMBNAILS = 3
 
@@ -47,24 +43,24 @@ export function thumbnails(items: MediaValue[], kind: MediaKind): VNode {
   ])
 }
 
-function blocks(value: unknown): Block[] {
-  return asList(value).filter((item): item is Block => typeof item === 'object' && item !== null)
+function blocks(value: unknown): DynamicBlock[] {
+  return asList(value).filter((item): item is DynamicBlock => typeof item === 'object' && item !== null)
 }
 
-export function fieldCell(field: Field, value: unknown, entries: Entries): VNode {
-  const element = field.element
+export function fieldCell(field: FormField, value: unknown, entries: Entries): VNode {
+  const config = field.config
 
-  if (element.type === 'image' || element.type === 'video')
-    return thumbnails(toList(value), element.type)
+  if (config.type === 'image' || config.type === 'video')
+    return thumbnails(toList(value), config.type)
 
-  if (element.type === 'richtext')
+  if (config.type === 'richtext')
     return clampMarkdown(String(value ?? ''))
 
-  if (element.type === 'relation')
-    return clamp(line(asList(value).map(id => entries.label(element.component, id))))
+  if (config.type === 'relation')
+    return clamp(line(asList(value).map(id => entries.label(config.collection, id))))
 
-  if (element.type === 'dynamic')
-    return clamp(line(blocks(value).map(block => entries.label(block.type, block.component))))
+  if (config.type === 'dynamic')
+    return clamp(line(blocks(value).map(block => entries.label(block.collection, block.id))))
 
   return clamp(line(value))
 }

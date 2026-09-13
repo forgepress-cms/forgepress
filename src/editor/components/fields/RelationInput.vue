@@ -5,7 +5,7 @@ import { useRouter } from '../../composables/useRouter'
 import ListSelect from './ListSelect.vue'
 
 const props = defineProps<{
-  component: string
+  collection: string
   multiple?: boolean | undefined
   entries: Entries
 }>()
@@ -25,7 +25,7 @@ const selected = computed({
   },
 })
 
-const items = computed(() => props.entries.options(props.component))
+const items = computed(() => props.entries.options(props.collection))
 </script>
 
 <template>
@@ -34,6 +34,6 @@ const items = computed(() => props.entries.options(props.component))
     :items="items"
     :multiple="multiple"
     :placeholder="`Add ${multiple ? 'an entry' : 'the entry'}`"
-    :open="id => navigate(`content/${component}/${id}`)"
+    :open="id => navigate(`content/${collection}/${id}`)"
   />
 </template>

@@ -15,7 +15,7 @@ import { clamp } from '../../utils/cells'
 import { KEY_PATTERN, moveKey, toKey } from '../../utils/schema'
 import { actionsColumn, dragColumn } from '../../utils/table'
 
-interface ComponentRow {
+interface CollectionRow {
   key: string
   name: string
   description: string
@@ -28,18 +28,18 @@ const { store } = useContent()
 
 const { schema, saving, error, write } = await useSchema()
 
-const components = computed<ComponentRow[]>(() => Object.entries(schema.value.components).map(([key, component]) => ({
+const collections = computed<CollectionRow[]>(() => Object.entries(schema.value.collections).map(([key, collection]) => ({
   key,
-  name: component.label ?? key,
-  description: component.description ?? '',
-  fields: Object.keys(component.elements).length,
+  name: collection.label ?? key,
+  description: collection.description ?? '',
+  fields: Object.keys(collection.fields).length,
 })))
 
 const order = useDragOrder(move)
 
-const columns: Column<ComponentRow>[] = [
-  dragColumn<ComponentRow>(),
-  { accessorKey: 'name', header: 'Component' },
+const columns: Column<CollectionRow>[] = [
+  dragColumn<CollectionRow>(),
+  { accessorKey: 'name', header: 'Collection' },
   {
     accessorKey: 'description',
     header: 'Description',
@@ -54,7 +54,7 @@ const removing = ref('')
 
 const form = reactive({ label: '', key: '', touched: false })
 
-const taken = computed(() => Object.keys(schema.value.components))
+const taken = computed(() => Object.keys(schema.value.collections))
 
 const invalid = computed(() => {
   if (!form.key)
@@ -87,7 +87,7 @@ async function create(): Promise<void> {
   const key = form.key
 
   const written = await write((draft) => {
-    draft.components[key] = { label: form.label || key, elements: {} }
+    draft.collections[key] = { label: form.label || key, fields: {} }
   })
 
   if (written) {
@@ -96,19 +96,19 @@ async function create(): Promise<void> {
   }
 }
 
-const references = computed(() => Object.entries(schema.value.components)
-  .filter(([key, component]) => key !== removing.value && Object.values(component.elements).some(element =>
-    ('component' in element && element.component === removing.value)
-    || ('components' in element && element.components?.includes(removing.value)),
+const references = computed(() => Object.entries(schema.value.collections)
+  .filter(([key, collection]) => key !== removing.value && Object.values(collection.fields).some(config =>
+    ('collection' in config && config.collection === removing.value)
+    || ('collections' in config && config.collections?.includes(removing.value)),
   ))
-  .map(([, component]) => component.label ?? ''))
+  .map(([, collection]) => collection.label ?? ''))
 
 async function remove(): Promise<void> {
   const key = removing.value
 
   const written = await write(async (draft) => {
-    delete draft.components[key]
-    await store.removeContent(key)
+    delete draft.collections[key]
+    await store.removeCollection(key)
   })
 
   if (written)
@@ -117,27 +117,27 @@ async function remove(): Promise<void> {
 
 function move(key: string, offset: number): Promise<boolean> {
   return write((draft) => {
-    draft.components = moveKey(draft.components, key, offset)
+    draft.collections = moveKey(draft.collections, key, offset)
   })
 }
 </script>
 
 <template>
   <div class="grid gap-6">
-    <PageHeader title="Schema" description="The components that make up your content, and the fields they hold.">
+    <PageHeader title="Schema" description="The collections that make up your content, and the fields they hold.">
       <template #actions>
-        <UButton label="New component" icon="i-lucide-plus" :loading="saving" @click="open()" />
+        <UButton label="New collection" icon="i-lucide-plus" :loading="saving" @click="open()" />
       </template>
     </PageHeader>
 
     <ErrorAlert title="The schema could not be saved" :error="error" />
 
     <DataTable
-      :data="components"
+      :data="collections"
       :columns="columns"
       :row-id="row => row.key"
       :row-class="row => order.rowClass(row.index, row.original.key)"
-      empty="No components in the schema"
+      empty="No collections in the schema"
       @select="row => navigate(`schema/${row.key}`)"
     >
       <template #drag-cell="{ row }">
@@ -157,14 +157,14 @@ function move(key: string, offset: number): Promise<boolean> {
       </template>
     </DataTable>
 
-    <UModal v-model:open="creating" title="New component" description="Components describe one kind of content entry.">
+    <UModal v-model:open="creating" title="New collection" description="Collections describe one kind of content entry.">
       <template #body>
         <div class="grid gap-4">
           <UFormField label="Name">
             <UInput :model-value="form.label" class="w-full" @update:model-value="rename(String($event))" />
           </UFormField>
 
-          <UFormField label="Key" description="How the component is referenced in queries and content files.">
+          <UFormField label="Key" description="How the collection is referenced in queries and content files.">
             <UInput v-model="form.key" class="w-full font-mono" @update:model-value="form.touched = true" />
           </UFormField>
 
@@ -183,7 +183,7 @@ function move(key: string, offset: number): Promise<boolean> {
 
     <ConfirmDialog
       :open="!!removing"
-      title="Delete component"
+      title="Delete collection"
       :description="references.length
         ? `${removing} and its content file are removed. ${references.join(', ')} still reference it.`
         : `${removing} and its content file are removed. This cannot be undone.`"

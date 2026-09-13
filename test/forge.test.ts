@@ -1,12 +1,18 @@
-import type { Draft } from '../src/types/content/draft'
-import type { WebenvSchema } from '../src/types/core/schema'
+import type { Changes } from '../src/types/content/changes'
+import type { ContentRow } from '../src/types/content/reader'
+import type { ForgePressSchema } from '../src/types/core/schema'
 import { describe, expect, it } from 'vitest'
 import { commitMessage, toBase64, toFiles } from '../src/content/forge'
+import { defaultPaths } from '../src/content/paths'
 
-const schema = { components: { hero: { elements: {} } }, locales: ['en'] } as WebenvSchema
+const schema = { collections: { hero: { fields: {} } }, locales: ['en'] } as ForgePressSchema
 
-function draft(partial: Partial<Draft> = {}): Draft {
-  return { components: {}, uploads: {}, removed: [], ...partial }
+function changes(partial: Partial<Changes> = {}): Changes {
+  return { entries: {}, dropped: [], uploads: {}, removed: [], ...partial }
+}
+
+function row(id: string): ContentRow {
+  return { id, status: 'published', createdAt: '', updatedAt: '' }
 }
 
 function upload(name: string, text: string) {
@@ -30,46 +36,57 @@ describe('commit message', () => {
 
 describe('file changes', () => {
   it('writes the schema to its source file', () => {
-    const [file] = toFiles(draft({ schema }), { mediaDir: 'public/uploads' })
+    const [file] = toFiles(changes({ schema }), { paths: defaultPaths, mediaDir: 'public/uploads' })
 
-    expect(file).toMatchObject({ path: '.webenv/schema.ts', encoding: 'utf-8' })
-    expect(file && 'data' in file && file.data).toContain('defineWebenvSchema')
+    expect(file).toMatchObject({ path: '.forgepress/schema.ts', encoding: 'utf-8' })
+    expect(file && 'data' in file && file.data).toContain('defineForgePressSchema')
   })
 
-  it('maps a component onto its kebab-case content file', () => {
-    const [file] = toFiles(draft({ components: { blogPost: [] } }), { mediaDir: 'public/uploads' })
+  it('maps an entry onto a file inside the kebab-case collection directory', () => {
+    const [file] = toFiles(changes({ entries: { blogPost: { p1: row('p1') } } }), { paths: defaultPaths, mediaDir: 'public/uploads' })
 
-    expect(file?.path).toBe('.webenv/content/blog-post.ts')
+    expect(file?.path).toBe('.forgepress/content/blog-post/p1.ts')
   })
 
-  it('marks a removed component for deletion', () => {
-    const [file] = toFiles(draft({ components: { blogPost: null } }), { mediaDir: 'public/uploads' })
+  it('marks a removed entry for deletion', () => {
+    const [file] = toFiles(changes({ entries: { blogPost: { p1: null } } }), { paths: defaultPaths, mediaDir: 'public/uploads' })
 
-    expect(file).toEqual({ path: '.webenv/content/blog-post.ts', removed: true })
+    expect(file).toEqual({ path: '.forgepress/content/blog-post/p1.ts', removed: true })
+  })
+
+  it('writes only the entries that changed', () => {
+    const files = toFiles(changes({ entries: { blogPost: { p2: row('p2') } } }), { paths: defaultPaths, mediaDir: 'public/uploads' })
+
+    expect(files.map(file => file.path)).toEqual(['.forgepress/content/blog-post/p2.ts'])
   })
 
   it('writes uploads into the media directory as base64', () => {
-    const [file] = toFiles(draft({ uploads: { 'a.png': upload('a.png', 'hi') } }), { mediaDir: 'public/uploads' })
+    const [file] = toFiles(changes({ uploads: { 'a.png': upload('a.png', 'hi') } }), { paths: defaultPaths, mediaDir: 'public/uploads' })
 
     expect(file).toEqual({ path: 'public/uploads/a.png', data: btoa('hi'), encoding: 'base64' })
   })
 
   it('marks removed assets for deletion', () => {
-    const [file] = toFiles(draft({ removed: ['old.png'] }), { mediaDir: 'public/uploads' })
+    const [file] = toFiles(changes({ removed: ['old.png'] }), { paths: defaultPaths, mediaDir: 'public/uploads' })
 
     expect(file).toEqual({ path: 'public/uploads/old.png', removed: true })
   })
 
   it('gathers content, schema and media into one commit', () => {
     const files = toFiles(
-      draft({ schema, components: { hero: [], gone: null }, uploads: { 'a.png': upload('a.png', 'hi') }, removed: ['old.png'] }),
-      { mediaDir: 'public/uploads' },
+      changes({
+        schema,
+        entries: { hero: { h1: row('h1') }, gone: { g1: null } },
+        uploads: { 'a.png': upload('a.png', 'hi') },
+        removed: ['old.png'],
+      }),
+      { paths: defaultPaths, mediaDir: 'public/uploads' },
     )
 
     expect(files.map(file => file.path)).toEqual([
-      '.webenv/schema.ts',
-      '.webenv/content/hero.ts',
-      '.webenv/content/gone.ts',
+      '.forgepress/schema.ts',
+      '.forgepress/content/hero/h1.ts',
+      '.forgepress/content/gone/g1.ts',
       'public/uploads/a.png',
       'public/uploads/old.png',
     ])
@@ -77,26 +94,26 @@ describe('file changes', () => {
 
   it('prefixes every path when the project sits inside a larger repo', () => {
     const files = toFiles(
-      draft({ schema, components: { hero: [] }, uploads: { 'a.png': upload('a.png', 'hi') }, removed: ['old.png'] }),
-      { mediaDir: 'public/uploads', base: 'playgrounds/nuxt' },
+      changes({ schema, entries: { hero: { h1: row('h1') } }, uploads: { 'a.png': upload('a.png', 'hi') }, removed: ['old.png'] }),
+      { paths: defaultPaths, mediaDir: 'public/uploads', base: 'playgrounds/nuxt' },
     )
 
     expect(files.map(file => file.path)).toEqual([
-      'playgrounds/nuxt/.webenv/schema.ts',
-      'playgrounds/nuxt/.webenv/content/hero.ts',
+      'playgrounds/nuxt/.forgepress/schema.ts',
+      'playgrounds/nuxt/.forgepress/content/hero/h1.ts',
       'playgrounds/nuxt/public/uploads/a.png',
       'playgrounds/nuxt/public/uploads/old.png',
     ])
   })
 
   it('tolerates a base with stray slashes', () => {
-    const [file] = toFiles(draft({ schema }), { mediaDir: 'public/uploads', base: '/apps/site/' })
+    const [file] = toFiles(changes({ schema }), { paths: defaultPaths, mediaDir: 'public/uploads', base: '/apps/site/' })
 
-    expect(file?.path).toBe('apps/site/.webenv/schema.ts')
+    expect(file?.path).toBe('apps/site/.forgepress/schema.ts')
   })
 
   it('produces nothing when there is nothing pending', () => {
-    expect(toFiles(draft(), { mediaDir: 'public/uploads' })).toEqual([])
+    expect(toFiles(changes(), { paths: defaultPaths, mediaDir: 'public/uploads' })).toEqual([])
   })
 })
 

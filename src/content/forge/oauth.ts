@@ -58,7 +58,7 @@ export function toTokens(payload: Record<string, unknown>, now = Date.now()): OA
   const access = payload.access_token
 
   if (typeof access !== 'string' || !access)
-    throw new Error('[webenv] the forge returned no access token')
+    throw new Error('[forgepress] the forge returned no access token')
 
   const refresh = payload.refresh_token
   const expires = payload.expires_in
@@ -82,7 +82,7 @@ async function form(endpoints: OAuthEndpoints, body: Record<string, string>): Pr
   })
 
   if (!response.ok)
-    throw new Error(`[webenv] the forge rejected the token request (${response.status}): ${(await response.text()).slice(0, 200)}`)
+    throw new Error(`[forgepress] the forge rejected the token request (${response.status}): ${(await response.text()).slice(0, 200)}`)
 
   return toTokens(await response.json() as Record<string, unknown>)
 }

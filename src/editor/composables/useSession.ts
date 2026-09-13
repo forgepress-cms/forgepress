@@ -7,10 +7,10 @@ import { createForgejoForge } from '../../content/forge/forgejo'
 import { createGitHubForge } from '../../content/forge/github'
 import { createGitLabForge } from '../../content/forge/gitlab'
 import { authorizeUrl, createChallenge, createState, createVerifier, exchange, expired, renew } from '../../content/forge/oauth'
-import { bakedProvider } from '../../content/source'
+import { baked } from '../../content/source'
 import { persist } from '../../content/store'
 
-const PKCE = 'webenv:pkce'
+const PKCE = 'forgepress:pkce'
 
 export interface Session {
   identity: Ref<ForgeIdentity | undefined>
@@ -64,7 +64,7 @@ function build(config: ProviderConfig): Forge {
 
 async function current(): Promise<string> {
   if (!tokens)
-    throw new Error('[webenv] not signed in')
+    throw new Error('[forgepress] not signed in')
 
   const config = provider.value
   const oauth = config ? describe(config).oauth : undefined
@@ -83,7 +83,7 @@ async function adopt(next: OAuthTokens): Promise<boolean> {
   const config = provider.value
 
   if (!config) {
-    error.value = 'No provider is configured in webenv.config.mjs.'
+    error.value = 'No provider is configured in forgepress.config.mjs.'
 
     return false
   }
@@ -194,7 +194,7 @@ async function complete(): Promise<boolean> {
 }
 
 async function load(): Promise<void> {
-  provider.value = await bakedProvider() ?? undefined
+  provider.value = (await baked()).provider
 
   if (await complete())
     return

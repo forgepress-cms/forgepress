@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { query } from 'webenv'
+import { query } from 'forgepress'
 
 const { data: posts } = await useAsyncData('blog-posts', () =>
   query('blogPost')

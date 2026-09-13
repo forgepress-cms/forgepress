@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FileDiff } from '../../types/content/draft'
+import type { FileDiff } from '../../types/content/changes'
 import { computed, ref } from 'vue'
 import { counts } from '../../content/diff'
 import { mediaKind } from '../../content/media'

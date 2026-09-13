@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref } from 'vue'
-import type { Field } from '../utils/schema'
+import type { FormField } from '../utils/schema'
 import { computed, ref, watch } from 'vue'
 
 const PREVIEW_COLUMNS = 3
@@ -17,8 +17,8 @@ export interface ColumnVisibility {
   items: ComputedRef<ColumnItem[]>
 }
 
-export function useColumnVisibility(key: string, fields: Field[], hidden: string[] = []): ColumnVisibility {
-  const storageKey = `webenv:columns:${key}`
+export function useColumnVisibility(key: string, fields: FormField[], hidden: string[] = []): ColumnVisibility {
+  const storageKey = `forgepress:columns:${key}`
 
   const visibility = ref<Record<string, boolean>>(restore())
 

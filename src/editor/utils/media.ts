@@ -1,5 +1,5 @@
 import type { MediaKind } from '../../content/media'
-import type { ImageContent } from '../../elements/image'
+import type { ImageContent } from '../../fields/image'
 import type { MediaAsset } from '../../types/content/media'
 
 export type MediaValue = ImageContent

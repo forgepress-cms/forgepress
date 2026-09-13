@@ -1,9 +1,9 @@
-import type { ContentConfig } from '../../types/config/content'
 import type { ProviderConfig, ProviderType } from '../../types/config/provider'
-import type { Draft } from '../../types/content/draft'
+import type { Changes } from '../../types/content/changes'
 import type { FileChange, ForgeDescriptor } from '../../types/content/forge'
-import { CONTENT_DIR, SCHEMA_FILE, toFileName } from '../paths'
-import { serializeContent, serializeSchema } from '../serialize'
+import type { RepoTarget } from '../../types/content/target'
+import { prefixer } from '../paths'
+import { serializeEntry, serializeSchema } from '../serialize'
 
 const CHUNK = 0x8000
 
@@ -66,39 +66,29 @@ export function commitMessage(template: string | undefined, name: string): strin
     : `${template} ${trimmed}`.trim()
 }
 
-export function prefixer(base?: string): (path: string) => string {
-  const prefix = base?.replace(/^\/+|\/+$/g, '') ?? ''
-
-  return path => prefix ? `${prefix}/${path}` : path
-}
-
-export interface PublishTarget {
-  mediaDir: string
-  base?: string | undefined
-  format?: ContentConfig | undefined
-}
-
-export function toFiles(draft: Draft, target: PublishTarget): FileChange[] {
+export function toFiles(changes: Changes, target: RepoTarget): FileChange[] {
   const files: FileChange[] = []
 
   const at = prefixer(target.base)
 
-  if (draft.schema !== undefined)
-    files.push({ path: at(SCHEMA_FILE), data: serializeSchema(draft.schema, target.format), encoding: 'utf-8' })
+  if (changes.schema !== undefined)
+    files.push({ path: at(target.paths.schema), data: serializeSchema(changes.schema, target.format), encoding: 'utf-8' })
 
-  for (const [component, rows] of Object.entries(draft.components)) {
-    const path = at(`${CONTENT_DIR}/${toFileName(component)}`)
+  for (const [collection, overlay] of Object.entries(changes.entries)) {
+    for (const [id, row] of Object.entries(overlay)) {
+      const path = at(target.paths.entry(collection, id))
 
-    if (rows === null)
-      files.push({ path, removed: true })
-    else
-      files.push({ path, data: serializeContent(component, rows, target.format), encoding: 'utf-8' })
+      if (row === null)
+        files.push({ path, removed: true })
+      else
+        files.push({ path, data: serializeEntry(collection, row, target.format), encoding: 'utf-8' })
+    }
   }
 
-  for (const upload of Object.values(draft.uploads))
+  for (const upload of Object.values(changes.uploads))
     files.push({ path: at(`${target.mediaDir}/${upload.name}`), data: toBase64(upload.data), encoding: 'base64' })
 
-  for (const name of draft.removed)
+  for (const name of changes.removed)
     files.push({ path: at(`${target.mediaDir}/${name}`), removed: true })
 
   return files

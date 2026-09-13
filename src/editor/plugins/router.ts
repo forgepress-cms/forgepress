@@ -20,7 +20,7 @@ export interface EditorRouter {
   dispose: () => void
 }
 
-export const routerKey: InjectionKey<EditorRouter> = Symbol('webenv:editor:router')
+export const routerKey: InjectionKey<EditorRouter> = Symbol('forgepress:editor:router')
 
 function segments(path: string): string[] {
   return path.split('/').filter(Boolean).map(decodeURIComponent)
@@ -61,7 +61,7 @@ export function matchRoute(routes: EditorRoutes, path: string): EditorRoute {
 
 export function createRouter(routes: EditorRoutes): EditorRouter {
   if (!routes[''])
-    throw new Error('[webenv] the editor router needs a route for \'\'')
+    throw new Error('[forgepress] the editor router needs a route for \'\'')
 
   const read = (): string => window.location.hash.replace(/^#\/?/, '')
   const route = shallowRef<EditorRoute>(matchRoute(routes, read()))

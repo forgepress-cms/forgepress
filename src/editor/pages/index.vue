@@ -8,14 +8,14 @@ const { href } = useRouter()
   <UPageGrid class="sm:grid-cols-3">
     <UPageCard
       title="Content"
-      description="Browse and edit the entries of every component."
+      description="Browse and edit the entries of every collection."
       icon="i-lucide-file-text"
       :to="href('content')"
     />
 
     <UPageCard
       title="Schema"
-      description="Inspect the components and elements the project defines."
+      description="Inspect the collections and fields the project defines."
       icon="i-lucide-layout-list"
       :to="href('schema')"
     />

@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import type { VNode } from 'vue'
 import type { Entries } from '../src/editor/composables/useEntries'
-import type { Field } from '../src/editor/utils/schema'
-import type { ElementType } from '../src/elements'
+import type { FormField } from '../src/editor/utils/schema'
+import type { Field } from '../src/fields'
 import { describe, expect, it } from 'vitest'
 import { createApp } from 'vue'
 import { clampMarkdown, fieldCell, flag, thumbnails } from '../src/editor/utils/cells'
@@ -68,20 +68,20 @@ const NAMES: Record<string, string> = {
 
 const entries = {
   options: () => [],
-  label: (_component: string, id: unknown) => NAMES[String(id)] ?? String(id),
-  componentLabel: (component: string) => component,
+  label: (_collection: string, id: unknown) => NAMES[String(id)] ?? String(id),
+  collectionLabel: (collection: string) => collection,
   fields: () => [],
 } satisfies Entries
 
-function field(element: ElementType): Field {
+function field(config: Field): FormField {
   return {
     key: 'value',
     label: 'Value',
     description: '',
-    type: element.type,
-    typeLabel: element.type,
+    type: config.type,
+    typeLabel: config.type,
     icon: '',
-    element,
+    config,
     translated: false,
     optional: false,
   }
@@ -89,29 +89,29 @@ function field(element: ElementType): Field {
 
 describe('fieldCell', () => {
   it('names the entry a relation points at', () => {
-    const cell = fieldCell(field({ type: 'relation', component: 'author' }), 'author_a1', entries)
+    const cell = fieldCell(field({ type: 'relation', collection: 'author' }), 'author_a1', entries)
 
     expect(render(() => cell).textContent).toBe('Jane Doe')
   })
 
   it('names every entry of a multiple relation', () => {
-    const element: ElementType = { type: 'relation', component: 'author', multiple: true }
-    const cell = fieldCell(field(element), ['author_a1', 'author_b2'], entries)
+    const config: Field = { type: 'relation', collection: 'author', multiple: true }
+    const cell = fieldCell(field(config), ['author_a1', 'author_b2'], entries)
 
     expect(render(() => cell).textContent).toBe('Jane Doe, John Roe')
   })
 
   it('falls back to the id when the entry is gone', () => {
-    const cell = fieldCell(field({ type: 'relation', component: 'author' }), 'author_missing', entries)
+    const cell = fieldCell(field({ type: 'relation', collection: 'author' }), 'author_missing', entries)
 
     expect(render(() => cell).textContent).toBe('author_missing')
   })
 
   it('names the entries behind dynamic blocks', () => {
-    const element: ElementType = { type: 'dynamic', components: ['hero', 'textBlock'] }
-    const value = [{ type: 'hero', component: 'hero_c3' }, { type: 'textBlock', component: 'textBlock_d4' }]
+    const config: Field = { type: 'dynamic', collections: ['hero', 'textBlock'] }
+    const value = [{ collection: 'hero', id: 'hero_c3' }, { collection: 'textBlock', id: 'textBlock_d4' }]
 
-    expect(render(() => fieldCell(field(element), value, entries)).textContent).toBe('Welcome to our website, A short body')
+    expect(render(() => fieldCell(field(config), value, entries)).textContent).toBe('Welcome to our website, A short body')
   })
 
   it('renders richtext instead of printing markdown', () => {

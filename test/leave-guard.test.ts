@@ -20,12 +20,12 @@ function edit() {
   const form = reactive({ label: 'Name' })
   const back: string[] = []
 
-  const component = defineComponent({
+  const collection = defineComponent({
     setup: () => ({ draft: useLeaveGuard(useDraft(() => form, () => back.push('back'))) }),
     render: () => h('div'),
   })
 
-  app = createApp(component)
+  app = createApp(collection)
   app.provide(routerKey, router)
 
   const { draft } = app.mount(document.createElement('div')) as unknown as { draft: ReturnType<typeof useDraft> }

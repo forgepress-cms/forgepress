@@ -2,47 +2,57 @@
 import type { ContentConfig } from '../types/config/content'
 import type { ProviderConfig } from '../types/config/provider'
 import type { BakedMedia } from '../types/content/media'
-import type { ContentReader, ContentSource } from '../types/content/reader'
+import type { ContentRow, ContentSource } from '../types/content/reader'
+import type { ContentPaths } from './paths'
+import { toMeta } from './entry/meta'
+import { sortByCreation } from './entry/order'
+import { createPaths } from './paths'
 
-let bundle: Promise<typeof import('virtual:webenv/content')> | undefined
+export interface BakedSettings {
+  local: boolean
+  media: BakedMedia
+  provider: ProviderConfig | undefined
+  format: ContentConfig | undefined
+  paths: ContentPaths
+}
 
-function loadBundle(): Promise<typeof import('virtual:webenv/content')> {
-  bundle ??= import('virtual:webenv/content')
+let bundle: Promise<typeof import('virtual:forgepress/content')> | undefined
+let settings: Promise<BakedSettings> | undefined
+
+function loadBundle(): Promise<typeof import('virtual:forgepress/content')> {
+  bundle ??= import('virtual:forgepress/content')
+
   return bundle
 }
 
-export async function isLocal(): Promise<boolean> {
-  return (await loadBundle()).local === true
+export function baked(): Promise<BakedSettings> {
+  settings ??= loadBundle().then(module => ({
+    local: module.local === true,
+    media: module.media,
+    provider: module.provider ?? undefined,
+    format: module.format ?? undefined,
+    paths: createPaths(module.contentPath),
+  }))
+
+  return settings
 }
 
-export async function bakedMedia(): Promise<BakedMedia> {
-  return (await loadBundle()).media
-}
+async function list(collection: string): Promise<ContentRow[]> {
+  const loaders = (await loadBundle()).content[collection]
 
-export async function bakedProvider(): Promise<ProviderConfig | null> {
-  return (await loadBundle()).provider
-}
-
-export async function bakedFormat(): Promise<ContentConfig | null> {
-  return (await loadBundle()).format
+  return loaders ? sortByCreation((await loaders.list()).default) : []
 }
 
 export const source: ContentSource = {
   schema: async () => (await loadBundle()).schema,
-  list: async (component) => {
-    const { content } = await loadBundle()
-    return (await content[component]?.())?.default ?? []
+
+  list,
+
+  index: async collection => (await list(collection)).map(toMeta),
+
+  entry: async (collection, id) => {
+    const load = (await loadBundle()).content[collection]?.entry[id]
+
+    return load ? (await load()).default : undefined
   },
 }
-
-export function createReader(source: ContentSource): ContentReader {
-  return {
-    schema: source.schema,
-    list: source.list,
-    async get(component, id) {
-      return (await source.list(component)).find(row => row.id === id)
-    },
-  }
-}
-
-export const reader = createReader(source)

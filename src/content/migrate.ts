@@ -1,9 +1,9 @@
-import type { ElementType } from '../elements'
+import type { Field } from '../fields'
 import type { ContentRow } from '../types/content/reader'
 import { asList, filled, isRecord } from './value'
 
-const TEXTUAL = new Set<ElementType['type']>(['text', 'richtext'])
-const MEDIA = new Set<ElementType['type']>(['image', 'video'])
+const TEXTUAL = new Set<Field['type']>(['text', 'richtext'])
+const MEDIA = new Set<Field['type']>(['image', 'video'])
 
 export interface Migration {
   rows: ContentRow[]
@@ -12,22 +12,22 @@ export interface Migration {
   missing: number
 }
 
-function listed(element: ElementType): boolean {
-  return element.type === 'dynamic' || ('multiple' in element && element.multiple === true)
+function listed(config: Field): boolean {
+  return config.type === 'dynamic' || ('multiple' in config && config.multiple === true)
 }
 
-function translates(element: ElementType, locales: readonly string[]): boolean {
-  return element.translate === true && locales.length > 0
+function translates(config: Field, locales: readonly string[]): boolean {
+  return config.translate === true && locales.length > 0
 }
 
-function convert(value: unknown, before: ElementType, after: ElementType): unknown {
+function convert(value: unknown, before: Field, after: Field): unknown {
   if (after.type === 'relation')
-    return before.type === 'relation' && before.component === after.component ? value : undefined
+    return before.type === 'relation' && before.collection === after.collection ? value : undefined
 
   if (after.type === 'dynamic') {
-    const block = isRecord(value) ? value.type : undefined
+    const block = isRecord(value) ? value.collection : undefined
 
-    return before.type === 'dynamic' && typeof block === 'string' && after.components.includes(block) ? value : undefined
+    return before.type === 'dynamic' && typeof block === 'string' && after.collections.includes(block) ? value : undefined
   }
 
   if (MEDIA.has(after.type))
@@ -52,7 +52,7 @@ function convert(value: unknown, before: ElementType, after: ElementType): unkno
   return undefined
 }
 
-function migrateValue(value: unknown, before: ElementType, after: ElementType): unknown {
+function migrateValue(value: unknown, before: Field, after: Field): unknown {
   const items = listed(before) ? asList(value) : filled(value) ? [value] : []
   const converted = items.map(item => convert(item, before, after)).filter(filled)
 
@@ -62,7 +62,7 @@ function migrateValue(value: unknown, before: ElementType, after: ElementType): 
   return converted.length ? converted : undefined
 }
 
-function migrateField(value: unknown, before: ElementType, after: ElementType, locales: readonly string[]): unknown {
+function migrateField(value: unknown, before: Field, after: Field, locales: readonly string[]): unknown {
   const was = translates(before, locales)
   const is = translates(after, locales)
 
@@ -98,7 +98,7 @@ function size(value: unknown, translated: boolean): number {
   return filled(value) ? 1 : 0
 }
 
-function complete(value: unknown, after: ElementType, locales: readonly string[]): boolean {
+function complete(value: unknown, after: Field, locales: readonly string[]): boolean {
   if (!filled(value))
     return false
 
@@ -111,8 +111,8 @@ function complete(value: unknown, after: ElementType, locales: readonly string[]
 export function migrate(
   rows: ContentRow[],
   key: string,
-  before: ElementType,
-  after: ElementType,
+  before: Field,
+  after: Field,
   locales: readonly string[] = [],
 ): Migration {
   let changed = 0

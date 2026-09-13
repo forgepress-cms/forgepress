@@ -1,23 +1,24 @@
+import type { Field } from '../fields'
 import type { ContentRow } from '../types/content/reader'
-import type { WebenvSchema } from '../types/core/schema'
+import type { ForgePressSchema } from '../types/core/schema'
 import type { Operator, QueryBackend, QueryPlan } from '../types/query'
 import { evaluate, localize } from './evaluator'
 
-interface ElementMeta { type?: string, translate?: boolean, component?: string, multiple?: boolean }
+type Fields = Record<string, Field>
 
-function componentElements(schema: WebenvSchema, component: string): Record<string, ElementMeta> {
-  return (schema.components[component]?.elements ?? {}) as Record<string, ElementMeta>
+function collectionFields(schema: ForgePressSchema, collection: string): Fields {
+  return schema.collections[collection]?.fields ?? {}
 }
 
-function translatedFields(elements: Record<string, ElementMeta>): Set<string> {
-  return new Set(Object.keys(elements).filter(field => elements[field]?.translate))
+function translatedFields(fields: Fields): Set<string> {
+  return new Set(Object.keys(fields).filter(field => fields[field]?.translate))
 }
 
 class Builder {
   private readonly plan: QueryPlan = { where: [], sort: [], offset: 0 }
   private readonly relations: string[] = []
 
-  constructor(private readonly component: string, private readonly backend: QueryBackend) {}
+  constructor(private readonly collection: string, private readonly backend: QueryBackend) {}
 
   where(field: string, opOrValue: unknown, value?: unknown): this {
     const clause = arguments.length >= 3
@@ -59,15 +60,15 @@ class Builder {
 
   private async run(): Promise<ContentRow[]> {
     const [rows, schema] = await Promise.all([
-      this.backend.reader.list(this.component),
-      this.backend.schema(),
+      this.backend.source.list(this.collection),
+      this.backend.source.schema(),
     ])
 
-    const elements = componentElements(schema, this.component)
-    let result = evaluate(rows, this.plan, translatedFields(elements))
+    const fields = collectionFields(schema, this.collection)
+    let result = evaluate(rows, this.plan, translatedFields(fields))
 
     if (this.relations.length)
-      result = await this.resolve(result, schema, elements)
+      result = await this.resolve(result, schema, fields)
 
     const { pick } = this.plan
     if (pick)
@@ -76,24 +77,25 @@ class Builder {
     return result
   }
 
-  private async resolve(rows: ContentRow[], schema: WebenvSchema, elements: Record<string, ElementMeta>): Promise<ContentRow[]> {
+  private async resolve(rows: ContentRow[], schema: ForgePressSchema, fields: Fields): Promise<ContentRow[]> {
     const resolved = rows.map(row => ({ ...row }))
 
     for (const field of this.relations) {
-      const element = elements[field]
-      if (element?.type !== 'relation' || !element.component)
+      const config = fields[field]
+      if (config?.type !== 'relation' || !config.collection)
         continue
 
-      const related = translatedFields(componentElements(schema, element.component))
+      const target = config.collection
+      const related = translatedFields(collectionFields(schema, target))
       const locale = this.plan.locale
       const fetch = async (id: string): Promise<ContentRow | undefined> => {
-        const row = await this.backend.reader.get(element.component!, id)
+        const row = await this.backend.source.entry(target, id)
         return row && locale ? localize(row, related, locale) : row
       }
 
       await Promise.all(resolved.map(async (row) => {
         const reference = row[field]
-        row[field] = element.multiple
+        row[field] = config.multiple
           ? (await Promise.all((reference as string[] ?? []).map(fetch))).filter(Boolean)
           : await fetch(reference as string)
       }))
@@ -124,10 +126,10 @@ class Builder {
   }
 
   get [Symbol.toStringTag](): string {
-    return 'WebenvQuery'
+    return 'ForgePressQuery'
   }
 }
 
-export function createBuilder(component: string, backend: QueryBackend): Builder {
-  return new Builder(component, backend)
+export function createBuilder(collection: string, backend: QueryBackend): Builder {
+  return new Builder(collection, backend)
 }

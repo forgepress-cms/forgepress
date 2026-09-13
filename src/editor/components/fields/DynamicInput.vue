@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DynamicBlock } from '../../../fields/dynamic'
 import type { Entries } from '../../composables/useEntries'
 import type { NestedEntries } from '../../composables/useNestedEntries'
 import { ref } from 'vue'
@@ -7,19 +8,14 @@ import { useRouter } from '../../composables/useRouter'
 import DragHandle from '../DragHandle.vue'
 import FieldList from './FieldList.vue'
 
-interface Block {
-  type: string
-  component: string
-}
-
 const props = defineProps<{
-  components: readonly string[]
+  collections: readonly string[]
   entries: Entries
   nested: NestedEntries
   locales: readonly string[]
 }>()
 
-const model = defineModel<Block[]>({ required: true })
+const model = defineModel<DynamicBlock[]>({ required: true })
 
 const { navigate } = useRouter()
 
@@ -39,27 +35,27 @@ function move(from: number, offset: number): void {
   model.value = blocks
 }
 
-function add(type: string): void {
-  model.value = [...model.value, { type, component: props.nested.create(type) }]
+function add(collection: string): void {
+  model.value = [...model.value, { collection, id: props.nested.create(collection) }]
   picking.value = false
 }
 
 function link(index: number): void {
   const block = model.value[index]!
 
-  props.nested.discard(block.component)
+  props.nested.discard(block.id)
   reassign(index, '')
 }
 
 function remove(index: number): void {
   const block = model.value[index]!
 
-  props.nested.discard(block.component)
+  props.nested.discard(block.id)
   model.value = model.value.filter((_, position) => position !== index)
 }
 
-function reassign(index: number, component: string): void {
-  model.value = model.value.map((block, position) => position === index ? { ...block, component } : block)
+function reassign(index: number, id: string): void {
+  model.value = model.value.map((block, position) => position === index ? { ...block, id } : block)
 }
 </script>
 
@@ -76,17 +72,17 @@ function reassign(index: number, component: string): void {
           <DragHandle @pointerdown="order.start(String(index), index, $event)" />
 
           <span class="flex-1 truncate text-sm font-medium text-highlighted">
-            {{ entries.componentLabel(block.type) }}
+            {{ entries.collectionLabel(block.collection) }}
           </span>
 
           <UButton
-            :disabled="!block.component || !!nested.drafts[block.component]"
+            :disabled="!block.id || !!nested.drafts[block.id]"
             icon="i-lucide-arrow-up-right"
             color="neutral"
             variant="ghost"
             size="xs"
-            :aria-label="`Open ${entries.label(block.type, block.component)}`"
-            @click="navigate(`content/${block.type}/${block.component}`)"
+            :aria-label="`Open ${entries.label(block.collection, block.id)}`"
+            @click="navigate(`content/${block.collection}/${block.id}`)"
           />
 
           <UButton
@@ -94,16 +90,16 @@ function reassign(index: number, component: string): void {
             color="error"
             variant="ghost"
             size="xs"
-            :aria-label="`Remove ${entries.componentLabel(block.type)}`"
+            :aria-label="`Remove ${entries.collectionLabel(block.collection)}`"
             @click="remove(index)"
           />
         </div>
 
         <div class="grid gap-4 p-3">
-          <template v-if="nested.drafts[block.component]">
+          <template v-if="nested.drafts[block.id]">
             <FieldList
-              :fields="nested.drafts[block.component]!.fields"
-              :values="nested.drafts[block.component]!.values"
+              :fields="nested.drafts[block.id]!.fields"
+              :values="nested.drafts[block.id]!.values"
               :entries="entries"
               :nested="nested"
               :locales="locales"
@@ -124,8 +120,8 @@ function reassign(index: number, component: string): void {
 
           <div v-else class="flex items-center gap-2">
             <USelectMenu
-              :model-value="block.component"
-              :items="entries.options(block.type)"
+              :model-value="block.id"
+              :items="entries.options(block.collection)"
               value-key="value"
               placeholder="Pick an entry"
               icon="i-lucide-search"
@@ -138,7 +134,7 @@ function reassign(index: number, component: string): void {
               icon="i-lucide-plus"
               color="neutral"
               variant="outline"
-              @click="reassign(index, nested.create(block.type))"
+              @click="reassign(index, nested.create(block.collection))"
             />
           </div>
         </div>
@@ -146,7 +142,7 @@ function reassign(index: number, component: string): void {
     </div>
 
     <UButton
-      label="Add a component"
+      label="Add a block"
       icon="i-lucide-circle-plus"
       color="neutral"
       variant="outline"
@@ -158,23 +154,23 @@ function reassign(index: number, component: string): void {
 
     <div v-if="picking" class="grid gap-3 rounded-lg border border-default bg-default p-4 shadow-lg">
       <p class="text-center text-xs font-semibold text-muted">
-        Pick one component
+        Pick a collection
       </p>
 
       <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <button
-          v-for="type in components"
-          :key="type"
+          v-for="collection in collections"
+          :key="collection"
           type="button"
           class="flex h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-default bg-elevated/50 px-2 hover:bg-elevated"
-          @click="add(type)"
+          @click="add(collection)"
         >
           <span class="flex size-10 items-center justify-center rounded-full bg-primary/15 text-primary">
             <UIcon name="i-lucide-box" class="size-5" />
           </span>
 
           <span class="w-full truncate text-sm font-medium text-highlighted">
-            {{ entries.componentLabel(type) }}
+            {{ entries.collectionLabel(collection) }}
           </span>
         </button>
       </div>

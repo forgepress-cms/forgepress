@@ -47,7 +47,7 @@
     background-color: var(--ui-bg);
   }
 
-  .webenv-root {
+  .forgepress-root {
     all: initial;
     display: block;
     min-height: 100%;
@@ -58,11 +58,11 @@
     background-color: var(--ui-bg);
   }
 
-  .webenv-root {
+  .forgepress-root {
     color-scheme: light;
   }
 
-  .webenv-root.dark {
+  .forgepress-root.dark {
     color-scheme: dark;
   }
 }

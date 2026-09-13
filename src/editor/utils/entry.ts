@@ -1,5 +1,5 @@
 import type { ContentRow } from '../../types/content/reader'
-import type { Field } from './schema'
+import type { FormField } from './schema'
 import { filled } from '../../content/value'
 import { markdownLines } from './markdown'
 import { chips, localized } from './preview'
@@ -9,15 +9,13 @@ export { filled }
 export const SINGLE = ''
 
 export const STATUSES = [
-  { label: 'Draft', value: 'draft' },
+  { label: 'Unpublished', value: 'unpublished' },
   { label: 'Published', value: 'published' },
-  { label: 'Archived', value: 'archived' },
 ]
 
 const STATUS_COLORS: Record<string, 'neutral' | 'success' | 'warning'> = {
-  draft: 'warning',
+  unpublished: 'warning',
   published: 'success',
-  archived: 'neutral',
 }
 
 export type EntryValues = Record<string, Record<string, any>>
@@ -30,16 +28,16 @@ export function localeItems(locales: readonly string[]): { label: string, value:
   return locales.map(value => ({ label: value.toUpperCase(), value }))
 }
 
-export function entryId(component: string): string {
+export function entryId(collection: string): string {
   const bytes = crypto.getRandomValues(new Uint8Array(6))
 
-  return `${component}_${[...bytes].map(byte => byte.toString(16).padStart(2, '0')).join('')}`
+  return `${collection}_${[...bytes].map(byte => byte.toString(16).padStart(2, '0')).join('')}`
 }
 
-export function newEntry(component: string): ContentRow {
+export function newEntry(collection: string): ContentRow {
   const now = new Date().toISOString()
 
-  return { id: entryId(component), status: 'draft', createdAt: now, updatedAt: now }
+  return { id: entryId(collection), status: 'unpublished', createdAt: now, updatedAt: now }
 }
 
 export function condense(value: string): string {
@@ -48,40 +46,40 @@ export function condense(value: string): string {
   return line.length > 80 ? `${line.slice(0, 80)}…` : line
 }
 
-export function entryLabel(row: ContentRow, field: Field | undefined, locale?: string): string {
+export function entryLabel(row: ContentRow, field: FormField | undefined, locale?: string): string {
   const value = field && chips(localized(row[field.key], field.translated ? locale : undefined))[0]
 
   return (value && condense(value)) || String(row.id)
 }
 
-export function titleField<TField extends Field>(fields: TField[]): TField | undefined {
+export function titleField<TField extends FormField>(fields: TField[]): TField | undefined {
   return fields.find(field => field.type === 'text')
     ?? fields.find(field => field.type === 'richtext')
 }
 
-export function fieldLocale(field: Field, locales: readonly string[]): string {
+export function fieldLocale(field: FormField, locales: readonly string[]): string {
   return field.translated ? locales[0] ?? SINGLE : SINGLE
 }
 
-function empty(field: Field): unknown {
-  const element = field.element
+function empty(field: FormField): unknown {
+  const config = field.config
 
-  if (element.type === 'number')
+  if (config.type === 'number')
     return null
 
-  if (element.type === 'dynamic')
+  if (config.type === 'dynamic')
     return []
 
-  if (element.type === 'relation')
-    return element.multiple ? [] : ''
+  if (config.type === 'relation')
+    return config.multiple ? [] : ''
 
-  if (element.type === 'image' || element.type === 'video')
-    return element.multiple ? [] : null
+  if (config.type === 'image' || config.type === 'video')
+    return config.multiple ? [] : null
 
   return ''
 }
 
-export function toValues(fields: Field[], row: ContentRow, locales: readonly string[]): EntryValues {
+export function toValues(fields: FormField[], row: ContentRow, locales: readonly string[]): EntryValues {
   return Object.fromEntries(fields.map((field) => {
     const current = row[field.key]
 
@@ -94,7 +92,7 @@ export function toValues(fields: Field[], row: ContentRow, locales: readonly str
   }))
 }
 
-export function fromValues(field: Field, values: EntryValues): unknown {
+export function fromValues(field: FormField, values: EntryValues): unknown {
   const value = values[field.key]!
 
   if (!field.translated)
@@ -105,7 +103,7 @@ export function fromValues(field: Field, values: EntryValues): unknown {
   return translations.length ? Object.fromEntries(translations) : undefined
 }
 
-export function missingFields<TField extends Field>(fields: TField[], values: EntryValues): TField[] {
+export function missingFields<TField extends FormField>(fields: TField[], values: EntryValues): TField[] {
   return fields.filter((field) => {
     if (field.optional)
       return false

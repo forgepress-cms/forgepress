@@ -9,7 +9,7 @@ const bytes = new TextEncoder().encode('a tiny png')
 let root = ''
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'webenv-media-'))
+  root = await mkdtemp(join(tmpdir(), 'forgepress-media-'))
 })
 
 describe('media store', () => {

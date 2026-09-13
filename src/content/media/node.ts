@@ -35,10 +35,10 @@ export function createMediaStore(root: string, config?: MediaConfig): MediaStore
 
     async write({ name, data }) {
       if (!mediaType(name))
-        throw new Error(`[webenv] "${name}" is not a supported media file`)
+        throw new Error(`[forgepress] "${name}" is not a supported media file`)
 
       if (data.byteLength > media.maxSize)
-        throw new Error(`[webenv] "${name}" is larger than the ${Math.round(media.maxSize / 1024 / 1024)} MB upload limit`)
+        throw new Error(`[forgepress] "${name}" is larger than the ${Math.round(media.maxSize / 1024 / 1024)} MB upload limit`)
 
       const file = toAssetName(name, createHash('sha256').update(data).digest('hex'))
 
@@ -50,7 +50,7 @@ export function createMediaStore(root: string, config?: MediaConfig): MediaStore
 
     async remove(name) {
       if (!isAssetName(name))
-        throw new Error(`[webenv] "${name}" is not a valid asset name`)
+        throw new Error(`[forgepress] "${name}" is not a valid asset name`)
 
       await rm(join(dir, name), { force: true })
     },

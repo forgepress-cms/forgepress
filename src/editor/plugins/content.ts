@@ -1,10 +1,10 @@
 import type { InjectionKey } from 'vue'
-import type { Draft, DraftService } from '../../types/content/draft'
+import type { Changes, ChangeService } from '../../types/content/changes'
 import type { MediaClient } from '../../types/content/media'
 import type { ContentStore } from '../../types/content/store'
 
-import { createDraft } from '../../content/draft'
-import { bakedMedia, isLocal, source } from '../../content/source'
+import { createChanges } from '../../content/changes'
+import { baked, source } from '../../content/source'
 import { lazyMedia, lazyStore, persist } from '../../content/store'
 import { media } from '../media'
 import { writer } from '../writer'
@@ -15,26 +15,26 @@ export interface EditorContent {
   mode: () => Promise<EditorMode>
   store: ContentStore
   media: MediaClient
-  draft: () => Promise<DraftService | undefined>
+  changes: () => Promise<ChangeService | undefined>
 }
 
 interface Resolved {
   store: ContentStore
   media: MediaClient
-  draft?: DraftService
+  changes?: ChangeService
 }
 
-export const contentKey: InjectionKey<EditorContent> = Symbol('webenv:editor:content')
+export const contentKey: InjectionKey<EditorContent> = Symbol('forgepress:editor:content')
 
 let resolved: Promise<Resolved> | undefined
 
 async function build(): Promise<Resolved> {
-  if (await isLocal())
-    return { store: { schema: source.schema, list: source.list, ...writer }, media }
+  if ((await baked()).local)
+    return { store: { ...source, ...writer }, media }
 
-  const draft = createDraft(source, bakedMedia, persist<Draft>('draft'))
+  const changes = createChanges(source, async () => (await baked()).media, persist<Changes>('changes'))
 
-  return { store: draft.content, media: draft.media, draft }
+  return { store: changes.content, media: changes.media, changes }
 }
 
 function resolve(): Promise<Resolved> {
@@ -44,7 +44,7 @@ function resolve(): Promise<Resolved> {
 }
 
 async function mode(): Promise<EditorMode> {
-  return await isLocal() ? 'development' : 'static'
+  return (await baked()).local ? 'development' : 'static'
 }
 
 export function createContent(): EditorContent {
@@ -52,6 +52,6 @@ export function createContent(): EditorContent {
     mode,
     store: lazyStore(async () => (await resolve()).store),
     media: lazyMedia(async () => (await resolve()).media),
-    draft: async () => (await resolve()).draft,
+    changes: async () => (await resolve()).changes,
   }
 }

@@ -1,8 +1,8 @@
-import type { ElementType } from '../../elements'
-import type { WebenvSchema } from '../../types/core/schema'
-import { elements } from '../../elements'
+import type { Field } from '../../fields'
+import type { ForgePressSchema } from '../../types/core/schema'
+import { fieldTypes } from '../../fields'
 
-export const ELEMENT_ICONS: Record<string, string> = {
+export const FIELD_ICONS: Record<string, string> = {
   text: 'i-lucide-type',
   richtext: 'i-lucide-text',
   number: 'i-lucide-hash',
@@ -12,31 +12,31 @@ export const ELEMENT_ICONS: Record<string, string> = {
   dynamic: 'i-lucide-blocks',
 }
 
-export type SchemaComponent = WebenvSchema['components'][string]
+export type SchemaCollection = ForgePressSchema['collections'][string]
 
-export interface Field {
+export interface FormField {
   key: string
   label: string
   description: string
-  type: ElementType['type']
+  type: Field['type']
   typeLabel: string
   icon: string
-  element: ElementType
+  config: Field
   translated: boolean
   optional: boolean
 }
 
-export function toFields(component: SchemaComponent, locales: readonly string[] = []): Field[] {
-  return Object.entries(component.elements).map(([key, element]) => ({
+export function toFields(collection: SchemaCollection, locales: readonly string[] = []): FormField[] {
+  return Object.entries(collection.fields).map(([key, config]) => ({
     key,
-    label: element.label ?? key,
-    description: element.description ?? '',
-    type: element.type,
-    typeLabel: elements[element.type].label,
-    icon: ELEMENT_ICONS[element.type] ?? 'i-lucide-square',
-    element,
-    translated: (element.translate ?? false) && locales.length > 0,
-    optional: element.optional ?? false,
+    label: config.label ?? key,
+    description: config.description ?? '',
+    type: config.type,
+    typeLabel: fieldTypes[config.type].label,
+    icon: FIELD_ICONS[config.type] ?? 'i-lucide-square',
+    config,
+    translated: (config.translate ?? false) && locales.length > 0,
+    optional: config.optional ?? false,
   }))
 }
 
@@ -66,17 +66,17 @@ export function moveKey<TValue>(record: Record<string, TValue>, key: string, off
   return Object.fromEntries(keys.map(name => [name, record[name]!]))
 }
 
-export function seedElement(type: ElementType['type'], components: string[]): Record<string, unknown> {
-  const element: Record<string, unknown> = { type }
+export function seedField(type: Field['type'], collections: string[]): Record<string, unknown> {
+  const config: Record<string, unknown> = { type }
 
-  for (const [option, spec] of Object.entries(elements[type].options)) {
+  for (const [option, spec] of Object.entries(fieldTypes[type].options)) {
     if (!('required' in spec))
       continue
 
-    element[option] = spec.type === 'components'
+    config[option] = spec.type === 'collections'
       ? []
-      : spec.type === 'number' ? 0 : spec.type === 'boolean' ? false : components[0] ?? ''
+      : spec.type === 'number' ? 0 : spec.type === 'boolean' ? false : collections[0] ?? ''
   }
 
-  return element
+  return config
 }

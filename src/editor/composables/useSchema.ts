@@ -1,12 +1,12 @@
 import type { Ref } from 'vue'
-import type { Component } from '../../types/core/component'
-import type { WebenvSchema } from '../../types/core/schema'
+import type { Collection } from '../../types/core/collection'
+import type { ForgePressSchema } from '../../types/core/schema'
 import { ref, toRaw } from 'vue'
 import { useContent } from './useContent'
 import { useSave } from './useSave'
 
 export interface SchemaDraft {
-  components: Record<string, Component>
+  collections: Record<string, Collection>
   locales?: readonly string[]
 }
 
@@ -17,7 +17,7 @@ export interface SchemaEditor {
   write: (mutate: (draft: SchemaDraft) => void | Promise<void>) => Promise<boolean>
 }
 
-function clone(schema: SchemaDraft | WebenvSchema): SchemaDraft {
+function clone(schema: SchemaDraft | ForgePressSchema): SchemaDraft {
   return structuredClone(toRaw(schema)) as SchemaDraft
 }
 
@@ -33,7 +33,7 @@ export async function useSchema(): Promise<SchemaEditor> {
 
     const written = await save(async () => {
       await mutate(next)
-      await store.writeSchema(next as unknown as WebenvSchema)
+      await store.writeSchema(next as unknown as ForgePressSchema)
     })
 
     if (!written)
@@ -41,12 +41,12 @@ export async function useSchema(): Promise<SchemaEditor> {
 
     schema.value = next
 
-    const components = bundled.components as Record<string, Component>
+    const collections = bundled.collections as Record<string, Collection>
 
-    for (const key of Object.keys(components))
-      delete components[key]
+    for (const key of Object.keys(collections))
+      delete collections[key]
 
-    Object.assign(components, clone(next).components)
+    Object.assign(collections, clone(next).collections)
 
     return true
   }
