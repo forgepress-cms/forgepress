@@ -20,6 +20,7 @@ export interface EditorContent {
   schemaWriter: () => Promise<SchemaWriter | undefined>
   changes: () => Promise<ChangeService | undefined>
   target: () => Promise<RepoTarget>
+  read: (sha: string) => Promise<string>
   pin: (commit: string) => Promise<void>
   published: (commit: string) => Promise<void>
 }
@@ -64,6 +65,15 @@ const content: EditorContent = {
     const settings = await baked()
 
     return { paths: settings.paths, mediaDir: settings.media.dir, base: settings.provider?.base, format: settings.format }
+  },
+
+  read: async (sha) => {
+    const { source } = await resolve()
+
+    if (!source)
+      throw new Error('[forgepress] the editor in development reads files from disk, not from the repository')
+
+    return source.read(sha)
   },
 
   pin: async (commit) => {

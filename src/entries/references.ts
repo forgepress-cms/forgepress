@@ -15,6 +15,15 @@ export interface Reference extends EntryRef {
   path: ValuePath
 }
 
+export interface EntryRow {
+  collection: string
+  row: ContentRow
+}
+
+export function entryKey(collection: string, id: string): string {
+  return `${collection}/${id}`
+}
+
 function localized(value: unknown, path: ValuePath, translated: boolean): [ValuePath, unknown][] {
   if (!translated)
     return [[path, value]]
@@ -59,7 +68,7 @@ export function validateReferences(schema: ForgePressSchema, content: ContentEnt
     for (const [id, row] of Object.entries(entries)) {
       for (const reference of entryReferences(schema, collection, row)) {
         const target = content[reference.collection]?.[reference.id]
-        const name = `${reference.collection}/${reference.id}`
+        const name = entryKey(reference.collection, reference.id)
         const field = quote(reference.path[0])
 
         if (!target)
@@ -71,4 +80,27 @@ export function validateReferences(schema: ForgePressSchema, content: ContentEnt
   }
 
   return issues
+}
+
+export function unpublishedReferences(schema: ForgePressSchema, entries: readonly EntryRow[], find: (collection: string, id: string) => ContentRow | undefined): EntryRow[] {
+  const given = new Map(entries.map(entry => [entryKey(entry.collection, entry.row.id), entry.row]))
+  const pending = entries.filter(entry => entry.row.status === 'published')
+  const seen = new Set(pending.map(entry => entryKey(entry.collection, entry.row.id)))
+  const found: EntryRow[] = []
+
+  for (const { collection, row } of pending) {
+    for (const reference of entryReferences(schema, collection, row)) {
+      const key = entryKey(reference.collection, reference.id)
+      const target = given.get(key) ?? find(reference.collection, reference.id)
+
+      if (seen.has(key) || !target || target.status === 'published')
+        continue
+
+      seen.add(key)
+      found.push({ collection: reference.collection, row: target })
+      pending.push({ collection: reference.collection, row: target })
+    }
+  }
+
+  return found
 }

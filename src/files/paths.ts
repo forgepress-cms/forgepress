@@ -1,3 +1,5 @@
+import type { EntryRef } from '../types/entry'
+
 export const DEFAULT_CONTENT_PATH = '.forgepress'
 export const ENDPOINT = '/__forgepress'
 
@@ -45,6 +47,14 @@ export function isCollectionName(name: string): boolean {
 
 export function isEntryFile(file: string): boolean {
   return ENTRY_FILE.test(file) && isEntryId(toEntryId(file))
+}
+
+export function toEntryRef(content: string, path: string): EntryRef | undefined {
+  const [directory, file, ...deeper] = path.startsWith(`${content}/`) ? path.slice(content.length + 1).split('/') : []
+
+  return directory && file && deeper.length === 0 && isEntryFile(file)
+    ? { collection: toCollectionName(directory), id: toEntryId(file) }
+    : undefined
 }
 
 export function prefixer(base?: string): (path: string) => string {

@@ -1,12 +1,14 @@
 // @vitest-environment happy-dom
 import type { App } from 'vue'
 import type { Resolution } from '../../../src/changes/types'
+import type { FileIssues } from '../../../src/editor/utils/issues'
 import type { Conflict } from '../../../src/forge/types'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, ref, shallowRef } from 'vue'
 import { routerKey } from '../../../src/editor/plugins/router'
 
 const conflicts = shallowRef<readonly Conflict[]>([])
+const issues = shallowRef<readonly FileIssues[]>([])
 const calls: string[] = []
 const outcomes: (() => string | undefined)[] = []
 const reload = vi.fn()
@@ -19,6 +21,7 @@ vi.doMock('../../../src/editor/composables/usePublish', () => ({
     publishing: ref(false),
     error: ref(''),
     conflicts,
+    issues,
     refresh: async () => {},
     publish: async () => {
       calls.push('publish')
@@ -88,6 +91,7 @@ function conflicted(): undefined {
 
 beforeEach(async () => {
   conflicts.value = []
+  issues.value = []
   calls.length = 0
   outcomes.length = 0
   reload.mockClear()
@@ -102,7 +106,7 @@ beforeEach(async () => {
   for (const [name, component] of Object.entries(stubs))
     app.component(name, component)
 
-  app.provide(routerKey, { reload } as never)
+  app.provide(routerKey, { reload, href: (path: string) => `#/${path}` } as never)
   app.mount(container)
 
   await settle()
@@ -148,6 +152,34 @@ describe('publish dialog', () => {
 
     await click('Close')
 
+    expect(reload).toHaveBeenCalledTimes(1)
+  })
+
+  it('lists what would break the build and links the entries to fix', async () => {
+    outcomes.push(() => {
+      issues.value = [
+        { path: '.forgepress/content/blog-post/post_1.ts', entry: { collection: 'blogPost', id: 'post_1' }, messages: ['Field "author" references author/author_3, which doesn\'t exist'] },
+        { path: '.forgepress/schema.ts', entry: undefined, messages: ['`defineSchema` is not a literal value'] },
+      ]
+
+      return undefined
+    })
+
+    await click('Publish')
+
+    const links = [...container.querySelectorAll('a')]
+
+    expect(container.textContent).toContain('The site wouldn\'t build')
+    expect(container.textContent).toContain('Field "author" references author/author_3, which doesn\'t exist')
+    expect(container.textContent).toContain('.forgepress/schema.ts')
+    expect(links.map(link => [link.textContent, link.getAttribute('href')])).toEqual([
+      ['.forgepress/content/blog-post/post_1.ts', '#/content/blogPost/post_1'],
+    ])
+
+    links[0]!.click()
+    await settle()
+
+    expect(container.querySelector('[role=dialog]')).toBeNull()
     expect(reload).toHaveBeenCalledTimes(1)
   })
 

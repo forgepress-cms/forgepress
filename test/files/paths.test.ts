@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createPaths, defaultPaths, normalizeDir, toCollectionDir, toCollectionName } from '../../src/files/paths'
+import { createPaths, defaultPaths, normalizeDir, toCollectionDir, toCollectionName, toEntryRef } from '../../src/files/paths'
 
 describe('createPaths', () => {
   it('defaults to the .forgepress directory', () => {
@@ -32,5 +32,25 @@ describe('collection directories', () => {
 
   it('does not emit a leading dash for a capitalised name', () => {
     expect(toCollectionDir('BlogPost')).toBe('blog-post')
+  })
+})
+
+describe('entry files', () => {
+  it('finds the entry a file in a collection folder holds', () => {
+    expect(toEntryRef('.forgepress/content', '.forgepress/content/blog-post/post_1.ts')).toEqual({ collection: 'blogPost', id: 'post_1' })
+    expect(toEntryRef('apps/site/.forgepress/content', 'apps/site/.forgepress/content/author/author-1.ts')).toEqual({ collection: 'author', id: 'author-1' })
+  })
+
+  it('ignores files that are not entries in a collection folder', () => {
+    for (const path of [
+      '.forgepress/schema.ts',
+      '.forgepress/content/post_1.ts',
+      '.forgepress/content/author/notes.md',
+      '.forgepress/content/author/drafts/author_1.ts',
+      '.forgepress/content-archive/author/author_1.ts',
+      'src/content/author/author_1.ts',
+    ]) {
+      expect(toEntryRef('.forgepress/content', path)).toBeUndefined()
+    }
   })
 })

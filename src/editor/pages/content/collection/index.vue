@@ -82,9 +82,9 @@ const { saving, error, save } = useSave()
 
 async function remove(): Promise<void> {
   const ids = [...new Set(removing.value)]
-  const previous = [...rows.value]
+  const previous = rows.value
 
-  rows.value.splice(0, rows.value.length, ...previous.filter(row => !ids.includes(String(row.id))))
+  rows.value = previous.filter(row => !ids.includes(String(row.id)))
 
   const removed = await save(async () => {
     for (const id of ids)
@@ -96,7 +96,7 @@ async function remove(): Promise<void> {
     clear()
   }
   else {
-    rows.value.splice(0, rows.value.length, ...previous)
+    rows.value = previous
   }
 }
 </script>

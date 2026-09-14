@@ -1,6 +1,10 @@
+import type { ContentIssue } from '../types/issues'
 import type { Conflict, FileChange, Forge, RepoTarget } from './types'
+import { ContentError } from '../files/issues'
 import { prefixer } from '../files/paths'
 import { base64ToBytes, digest } from '../utils/encoding'
+
+export type Verify = (listing: ReadonlyMap<string, string>) => Promise<readonly ContentIssue[]>
 
 export class ConflictError extends Error {
   readonly conflicts: readonly Conflict[]
@@ -10,6 +14,16 @@ export class ConflictError extends Error {
     super(`[forgepress] ${conflicts.map(conflict => conflict.path).join(', ')} changed in the repository after the last edit here`)
     this.name = 'ConflictError'
     this.conflicts = conflicts
+    this.commit = commit
+  }
+}
+
+export class InvalidContentError extends ContentError {
+  readonly commit: string
+
+  constructor(issues: readonly ContentIssue[], commit: string) {
+    super(issues)
+    this.name = 'InvalidContentError'
     this.commit = commit
   }
 }
@@ -54,16 +68,12 @@ async function applied(file: FileChange, hash: string | null): Promise<boolean> 
   return await gitHash(data, hash.length === 64 ? 'SHA-256' : 'SHA-1') === hash
 }
 
-async function check(forge: Forge, files: FileChange[], parent: string, directory: string): Promise<FileChange[]> {
-  if (files.every(file => file.replaces === undefined))
-    return files
-
-  const current = new Map((await forge.files(parent, directory)).map(file => [file.path, file.sha]))
+async function checkConflicts(files: FileChange[], listing: ReadonlyMap<string, string>, parent: string): Promise<FileChange[]> {
   const pending: FileChange[] = []
   const conflicts: Conflict[] = []
 
   for (const file of files) {
-    const hash = current.get(file.path) ?? null
+    const hash = listing.get(file.path) ?? null
 
     if (file.replaces === undefined || file.replaces === hash)
       pending.push(file)
@@ -77,15 +87,21 @@ async function check(forge: Forge, files: FileChange[], parent: string, director
   return pending
 }
 
-export async function publishFiles(forge: Forge, files: FileChange[], message: string, target: RepoTarget): Promise<string> {
+export async function publishFiles(forge: Forge, files: FileChange[], message: string, target: RepoTarget, verify: Verify): Promise<string> {
   const directory = prefixer(target.base)(target.paths.dir)
 
   async function attempt(again: boolean): Promise<string> {
     const parent = await forge.head()
-    const pending = await check(forge, files, parent, directory)
+    const listing = new Map((await forge.files(parent, directory)).map(file => [file.path, file.sha]))
+    const pending = await checkConflicts(files, listing, parent)
 
     if (pending.length === 0)
       return parent
+
+    const issues = await verify(listing)
+
+    if (issues.length > 0)
+      throw new InvalidContentError(issues, parent)
 
     try {
       return await forge.commit(pending, message, parent)

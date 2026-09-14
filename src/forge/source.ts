@@ -10,6 +10,7 @@ const CONCURRENCY = 8
 
 export interface ForgeSource extends ContentSource {
   hashes: HashSource
+  read: (sha: string) => Promise<string>
   reset: (commit?: string) => void
 }
 
@@ -152,6 +153,8 @@ export function createForgeSource(forge: () => Forge | undefined, paths: Content
     hashes: {
       entry: async (collection, id) => isEntryId(id) ? hash(at(paths.entry(collection, id))) : undefined,
     },
+
+    read: text,
 
     reset: (commit) => {
       pinned = commit

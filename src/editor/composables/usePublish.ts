@@ -1,9 +1,12 @@
 import type { ComputedRef, Ref } from 'vue'
 import type { ChangeService, ChangeSummary, FileDiff, Resolution } from '../../changes/types'
 import type { Conflict } from '../../forge/types'
+import type { FileIssues } from '../utils/issues'
 import { computed, ref, shallowRef } from 'vue'
-import { commitMessage, ConflictError, publishFiles } from '../../forge/publish'
+import { checkResult } from '../../forge/check'
+import { commitMessage, ConflictError, InvalidContentError, publishFiles } from '../../forge/publish'
 import { errorMessage } from '../../utils/error'
+import { fileIssues } from '../utils/issues'
 import { useContent } from './useContent'
 import { useSession } from './useSession'
 
@@ -14,6 +17,7 @@ export interface Publisher {
   publishing: Ref<boolean>
   error: Ref<string>
   conflicts: Ref<readonly Conflict[]>
+  issues: Ref<readonly FileIssues[]>
   refresh: () => Promise<void>
   publish: (name: string) => Promise<string | undefined>
   resolve: (keep: Resolution) => Promise<boolean>
@@ -28,6 +32,7 @@ const diff = shallowRef<FileDiff[]>([])
 const publishing = ref(false)
 const error = ref('')
 const conflicts = shallowRef<readonly Conflict[]>([])
+const issues = shallowRef<readonly FileIssues[]>([])
 const followed = new WeakSet<ChangeService>()
 
 const count = computed(() => {
@@ -54,6 +59,8 @@ export function usePublish(): Publisher {
   const session = useSession()
 
   async function refresh(): Promise<void> {
+    issues.value = []
+
     const changes = await content.changes()
 
     if (!changes) {
@@ -69,10 +76,8 @@ export function usePublish(): Publisher {
     diff.value = await changes.diff(await content.target())
   }
 
-  async function stop(cause: ConflictError): Promise<void> {
-    conflicts.value = cause.conflicts
-
-    await content.pin(cause.commit)
+  async function stop(commit: string): Promise<void> {
+    await content.pin(commit)
     await refresh()
   }
 
@@ -83,6 +88,7 @@ export function usePublish(): Publisher {
     publishing,
     error,
     conflicts,
+    issues,
     refresh,
 
     publish: async (name) => {
@@ -102,11 +108,13 @@ export function usePublish(): Publisher {
         return undefined
       }
 
+      const target = await content.target()
+
       publishing.value = true
       error.value = ''
+      issues.value = []
 
       try {
-        const target = await content.target()
         const files = await changes.files(target)
 
         if (files.length === 0) {
@@ -115,7 +123,8 @@ export function usePublish(): Publisher {
           return undefined
         }
 
-        const commit = await publishFiles(forge, files, commitMessage(session.provider.value?.commitMessage, name), target)
+        const message = commitMessage(session.provider.value?.commitMessage, name)
+        const commit = await publishFiles(forge, files, message, target, listing => checkResult(listing, files, content.read, target))
 
         conflicts.value = []
 
@@ -125,13 +134,20 @@ export function usePublish(): Publisher {
         return commit
       }
       catch (cause) {
+        const failed = (failure: unknown): void => {
+          error.value = errorMessage(failure)
+        }
+
         if (cause instanceof ConflictError) {
-          await stop(cause).catch((failure: unknown) => {
-            error.value = errorMessage(failure)
-          })
+          conflicts.value = cause.conflicts
+          await stop(cause.commit).catch(failed)
+        }
+        else if (cause instanceof InvalidContentError) {
+          await stop(cause.commit).catch(failed)
+          issues.value = fileIssues(cause.issues, target)
         }
         else {
-          error.value = errorMessage(cause)
+          failed(cause)
         }
 
         return undefined

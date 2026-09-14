@@ -1,6 +1,8 @@
+import type { EntryRow } from '../../entries/references'
 import type { ContentRow, EntryStatus } from '../../types/entry'
 import type { Collection } from '../../types/schema'
 import type { FormField, LocalizedField } from './schema'
+import { entryKey } from '../../entries/references'
 import { toHex } from '../../utils/encoding'
 import { filled } from '../../utils/value'
 import { markdownLines } from './markdown'
@@ -138,4 +140,16 @@ export function missingFields<TField extends FormField>(fields: TField[], values
       ? Object.values(value).some(translation => !filled(translation))
       : !filled(value[SINGLE])
   })
+}
+
+export function withPublished(entries: readonly EntryRow[], linked: readonly EntryRow[], updatedAt: string): EntryRow[] {
+  const key = (entry: EntryRow): string => entryKey(entry.collection, entry.row.id)
+  const publishing = new Set(linked.map(key))
+  const writing = new Set(entries.map(key))
+  const publish = (entry: EntryRow): EntryRow => ({ collection: entry.collection, row: { ...entry.row, status: 'published', updatedAt } })
+
+  return [
+    ...linked.filter(entry => !writing.has(key(entry))).map(publish),
+    ...entries.map(entry => publishing.has(key(entry)) ? publish(entry) : entry),
+  ]
 }

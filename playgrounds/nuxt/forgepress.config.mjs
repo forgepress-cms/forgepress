@@ -3,13 +3,14 @@ export default {
   path: '.forgepress',
 
   provider: {
-    type: 'forgejo',
-    url: 'http://127.0.0.1:3310',
+    type: 'github',
 
     repository: {
-      owner: 'fred',
-      name: 'site',
+      owner: 'forgepressjs',
+      name: 'forgepress',
     },
+
+    base: 'playgrounds/nuxt',
 
     commitMessage: 'content: {name}',
   },

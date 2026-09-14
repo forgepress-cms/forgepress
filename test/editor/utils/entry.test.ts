@@ -1,7 +1,7 @@
 import type { FormField } from '../../../src/editor/utils/schema'
 import type { Field } from '../../../src/schema/fields'
 import { describe, expect, it } from 'vitest'
-import { entryLabel, fieldLocale, fromValues, missingFields, newEntry, SINGLE, statusLabel, titleField, toLocalizedFields, toRow, toValues } from '../../../src/editor/utils/entry'
+import { entryLabel, fieldLocale, fromValues, missingFields, newEntry, SINGLE, statusLabel, titleField, toLocalizedFields, toRow, toValues, withPublished } from '../../../src/editor/utils/entry'
 
 const locales = ['en', 'de']
 
@@ -187,5 +187,25 @@ describe('entryLabel', () => {
   it('falls back to the id when there is nothing to show', () => {
     expect(entryLabel(row, name)).toBe('author_abc')
     expect(entryLabel(row, undefined)).toBe('author_abc')
+  })
+})
+
+describe('withPublished', () => {
+  it('publishes the linked entries, whether they are saved anyway or not', () => {
+    const meta = { createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' }
+    const block = { id: 'hero_1', status: 'unpublished' as const, ...meta, title: 'Edited' }
+    const page = { id: 'page_1', status: 'published' as const, ...meta }
+    const author = { id: 'author_1', status: 'unpublished' as const, ...meta, name: 'Alice' }
+
+    expect(withPublished(
+      [{ collection: 'hero', row: block }, { collection: 'page', row: page }],
+      [{ collection: 'author', row: author }, { collection: 'hero', row: block }],
+      '2024-06-01T00:00:00Z',
+    )).toEqual([
+      { collection: 'author', row: { ...author, status: 'published', updatedAt: '2024-06-01T00:00:00Z' } },
+      { collection: 'hero', row: { ...block, status: 'published', updatedAt: '2024-06-01T00:00:00Z' } },
+      { collection: 'page', row: page },
+    ])
+    expect(author.status).toBe('unpublished')
   })
 })

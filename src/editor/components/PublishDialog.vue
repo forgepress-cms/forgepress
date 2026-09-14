@@ -8,9 +8,9 @@ import ErrorAlert from './ErrorAlert.vue'
 
 const open = defineModel<boolean>('open', { required: true })
 
-const { diff, count, publishing, error, conflicts, refresh, publish, resolve } = usePublish()
+const { diff, count, publishing, error, conflicts, issues, refresh, publish, resolve } = usePublish()
 const { branch } = useSession()
-const { reload } = useRouter()
+const { reload, href } = useRouter()
 
 const name = ref('')
 const commit = ref('')
@@ -42,7 +42,7 @@ watch(open, async (value) => {
 async function submit(): Promise<void> {
   const published = await publish(name.value)
 
-  if (published || conflicts.value.length > 0)
+  if (published || conflicts.value.length > 0 || issues.value.length > 0)
     changed = true
 
   if (!published)
@@ -97,6 +97,37 @@ async function overwrite(): Promise<void> {
             <ul class="mt-2 font-mono text-xs">
               <li v-for="conflict in conflicts" :key="conflict.path">
                 {{ conflict.path }}{{ conflict.hash === null ? ' (deleted)' : '' }}
+              </li>
+            </ul>
+          </template>
+        </UAlert>
+
+        <UAlert
+          v-if="issues.length"
+          color="error"
+          variant="subtle"
+          icon="i-lucide-circle-x"
+          title="The site wouldn't build"
+        >
+          <template #description>
+            <p>Nothing was published. The repository with your changes has these problems:</p>
+
+            <ul class="mt-2 flex flex-col gap-2">
+              <li v-for="file in issues" :key="file.path">
+                <a
+                  v-if="file.entry"
+                  :href="href(`content/${file.entry.collection}/${file.entry.id}`)"
+                  class="font-mono text-xs text-highlighted underline"
+                  @click="open = false"
+                >{{ file.path }}</a>
+
+                <span v-else class="font-mono text-xs text-highlighted">{{ file.path }}</span>
+
+                <ul class="mt-1 list-disc pl-4">
+                  <li v-for="(message, index) in file.messages" :key="index">
+                    {{ message }}
+                  </li>
+                </ul>
               </li>
             </ul>
           </template>

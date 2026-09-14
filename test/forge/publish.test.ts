@@ -1,9 +1,14 @@
 import type { FileChange, Forge } from '../../src/forge/types'
+import type { ContentIssue } from '../../src/types/issues'
 import { describe, expect, it } from 'vitest'
 import { defaultPaths } from '../../src/files/paths'
-import { commitMessage, ConflictError, gitHash, publishable, publishFiles } from '../../src/forge/publish'
+import { commitMessage, ConflictError, gitHash, InvalidContentError, publishable, publishFiles } from '../../src/forge/publish'
 
 const target = { paths: defaultPaths, mediaDir: 'public/uploads' }
+
+async function valid(): Promise<ContentIssue[]> {
+  return []
+}
 
 function hash(text: string): Promise<string> {
   return gitHash(new TextEncoder().encode(text), 'SHA-1')
@@ -100,7 +105,7 @@ describe('publishing files', () => {
   it('commits on the head it checked when nothing changed in the meantime', async () => {
     const repo = repository({ [file('a')]: 'a1', 'src/index.ts': 'code' })
 
-    const commit = await publishFiles(repo.forge, [edit(file('a'), 'a2', await hash('a1')), edit(file('b'), 'b1', null)], 'content: authors', target)
+    const commit = await publishFiles(repo.forge, [edit(file('a'), 'a2', await hash('a1')), edit(file('b'), 'b1', null)], 'content: authors', target, valid)
 
     expect(commit).toBe('c2')
     expect(repo.files()).toEqual({ [file('a')]: 'a2', [file('b')]: 'b1', 'src/index.ts': 'code' })
@@ -117,7 +122,7 @@ describe('publishing files', () => {
       edit(file('b'), 'mine', await hash('b1')),
       { path: file('c'), removed: true, replaces: await hash('c1') },
       edit(file('d'), 'mine', null),
-    ], 'content: authors', target)
+    ], 'content: authors', target, valid)
 
     await expect(publishing).rejects.toThrow(ConflictError)
     await expect(publishing).rejects.toMatchObject({
@@ -132,7 +137,7 @@ describe('publishing files', () => {
 
     repo.push({ [file('a')]: null })
 
-    await expect(publishFiles(repo.forge, [edit(file('a'), 'mine', await hash('a1'))], 'content', target)).rejects.toMatchObject({
+    await expect(publishFiles(repo.forge, [edit(file('a'), 'mine', await hash('a1'))], 'content', target, valid)).rejects.toMatchObject({
       conflicts: [{ path: file('a'), hash: null }],
     })
   })
@@ -146,33 +151,40 @@ describe('publishing files', () => {
       edit(file('a'), 'same', await hash('a1')),
       { path: file('b'), removed: true, replaces: await hash('b1') },
       edit(file('c'), 'c2', await hash('c1')),
-    ], 'content', target)
+    ], 'content', target, valid)
 
     expect(repo.calls.at(-1)).toBe(`commit c2 ${file('c')}`)
     expect(repo.files()).toEqual({ [file('a')]: 'same', [file('c')]: 'c2' })
   })
 
-  it('returns the head without committing when the repository already has everything', async () => {
+  it('returns the head without committing or checking the content when the repository already has everything', async () => {
     const repo = repository({ [file('a')]: 'a1' })
+    const unchecked = async (): Promise<ContentIssue[]> => {
+      throw new Error('checked the content')
+    }
 
     repo.push({ [file('a')]: 'same' })
 
-    expect(await publishFiles(repo.forge, [edit(file('a'), 'same', await hash('a1'))], 'content', target)).toBe('c2')
+    expect(await publishFiles(repo.forge, [edit(file('a'), 'same', await hash('a1'))], 'content', target, unchecked)).toBe('c2')
     expect(repo.calls.some(call => call.startsWith('commit'))).toBe(false)
   })
 
-  it('checks only files it knows a hash for', async () => {
-    const repo = repository({ 'public/uploads/logo.png': 'old' })
+  it('compares only files it knows a hash for', async () => {
+    const repo = repository({ [file('a')]: 'theirs' })
 
-    await publishFiles(repo.forge, [{ path: 'public/uploads/photo.png', data: btoa('png'), encoding: 'base64' }], 'media', target)
+    await publishFiles(repo.forge, [
+      { path: file('a'), data: 'mine', encoding: 'utf-8' },
+      { path: 'public/uploads/photo.png', data: btoa('png'), encoding: 'base64' },
+    ], 'media', target, valid)
 
-    expect(repo.calls).toEqual(['head', 'commit c1 public/uploads/photo.png'])
+    expect(repo.calls).toEqual(['head', 'files c1 .forgepress', `commit c1 ${file('a')} public/uploads/photo.png`])
+    expect(repo.files()).toEqual({ [file('a')]: 'mine', 'public/uploads/photo.png': btoa('png') })
   })
 
   it('lists the content folder inside a larger repository', async () => {
     const repo = repository({ 'apps/site/.forgepress/schema.ts': 's1' })
 
-    await publishFiles(repo.forge, [edit('apps/site/.forgepress/schema.ts', 's2', await hash('s1'))], 'schema', { ...target, base: 'apps/site' })
+    await publishFiles(repo.forge, [edit('apps/site/.forgepress/schema.ts', 's2', await hash('s1'))], 'schema', { ...target, base: 'apps/site' }, valid)
 
     expect(repo.calls).toContain('files c1 apps/site/.forgepress')
   })
@@ -182,7 +194,7 @@ describe('publishing files', () => {
 
     repo.during(() => repo.push({ 'src/index.ts': 'new code' }))
 
-    expect(await publishFiles(repo.forge, [edit(file('a'), 'a2', await hash('a1'))], 'content', target)).toBe('c3')
+    expect(await publishFiles(repo.forge, [edit(file('a'), 'a2', await hash('a1'))], 'content', target, valid)).toBe('c3')
     expect(repo.files()).toEqual({ [file('a')]: 'a2', 'src/index.ts': 'new code' })
     expect(repo.calls.filter(call => call.startsWith('commit'))).toEqual([`commit c1 ${file('a')}`, `commit c2 ${file('a')}`])
   })
@@ -192,7 +204,7 @@ describe('publishing files', () => {
 
     repo.during(() => repo.push({ [file('a')]: 'theirs' }))
 
-    await expect(publishFiles(repo.forge, [edit(file('a'), 'mine', await hash('a1'))], 'content', target)).rejects.toMatchObject({
+    await expect(publishFiles(repo.forge, [edit(file('a'), 'mine', await hash('a1'))], 'content', target, valid)).rejects.toMatchObject({
       commit: 'c2',
       conflicts: [{ path: file('a'), hash: await hash('theirs') }],
     })
@@ -203,7 +215,7 @@ describe('publishing files', () => {
 
     repo.fail('GitHub 403: Resource not accessible')
 
-    await expect(publishFiles(repo.forge, [edit(file('a'), 'a2', await hash('a1'))], 'content', target)).rejects.toThrow('GitHub 403')
+    await expect(publishFiles(repo.forge, [edit(file('a'), 'a2', await hash('a1'))], 'content', target, valid)).rejects.toThrow('GitHub 403')
     expect(repo.calls.filter(call => call.startsWith('commit'))).toHaveLength(1)
   })
 
@@ -213,8 +225,62 @@ describe('publishing files', () => {
     repo.during(() => repo.push({ 'src/index.ts': 'code 2' }))
     repo.during(() => repo.push({ 'src/index.ts': 'code 3' }))
 
-    await expect(publishFiles(repo.forge, [edit(file('a'), 'a2', await hash('a1'))], 'content', target)).rejects.toThrow('not a fast forward')
+    await expect(publishFiles(repo.forge, [edit(file('a'), 'a2', await hash('a1'))], 'content', target, valid)).rejects.toThrow('not a fast forward')
     expect(repo.calls.filter(call => call.startsWith('commit'))).toHaveLength(2)
+  })
+})
+
+describe('checking the content', () => {
+  it('checks the content on the head it compared against, before committing', async () => {
+    const repo = repository({ [file('a')]: 'a1', 'src/index.ts': 'code' })
+    const listings: ReadonlyMap<string, string>[] = []
+
+    await publishFiles(repo.forge, [edit(file('a'), 'a2', await hash('a1'))], 'content', target, async (listing) => {
+      repo.calls.push('check')
+      listings.push(listing)
+
+      return []
+    })
+
+    expect(repo.calls).toEqual(['head', 'files c1 .forgepress', 'check', `commit c1 ${file('a')}`])
+    expect(listings).toEqual([new Map([[file('a'), await hash('a1')]])])
+  })
+
+  it('commits nothing when the content has problems', async () => {
+    const repo = repository({ [file('a')]: 'a1' })
+    const issues = [{ file: file('a'), line: 5, column: 3, message: 'Field "name" has to be a string' }]
+
+    const publishing = publishFiles(repo.forge, [edit(file('a'), 'a2', await hash('a1'))], 'content', target, async () => issues)
+
+    await expect(publishing).rejects.toThrow(InvalidContentError)
+    await expect(publishing).rejects.toMatchObject({ commit: 'c1', issues })
+    expect(repo.calls.some(call => call.startsWith('commit'))).toBe(false)
+  })
+
+  it('reports conflicts before checking the content', async () => {
+    const repo = repository({ [file('a')]: 'a1' })
+
+    repo.push({ [file('a')]: 'theirs' })
+
+    await expect(publishFiles(repo.forge, [edit(file('a'), 'mine', await hash('a1'))], 'content', target, async () => [
+      { file: file('a'), line: 1, column: 1, message: 'broken' },
+    ])).rejects.toThrow(ConflictError)
+  })
+
+  it('checks the content again on the new head when the branch moved while committing', async () => {
+    const repo = repository({ [file('a')]: 'a1', [file('b')]: 'b1' })
+    const seen: (string | undefined)[] = []
+
+    repo.during(() => repo.push({ [file('b')]: 'b2' }))
+
+    await publishFiles(repo.forge, [edit(file('a'), 'a2', await hash('a1'))], 'content', target, async (listing) => {
+      seen.push(listing.get(file('b')))
+
+      return []
+    })
+
+    expect(seen).toEqual([await hash('b1'), await hash('b2')])
+    expect(repo.files()).toEqual({ [file('a')]: 'a2', [file('b')]: 'b2' })
   })
 })
 

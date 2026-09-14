@@ -36,6 +36,6 @@ export default defineNuxtConfig({
   },
 
   vite: {
-    plugins: [forgepress({ write: false }), tailwind()],
+    plugins: [forgepress(), tailwind()],
   },
 })

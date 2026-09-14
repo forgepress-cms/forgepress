@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
+import type { EntryRow } from '../../../../entries/references'
+import type { EntryStatus } from '../../../../types/entry'
+import { computed, reactive, shallowRef } from 'vue'
+import { entryKey, unpublishedReferences } from '../../../../entries/references'
 import DiscardDialog from '../../../components/DiscardDialog.vue'
 import ErrorAlert from '../../../components/ErrorAlert.vue'
 import FieldList from '../../../components/fields/FieldList.vue'
 import FormLayout from '../../../components/layout/FormLayout.vue'
 import PageHeader from '../../../components/layout/PageHeader.vue'
 import MetaItem from '../../../components/MetaItem.vue'
+import PublishLinkedDialog from '../../../components/PublishLinkedDialog.vue'
 import { useCollection } from '../../../composables/useCollection'
 import { useContent } from '../../../composables/useContent'
 import { useEntries } from '../../../composables/useEntries'
@@ -14,7 +18,7 @@ import { useNestedEntries } from '../../../composables/useNestedEntries'
 import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
 import { useSave } from '../../../composables/useSave'
-import { condense, missingFields, newEntry, statusColor, STATUSES, titleField, toLocalizedFields } from '../../../utils/entry'
+import { condense, missingFields, newEntry, statusColor, STATUSES, titleField, toLocalizedFields, withPublished } from '../../../utils/entry'
 
 const { route, navigate, href } = useRouter()
 
@@ -23,7 +27,7 @@ const { store } = useContent()
 const name = useParam('collection')
 const id = route.value.params.id
 
-const { collection, locales } = await useCollection(name)
+const { schema, collection, locales } = await useCollection(name)
 
 function back(): void {
   navigate(`content/${name}`)
@@ -63,27 +67,49 @@ const missing = computed(() => [
 
 const { saving, error, save } = useSave()
 
-async function submit(): Promise<void> {
-  const next = { ...draft(), updatedAt: new Date().toISOString() }
+const linked = shallowRef<EntryRow[]>([])
+
+const offered = computed(() => linked.value.map(entry => ({
+  key: entryKey(entry.collection, entry.row.id),
+  collection: entries.collectionLabel(entry.collection),
+  label: entries.label(entry.collection, entry.row.id),
+})))
+
+async function submit(linkedStatus?: EntryStatus): Promise<void> {
+  const updatedAt = new Date().toISOString()
+  const next = { ...draft(), updatedAt }
   const changed = creating || JSON.stringify(draft()) !== original
 
-  const written = await save(async () => {
-    for (const [collection, related] of Object.entries(nested.rows(next.status))) {
-      for (const entry of related)
-        await store.writeEntry(collection, { ...entry, updatedAt: next.updatedAt })
-    }
+  const saved = [
+    ...Object.entries(nested.rows(next.status)).flatMap(([collection, related]) => related.map(entry => ({ collection, row: { ...entry, updatedAt } }))),
+    ...changed ? [{ collection: name, row: next }] : [],
+  ]
 
-    if (changed)
-      await store.writeEntry(name, next)
+  const unpublished = unpublishedReferences(schema, saved, entries.row)
+
+  if (unpublished.length > 0 && !linkedStatus) {
+    linked.value = unpublished
+    return
+  }
+
+  linked.value = []
+
+  const writes = linkedStatus === 'published' ? withPublished(saved, unpublished, updatedAt) : saved
+
+  const written = await save(async () => {
+    for (const entry of writes)
+      await store.writeEntry(entry.collection, entry.row)
   })
 
   if (!written)
     return
 
-  if (changed && creating)
-    rows.push(next)
-  else if (changed)
-    rows[index] = next
+  const own = writes.find(entry => entry.collection === name && entry.row.id === row.id)?.row
+
+  if (own && creating)
+    rows.push(own)
+  else if (own)
+    rows[index] = own
 
   nested.clear()
   commit()
@@ -127,6 +153,14 @@ async function submit(): Promise<void> {
       :loading="saving"
       @save="submit()"
       @confirm="discard()"
+    />
+
+    <PublishLinkedDialog
+      :open="linked.length > 0"
+      :entries="offered"
+      @update:open="linked = []"
+      @publish="submit('published')"
+      @keep="submit('unpublished')"
     />
 
     <FormLayout>

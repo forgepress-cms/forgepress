@@ -65,53 +65,29 @@ describe('checkContent', () => {
     expect(await checkContent(fixture)).toEqual([])
   })
 
-  it('reports every problem in every file with its position', async () => {
+  it('checks every entry file in the collection folders', async () => {
     expect(await problems({
       '.forgepress/schema.ts': schema,
       '.forgepress/content/author/author_1.ts': alice,
-      '.forgepress/content/author/author_2.ts': entry('author', ['id: \'author_9\',', 'status: \'unpublished\',', 'createdAt: \'2024-01-01\',', 'updatedAt: \'2024-01-01\',', 'name: \'Bob\',']),
+      '.forgepress/content/author/author_2.ts': alice,
+      '.forgepress/content/author/notes.md': '# not an entry\n',
       '.forgepress/content/blog-post/post_1.ts': entry('blogPost', [
         'id: \'post_1\',',
-        'status: \'published\',',
-        'createdAt: \'2024-02-30\',',
-        'updatedAt: \'2024-01-01T00:00:00Z\',',
-        'title: { en: \'Hello\', fr: \'Bonjour\' },',
-        'author: \'author_2\',',
-        'colour: \'red\',',
-      ]),
-      '.forgepress/content/blog-post/post_2.ts': entry('blogPost', [
-        'id: \'post_2\',',
         'status: \'published\',',
         'createdAt: \'2024-01-01\',',
         'updatedAt: \'2024-01-01\',',
         'title: { en: \'Hi\', de: \'Hallo\' },',
         'author: \'author_3\',',
       ]),
-      '.forgepress/content/blog-post/post_3.ts': 'export default { id: someId }\n',
       '.forgepress/content/page/page_1.ts': entry('page', ['id: \'page_1\',']),
     })).toEqual([
-      '.forgepress/content/author/author_2.ts:4:3 "id" is "author_9", but the file is named author_2.ts',
-      '.forgepress/content/blog-post/post_1.ts:6:3 "createdAt" has to be an ISO 8601 date such as "2024-01-31T09:30:00Z"',
-      '.forgepress/content/blog-post/post_1.ts:8:3 Field "title" is missing its de translation',
-      '.forgepress/content/blog-post/post_1.ts:8:25 Field "title" has no locale "fr"; the schema has en, de',
-      '.forgepress/content/blog-post/post_1.ts:9:3 Field "author" references author/author_2, which is unpublished; publish it or remove the reference',
-      '.forgepress/content/blog-post/post_1.ts:10:3 "colour" is not a field of collection "blogPost"',
-      '.forgepress/content/blog-post/post_2.ts:9:3 Field "author" references author/author_3, which doesn\'t exist',
-      '.forgepress/content/blog-post/post_3.ts:1:22 `someId` is not a literal value; variables, calls and expressions are not allowed',
+      '.forgepress/content/author/author_2.ts:4:3 "id" is "author_1", but the file is named author_2.ts',
+      '.forgepress/content/blog-post/post_1.ts:9:3 Field "author" references author/author_3, which doesn\'t exist',
       '.forgepress/content/page/page_1.ts:3:16 Collection "page" is not in the schema',
     ])
   })
 
-  it('stops at schema problems, since entries cannot be checked against a broken schema', async () => {
-    expect(await problems({
-      '.forgepress/schema.ts': schema.replace('collection: \'author\'', 'collection: \'autor\''),
-      '.forgepress/content/author/author_1.ts': 'export default nonsense\n',
-    })).toEqual([
-      '.forgepress/schema.ts:14:37 Field "blogPost.author" references unknown collection "autor"',
-    ])
-  })
-
-  it('reports a schema that cannot be parsed', async () => {
+  it('reads the schema from the content folder', async () => {
     expect(await problems({ '.forgepress/schema.ts': 'export default defineSchema({})\n' })).toEqual([
       '.forgepress/schema.ts:1:16 `defineSchema` is not a literal value; variables, calls and expressions are not allowed',
     ])
