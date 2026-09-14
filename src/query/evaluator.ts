@@ -1,60 +1,56 @@
-import type { Entry } from '../types/entry'
+import type { OutputEntry } from '../output/types'
 import type { QueryPlan, WhereClause } from './types'
+import { isRecord } from '../utils/value'
 
-function compare(a: unknown, b: unknown): number {
-  if (a === b)
-    return 0
-  if (a == null)
-    return -1
-  if (b == null)
-    return 1
-
-  return a < b ? -1 : 1
+function comparable(value: unknown): unknown {
+  return isRecord(value) && typeof value.collection === 'string' && typeof value.id === 'string' ? value.id : value
 }
 
-function matches(row: Entry, { field, op, value }: WhereClause): boolean {
-  const actual = row[field]
+function compare(left: unknown, right: unknown): number {
+  const first = comparable(left)
+  const second = comparable(right)
+
+  if (first === second)
+    return 0
+
+  if (first === undefined || first === null)
+    return -1
+
+  if (second === undefined || second === null)
+    return 1
+
+  return (first as string) < (second as string) ? -1 : 1
+}
+
+function ranged(actual: unknown, value: unknown, accept: (order: number) => boolean): boolean {
+  return actual !== undefined && actual !== null && accept(compare(actual, value))
+}
+
+function matches(entry: OutputEntry, { field, op, value }: WhereClause): boolean {
+  const actual = entry[field]
 
   switch (op) {
-    case 'eq': return actual === value
-    case 'ne': return actual !== value
-    case 'gt': return compare(actual, value) > 0
-    case 'gte': return compare(actual, value) >= 0
-    case 'lt': return compare(actual, value) < 0
-    case 'lte': return compare(actual, value) <= 0
-    case 'in': return Array.isArray(value) && value.includes(actual)
+    case 'eq': return comparable(actual) === value
+    case 'ne': return comparable(actual) !== value
+    case 'gt': return ranged(actual, value, order => order > 0)
+    case 'gte': return ranged(actual, value, order => order >= 0)
+    case 'lt': return ranged(actual, value, order => order < 0)
+    case 'lte': return ranged(actual, value, order => order <= 0)
+    case 'in': return Array.isArray(value) && value.includes(comparable(actual))
     case 'contains':
       return Array.isArray(actual)
-        ? actual.includes(value)
+        ? actual.some(item => comparable(item) === value)
         : typeof actual === 'string' && typeof value === 'string' && actual.includes(value)
   }
 }
 
-export function localize(row: Entry, translated: Set<string>, locale: string): Entry {
-  const out: Entry = { ...row }
+export function evaluate(entries: readonly OutputEntry[], plan: QueryPlan): OutputEntry[] {
+  let result = plan.where.length > 0 ? entries.filter(entry => plan.where.every(clause => matches(entry, clause))) : [...entries]
 
-  for (const field of translated) {
-    const value = out[field]
-
-    if (value && typeof value === 'object')
-      out[field] = (value as Record<string, unknown>)[locale]
-  }
-
-  return out
-}
-
-export function evaluate(rows: Entry[], plan: QueryPlan, translated: Set<string>): Entry[] {
-  let result = plan.locale
-    ? rows.map(row => localize(row, translated, plan.locale!))
-    : rows
-
-  if (plan.where.length)
-    result = result.filter(row => plan.where.every(clause => matches(row, clause)))
-
-  if (plan.sort.length) {
-    result = [...result].sort((a, b) => {
+  if (plan.sort.length > 0) {
+    result.sort((left, right) => {
       for (const { field, dir } of plan.sort) {
-        const order = compare(a[field], b[field])
+        const order = compare(left[field], right[field])
 
         if (order !== 0)
           return dir === 'asc' ? order : -order
@@ -64,10 +60,10 @@ export function evaluate(rows: Entry[], plan: QueryPlan, translated: Set<string>
     })
   }
 
-  if (plan.offset)
+  if (plan.offset > 0)
     result = result.slice(plan.offset)
 
-  if (plan.limit != null)
+  if (plan.limit !== undefined)
     result = result.slice(0, plan.limit)
 
   return result

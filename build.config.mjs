@@ -7,8 +7,8 @@ export default defineBuildConfig({
       input: [
         './src/index.ts',
         './src/unplugin.ts',
-        './src/store/bundle.ts',
-        './src/disk/source.ts',
+        './src/disk/reader.ts',
+        './src/query/fetch.ts',
         './src/cli/bin.ts',
       ],
       dts: true,

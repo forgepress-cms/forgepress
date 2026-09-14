@@ -1,19 +1,23 @@
+import type { OutputMeta } from '../types/entry'
+
 export const OUTPUT_VERSION = 1
+
+export const OUTPUT_INDEX = 'index.json'
+
+export type LinkKind = 'relation' | 'dynamic'
 
 export interface OutputFile {
   path: string
   text: string
 }
 
-export interface OutputEntry {
-  id: string
-  createdAt: string
-  updatedAt: string
+export interface OutputEntry extends OutputMeta {
   [field: string]: unknown
 }
 
 export interface OutputManifest {
   indexed: string[]
+  links: Record<string, LinkKind>
   entries: OutputEntry[]
   files: Record<string, string>
 }

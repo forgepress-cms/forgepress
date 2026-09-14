@@ -8,7 +8,6 @@ import { join } from 'node:path'
 import { sortByCreation } from '../entries/order'
 import { parseEntry, parseSchema } from '../files/parse'
 import { defaultPaths } from '../files/paths'
-import { source as bundle } from '../store/bundle'
 import { readEntryIds } from './collections'
 import { findRoot } from './root'
 
@@ -61,19 +60,4 @@ export function createSource(start?: string, paths: ContentPaths = defaultPaths,
       return visible(row) ? row : undefined
     },
   }
-}
-
-const disk = createSource()
-let active: Promise<ContentSource> | undefined
-
-function select(): Promise<ContentSource> {
-  active ??= bundle.schema().then(() => bundle, () => disk)
-
-  return active
-}
-
-export const source: ContentSource = {
-  schema: async () => (await select()).schema(),
-  list: async collection => (await select()).list(collection),
-  entry: async (collection, id) => (await select()).entry(collection, id),
 }

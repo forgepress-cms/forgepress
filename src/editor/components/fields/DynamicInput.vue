@@ -182,6 +182,7 @@ function groups(block: DynamicBlock, index: number) {
             color="error"
             variant="ghost"
             size="xs"
+            class="text-default hover:text-error focus-visible:text-error"
             :aria-label="`Remove ${entries.collectionLabel(block.collection)}`"
             @click="remove(index)"
           />

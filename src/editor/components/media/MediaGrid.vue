@@ -50,7 +50,7 @@ function activate(asset: MediaAsset): void {
         <span class="grid gap-0.5 px-2 py-1.5">
           <span class="truncate text-xs font-medium text-highlighted">{{ asset.name }}</span>
 
-          <span class="text-xs text-dimmed">{{ formatSize(asset.size) }}</span>
+          <span class="text-xs text-muted">{{ formatSize(asset.size) }}</span>
         </span>
       </button>
 
@@ -69,7 +69,7 @@ function activate(asset: MediaAsset): void {
         color="error"
         variant="solid"
         size="xs"
-        class="absolute right-1.5 top-1.5 opacity-0 transition group-hover:opacity-100 focus-visible:opacity-100"
+        class="absolute right-1.5 top-1.5 bg-default text-default opacity-0 shadow-sm transition group-hover:opacity-100 hover:bg-error hover:text-inverted focus-visible:bg-error focus-visible:text-inverted focus-visible:opacity-100"
         :aria-label="`Delete ${asset.name}`"
         @click="onRemove?.(asset)"
       />

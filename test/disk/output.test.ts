@@ -87,7 +87,7 @@ describe('buildOutput', () => {
     const root = site()
     const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 
-    expect(await buildOutput(root, resolveConfig())).toEqual({ dir: 'public/content', files: 7, commit: head })
+    expect(await buildOutput(root, resolveConfig())).toEqual({ dir: 'public/content', files: 7, commit: head, issues: [] })
     expect(hashless(written())).toEqual([
       'author/author_1',
       'author/index',
@@ -109,6 +109,28 @@ describe('buildOutput', () => {
 
     expect((await buildOutput(root, resolveConfig(), { dev: true })).commit).toBeNull()
     expect(JSON.parse(readFileSync(join(out, 'index.json'), 'utf8'))).toMatchObject({ commit: null, dev: true })
+  })
+
+  it('writes what it can in development and hands over the problems', async () => {
+    const root = site({
+      '.forgepress/content/blog-post/post_2.ts': entry('blogPost', 'post_2', ['title: { en: \'Hi\', de: \'Hallo\' },', 'author: \'author_2\',']),
+      '.forgepress/content/blog-post/post_3.ts': 'export default { id: post_3 }\n',
+    })
+
+    const result = await buildOutput(root, resolveConfig(), { dev: true })
+
+    expect(result.issues.map(issue => `${issue.file}:${issue.line} ${issue.message}`)).toEqual([
+      '.forgepress/content/blog-post/post_2.ts:9 Field "author" references author/author_2, which is unpublished; publish it or remove the reference',
+      '.forgepress/content/blog-post/post_3.ts:1 `post_3` is not a literal value; variables, calls and expressions are not allowed',
+    ])
+    expect(hashless(written()).filter(path => path.startsWith('blog-post/en/'))).toEqual(['blog-post/en/index', 'blog-post/en/post_1', 'blog-post/en/post_2'])
+  })
+
+  it('writes nothing in development either while the schema is broken', async () => {
+    const root = site({ '.forgepress/schema.ts': schema.replace('type: \'relation\'', 'type: \'link\'') })
+
+    await expect(buildOutput(root, resolveConfig(), { dev: true })).rejects.toBeInstanceOf(ContentError)
+    expect(existsSync(out)).toBe(false)
   })
 
   it('writes into the configured folder', async () => {

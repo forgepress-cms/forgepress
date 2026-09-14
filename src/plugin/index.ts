@@ -1,19 +1,23 @@
+import type { ServerResponse } from 'node:http'
 import type { UnpluginFactory } from 'unplugin'
 import type { ResolvedConfig } from '../config/resolve'
 import type { MediaConfig } from '../types/config'
+import type { ContentIssue } from '../types/issues'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve as resolvePath, sep } from 'node:path'
+import { readFile } from 'node:fs/promises'
+import { dirname, isAbsolute, join, relative, resolve as resolvePath, sep } from 'node:path'
 import process from 'node:process'
 import { createUnplugin } from 'unplugin'
 import { resolveConfig } from '../config/resolve'
-import { checkContent } from '../disk/check'
 import { loadConfig } from '../disk/config'
+import { buildOutput, outputDir } from '../disk/output'
+import { OUTPUT_VARIABLE } from '../disk/reader'
 import { findRoot } from '../disk/root'
 import { ContentError } from '../files/issues'
 import { ENDPOINT } from '../files/paths'
 import { errorMessage } from '../utils/error'
 import { EndpointError, handle } from './endpoint'
-import { ENTRY_PREFIX, findCollection, generateEntry, generateList, generateRoot, LIST_PREFIX, resolved, VIRTUAL_ID } from './modules'
+import { generateSettings, resolved, SETTINGS_ID } from './settings'
 
 export interface Options {
   root?: string
@@ -44,11 +48,31 @@ function writeTypes(root: string, config: ResolvedConfig): void {
   writeFileSync(path, TYPES)
 }
 
+function inside(parent: string, child: string): boolean {
+  const path = relative(parent, child)
+
+  return path !== '' && path !== '..' && !path.startsWith(`..${sep}`) && !isAbsolute(path)
+}
+
+async function sendOutput(response: ServerResponse, file: string): Promise<void> {
+  try {
+    const text = await readFile(file)
+
+    response.setHeader('Content-Type', 'application/json')
+    response.setHeader('Cache-Control', 'no-cache')
+    response.end(text)
+  }
+  catch {
+    response.statusCode = 404
+    response.end()
+  }
+}
+
 export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) => {
   let root = options?.root ? resolvePath(options.root) : findRoot(process.cwd())
   let local = false
   let serving = false
-  let reported = ''
+  let publicDir = ''
 
   let config: Promise<ResolvedConfig> | undefined
 
@@ -72,30 +96,19 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
         root = options?.root ? resolvePath(resolvedConfig.root, options.root) : findRoot(resolvedConfig.root)
         serving = resolvedConfig.command === 'serve'
         local = serving && options?.write !== false
+        publicDir = resolvedConfig.publicDir ?? ''
       },
 
       async configureServer(server) {
         const current = await resolve()
-
-        function invalidate(): void {
-          const stale = [...server.moduleGraph.idToModuleMap.entries()]
-            .filter(([id]) => id.startsWith(resolved('virtual:forgepress/')))
-            .map(([, module]) => module)
-
-          if (stale.length === 0)
-            return
-
-          for (const module of stale)
-            server.moduleGraph.invalidateModule(module)
-
-          server.ws.send({ type: 'full-reload' })
-        }
-
         const { logger } = server.config
+        const output = outputDir(root, current)
+        let reported = ''
+
+        process.env[OUTPUT_VARIABLE] = output
         let pending: ReturnType<typeof setTimeout> | undefined
 
-        async function report(): Promise<void> {
-          const issues = await checkContent(root, current.paths)
+        function report(issues: readonly ContentIssue[]): void {
           const message = issues.length > 0 ? new ContentError(issues).message : ''
 
           if (message === reported)
@@ -109,11 +122,34 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
           reported = message
         }
 
-        function check(): void {
+        async function refresh(): Promise<void> {
+          try {
+            report((await buildOutput(root, current, { dev: true })).issues)
+          }
+          catch (error) {
+            if (!(error instanceof ContentError))
+              throw error
+
+            report(error.issues)
+          }
+        }
+
+        function reload(): void {
+          const settings = server.moduleGraph.getModuleById(resolved(SETTINGS_ID))
+
+          if (settings)
+            server.moduleGraph.invalidateModule(settings)
+
+          server.ws.send({ type: 'full-reload' })
+        }
+
+        function schedule(): void {
           clearTimeout(pending)
 
           pending = setTimeout(() => {
-            report().catch((error: unknown) => logger.error(`[forgepress] could not check the content: ${errorMessage(error)}`))
+            refresh()
+              .catch((error: unknown) => logger.error(`[forgepress] could not write the content output: ${errorMessage(error)}`))
+              .finally(reload)
           }, 100)
         }
 
@@ -121,11 +157,8 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
         const contentDir = join(root, current.paths.content)
 
         function watch(file: string): void {
-          if (file !== schemaFile && !file.startsWith(`${contentDir}${sep}`))
-            return
-
-          invalidate()
-          check()
+          if (file === schemaFile || file.startsWith(`${contentDir}${sep}`))
+            schedule()
         }
 
         server.watcher.add([schemaFile, contentDir])
@@ -133,7 +166,29 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
         server.watcher.on('change', watch)
         server.watcher.on('unlink', watch)
 
-        check()
+        await refresh().catch((error: unknown) => logger.error(`[forgepress] could not write the content output: ${errorMessage(error)}`))
+
+        if (publicDir && inside(publicDir, output)) {
+          const prefix = `/${relative(publicDir, output).split(sep).join('/')}/`
+
+          server.middlewares.use((request, response, next) => {
+            const path = decodeURIComponent(request.url?.split('?')[0] ?? '')
+
+            if ((request.method !== 'GET' && request.method !== 'HEAD') || !path.startsWith(prefix))
+              return next()
+
+            const file = join(output, path.slice(prefix.length))
+
+            if (!inside(output, file)) {
+              response.statusCode = 404
+              response.end()
+
+              return
+            }
+
+            void sendOutput(response, file)
+          })
+        }
 
         if (options?.write === false)
           return
@@ -148,7 +203,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
           handle(current, root, request, response)
             .then(() => {
               if (method !== 'GET')
-                invalidate()
+                schedule()
             })
             .catch((error: unknown) => {
               response.statusCode = error instanceof EndpointError ? error.status : 500
@@ -166,31 +221,18 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
       if (serving)
         return
 
-      const issues = await checkContent(root, current.paths)
-
-      if (issues.length > 0)
-        throw new ContentError(issues)
+      process.env[OUTPUT_VARIABLE] = outputDir(root, current)
+      await buildOutput(root, current)
     },
 
     resolveId(id) {
-      if (id === VIRTUAL_ID || id.startsWith(LIST_PREFIX) || id.startsWith(ENTRY_PREFIX))
+      if (id === SETTINGS_ID)
         return resolved(id)
     },
 
     async load(id) {
-      const current = await resolve()
-
-      if (id === resolved(VIRTUAL_ID))
-        return generateRoot(root, local, current)
-
-      if (id.startsWith(resolved(LIST_PREFIX))) {
-        const collection = await findCollection(root, current, id.slice(resolved(LIST_PREFIX).length))
-
-        return collection ? generateList(collection) : 'export default []\n'
-      }
-
-      if (id.startsWith(resolved(ENTRY_PREFIX)))
-        return generateEntry(root, current, id.slice(resolved(ENTRY_PREFIX).length))
+      if (id === resolved(SETTINGS_ID))
+        return generateSettings(root, local, await resolve())
     },
   }
 }

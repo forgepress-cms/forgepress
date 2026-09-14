@@ -6,6 +6,8 @@ const forgepressSrc = fileURLToPath(new URL('../../src', import.meta.url))
 
 const forgepressEditor = fileURLToPath(new URL('../../dist/editor/index.mjs', import.meta.url))
 
+const forgepressReader = fileURLToPath(new URL('../../src/query/fetch.ts', import.meta.url))
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
 
@@ -21,6 +23,7 @@ export default defineNuxtConfig({
       compilerOptions: {
         paths: {
           'forgepress': [forgepressSrc],
+          '#content-reader': [forgepressReader],
           'forgepress/editor': [fileURLToPath(new URL('../../dist/editor/index.d.mts', import.meta.url))],
         },
       },

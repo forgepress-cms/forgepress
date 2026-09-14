@@ -128,6 +128,7 @@ function move(key: string, offset: number): Promise<boolean> {
             icon="i-lucide-trash-2"
             color="error"
             variant="ghost"
+            class="text-default hover:text-error focus-visible:text-error"
             :aria-label="`Delete ${row.original.name}`"
             @click.stop="removing = row.original.key"
           />

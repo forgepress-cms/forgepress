@@ -1,7 +1,7 @@
 import type { Field } from '../schema/fields'
 import type { Entry } from '../types/entry'
 import type { ForgePressSchema } from '../types/schema'
-import type { OutputEntry } from './types'
+import type { LinkKind, OutputEntry } from './types'
 import { isRecord } from '../utils/value'
 
 function fieldsOf(schema: ForgePressSchema, collection: string): [string, Field][] {
@@ -30,6 +30,10 @@ export function isLocalized(schema: ForgePressSchema, collection: string): boole
 
 export function indexedFields(schema: ForgePressSchema, collection: string): string[] {
   return fieldsOf(schema, collection).filter(([, field]) => 'index' in field && field.index === true).map(([key]) => key)
+}
+
+export function linkFields(schema: ForgePressSchema, collection: string): Record<string, LinkKind> {
+  return Object.fromEntries(fieldsOf(schema, collection).flatMap(([key, field]) => field.type === 'relation' || field.type === 'dynamic' ? [[key, field.type]] : []))
 }
 
 export function toOutputEntry(schema: ForgePressSchema, collection: string, entry: Entry, locale?: string): OutputEntry {

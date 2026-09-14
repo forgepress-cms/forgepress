@@ -1,11 +1,13 @@
 import type { ResolvedConfig } from '../config/resolve'
 import type { OutputFile } from '../output/types'
+import type { ContentIssue } from '../types/issues'
 import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, readdir, rename, rm, rmdir, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, sep } from 'node:path'
 import { ContentError } from '../files/issues'
-import { createOutput, OUTPUT_INDEX } from '../output'
+import { createOutput } from '../output'
+import { OUTPUT_INDEX } from '../output/types'
 import { loadContent } from './check'
 import { readCommit } from './commit'
 
@@ -19,7 +21,10 @@ export interface BuildResult {
   dir: string
   files: number
   commit: string | null
+  issues: ContentIssue[]
 }
+
+const queues = new Map<string, Promise<void>>()
 
 function isOutputFile(path: string): boolean {
   return path === OUTPUT_INDEX || HASHED_FILE.test(path)
@@ -72,7 +77,7 @@ export function outputDir(root: string, config: ResolvedConfig): string {
   return dir
 }
 
-export async function writeOutput(dir: string, files: readonly OutputFile[]): Promise<void> {
+async function write(dir: string, files: readonly OutputFile[]): Promise<void> {
   const index = files.at(-1)
 
   if (index?.path !== OUTPUT_INDEX)
@@ -90,11 +95,19 @@ export async function writeOutput(dir: string, files: readonly OutputFile[]): Pr
   await prune(dir, stale.map(path => dirname(path)))
 }
 
+export function writeOutput(dir: string, files: readonly OutputFile[]): Promise<void> {
+  const next = (queues.get(dir) ?? Promise.resolve()).catch(() => undefined).then(() => write(dir, files))
+
+  queues.set(dir, next)
+
+  return next
+}
+
 export async function buildOutput(root: string, config: ResolvedConfig, options: BuildOptions = {}): Promise<BuildResult> {
   const dir = outputDir(root, config)
   const { issues, schema, content } = await loadContent(root, config.paths)
 
-  if (!schema || issues.length > 0)
+  if (!schema || (issues.length > 0 && !options.dev))
     throw new ContentError(issues)
 
   const commit = options.dev ? null : readCommit(root)
@@ -102,5 +115,5 @@ export async function buildOutput(root: string, config: ResolvedConfig, options:
 
   await writeOutput(dir, files)
 
-  return { dir: config.output.dir, files: files.length, commit }
+  return { dir: config.output.dir, files: files.length, commit, issues }
 }

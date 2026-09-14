@@ -6,17 +6,32 @@
 @theme static {
   --font-sans: ui-sans-serif, system-ui, sans-serif;
 
-  --color-brand-50: #fff1f1;
-  --color-brand-100: #fce2e2;
-  --color-brand-200: #f9cacc;
-  --color-brand-300: #fa9da2;
-  --color-brand-400: #f85f6d;
-  --color-brand-500: #f21b3f;
-  --color-brand-600: #e20026;
-  --color-brand-700: #bf0021;
-  --color-brand-800: #a00028;
-  --color-brand-900: #89062c;
-  --color-brand-950: #4e0213;
+  --color-brand-50: #fffbee;
+  --color-brand-100: #fff2d0;
+  --color-brand-200: #ffe3a5;
+  --color-brand-300: #ffd27a;
+  --color-brand-400: #fbb33c;
+  --color-brand-500: #ea9205;
+  --color-brand-600: #ce7402;
+  --color-brand-700: #a34f00;
+  --color-brand-800: #87400d;
+  --color-brand-900: #6a310d;
+  --color-brand-950: #3f1902;
+
+  --color-paper: #fffcf8;
+  --color-ink: #13110e;
+
+  --color-umber-50: #fbf5ec;
+  --color-umber-100: #f7efe2;
+  --color-umber-200: #ebe0d0;
+  --color-umber-300: #ddcfbe;
+  --color-umber-400: #9d8e7d;
+  --color-umber-500: #756657;
+  --color-umber-600: #58514b;
+  --color-umber-700: #443e39;
+  --color-umber-800: #2a2622;
+  --color-umber-900: #1a1714;
+  --color-umber-950: #0d0b09;
 }
 
 @layer theme {
@@ -32,19 +47,50 @@
     --ui-color-primary-800: var(--color-brand-800);
     --ui-color-primary-900: var(--color-brand-900);
     --ui-color-primary-950: var(--color-brand-950);
-    --ui-primary: var(--color-brand-500);
+    --ui-color-neutral-50: var(--color-umber-50);
+    --ui-color-neutral-100: var(--color-umber-100);
+    --ui-color-neutral-200: var(--color-umber-200);
+    --ui-color-neutral-300: var(--color-umber-300);
+    --ui-color-neutral-400: var(--color-umber-400);
+    --ui-color-neutral-500: var(--color-umber-500);
+    --ui-color-neutral-600: var(--color-umber-600);
+    --ui-color-neutral-700: var(--color-umber-700);
+    --ui-color-neutral-800: var(--color-umber-800);
+    --ui-color-neutral-900: var(--color-umber-900);
+    --ui-color-neutral-950: var(--color-umber-950);
+    --ui-primary: var(--color-brand-700);
+    --ui-error: var(--ui-color-error-700);
+    --ui-success: var(--ui-color-success-800);
+    --ui-warning: var(--ui-color-warning-800);
   }
 
   .dark {
-    --ui-primary: var(--color-brand-400);
+    --ui-primary: var(--color-brand-300);
+    --ui-error: var(--ui-color-error-400);
+    --ui-success: var(--ui-color-success-400);
+    --ui-warning: var(--ui-color-warning-400);
   }
 }
 
 @layer base {
   :host {
+    --ui-bg: var(--color-paper);
+    --ui-text-inverted: var(--color-paper);
+    --ui-text-highlighted: var(--color-ink);
+    --ui-bg-inverted: var(--color-ink);
+    --ui-border-inverted: var(--color-ink);
+
     display: block;
     color-scheme: light dark;
     background-color: var(--ui-bg);
+  }
+
+  .dark {
+    --ui-bg: var(--color-ink);
+    --ui-text-inverted: var(--color-ink);
+    --ui-text-highlighted: var(--color-paper);
+    --ui-bg-inverted: var(--color-paper);
+    --ui-border-inverted: var(--color-paper);
   }
 
   .forgepress-root {

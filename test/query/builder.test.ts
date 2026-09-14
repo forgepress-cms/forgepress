@@ -1,163 +1,160 @@
-import type { QueryBackend } from '../../src/query/types'
+import type { ContentEntries } from '../../src/entries/references'
 import type { Entry } from '../../src/types/entry'
 import type { ForgePressSchema } from '../../src/types/schema'
-import { describe, expect, it } from 'vitest'
-import { createBuilder } from '../../src/query/builder'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createOutput } from '../../src/output'
+import { Builder } from '../../src/query/builder'
+import { createLoader } from '../../src/query/client'
 
 const schema = {
   locales: ['en', 'de'],
   collections: {
     author: {
       fields: {
-        name: { type: 'text' },
-        bio: { type: 'richtext', translate: true },
-        posts: { type: 'relation', collection: 'post', multiple: true },
+        name: { type: 'text', index: true },
+        posts: { type: 'relation', collection: 'post', multiple: true, optional: true },
       },
     },
     post: {
       fields: {
-        title: { type: 'text', translate: true },
-        views: { type: 'number' },
-        author: { type: 'relation', collection: 'author' },
+        title: { type: 'text', translate: true, index: true },
+        views: { type: 'number', optional: true },
+        author: { type: 'relation', collection: 'author', index: true },
+        blocks: { type: 'dynamic', collections: ['hero', 'author'], optional: true },
+      },
+    },
+    hero: {
+      fields: {
+        headline: { type: 'text', translate: true },
       },
     },
   },
 } as const satisfies ForgePressSchema
 
-function fixtures(): Record<string, Entry[]> {
+function entry(id: string, createdAt: string, fields: Record<string, unknown>, status: Entry['status'] = 'published'): Entry {
+  return { id, status, createdAt, updatedAt: createdAt, ...fields }
+}
+
+const content: ContentEntries = {
+  author: {
+    alice: entry('alice', '2024-01-01T00:00:00Z', { name: 'Alice', posts: ['p1', 'p2'] }),
+    bob: entry('bob', '2024-02-01T00:00:00Z', { name: 'Bob', posts: ['p3'] }),
+    carol: entry('carol', '2024-03-01T00:00:00Z', { name: 'Carol' }, 'unpublished'),
+  },
+  post: {
+    p1: entry('p1', '2024-01-05T00:00:00Z', { title: { en: 'First', de: 'Erster' }, views: 10, author: 'alice', blocks: [{ collection: 'hero', id: 'h1' }, { collection: 'author', id: 'bob' }] }),
+    p2: entry('p2', '2024-01-10T00:00:00Z', { title: { en: 'Second', de: 'Zweiter' }, views: 30, author: 'alice' }),
+    p3: entry('p3', '2024-01-15T00:00:00Z', { title: { en: 'Third', de: 'Dritter' }, views: 20, author: 'bob' }),
+  },
+  hero: {
+    h1: entry('h1', '2024-01-01T00:00:00Z', { headline: { en: 'Hello', de: 'Hallo' } }),
+  },
+}
+
+async function site(dev = false) {
+  const files = new Map((await createOutput(schema, content, { commit: null, dev })).map(file => [file.path, JSON.parse(file.text) as unknown]))
+  const reads: string[] = []
+  const loader = createLoader(async (path) => {
+    reads.push(path.replace(/\.[\da-f]{8}\.json$/, ''))
+
+    return structuredClone(files.get(path))
+  })
+
   return {
-    author: [
-      { id: 'a1', status: 'published', createdAt: '2024-01-01', updatedAt: '2024-01-01', name: 'Alice', bio: { en: 'Alice bio', de: 'Alice Bio' }, posts: ['p1', 'p2'] },
-      { id: 'a2', status: 'unpublished', createdAt: '2024-02-01', updatedAt: '2024-02-01', name: 'Bob', bio: { en: 'Bob bio', de: 'Bob Bio' }, posts: ['p3'] },
-    ],
-    post: [
-      { id: 'p1', status: 'published', createdAt: '2024-01-05', updatedAt: '2024-01-05', title: { en: 'First', de: 'Erste' }, views: 10, author: 'a1' },
-      { id: 'p2', status: 'published', createdAt: '2024-01-10', updatedAt: '2024-01-10', title: { en: 'Second', de: 'Zweite' }, views: 30, author: 'a1' },
-      { id: 'p3', status: 'unpublished', createdAt: '2024-01-15', updatedAt: '2024-01-15', title: { en: 'Third', de: 'Dritte' }, views: 20, author: 'a2' },
-    ],
+    reads,
+    query: (collection: string) => new Builder(loader, collection),
   }
 }
 
-function backend(content: Record<string, Entry[]>): QueryBackend {
-  return {
-    source: {
-      schema: async () => schema,
-      list: async collection => content[collection] ?? [],
-      entry: async (collection, id) => (content[collection] ?? []).find(row => row.id === id),
-    },
-  }
-}
-
-function query(collection: string, content = fixtures()) {
-  return createBuilder(collection, backend(content))
-}
-
-const ids = (rows: Entry[]) => rows.map(row => row.id)
-
-describe('where', () => {
-  it('two-argument form is an eq shorthand', async () => {
-    expect(ids(await query('post').where('status', 'published'))).toEqual(['p1', 'p2'])
-  })
-
-  it('three-argument form takes an operator', async () => {
-    expect(ids(await query('post').where('views', 'gt', 15))).toEqual(['p2', 'p3'])
-  })
-
-  it('matches against relation id arrays with contains', async () => {
-    expect(ids(await query('author').where('posts', 'contains', 'p1'))).toEqual(['a1'])
-  })
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
-describe('sort, limit, offset', () => {
-  it('sorts by a field', async () => {
-    expect(ids(await query('post').sort('views', 'desc'))).toEqual(['p2', 'p3', 'p1'])
+describe('queries', () => {
+  it('list published entries in creation order, resolved for the locale', async () => {
+    const { query } = await site()
+
+    expect(await query('post').locale('de')).toEqual([
+      { id: 'p1', createdAt: '2024-01-05T00:00:00Z', updatedAt: '2024-01-05T00:00:00Z', title: 'Erster', views: 10, author: { collection: 'author', id: 'alice' }, blocks: [{ collection: 'hero', id: 'h1' }, { collection: 'author', id: 'bob' }] },
+      { id: 'p2', createdAt: '2024-01-10T00:00:00Z', updatedAt: '2024-01-10T00:00:00Z', title: 'Zweiter', views: 30, author: { collection: 'author', id: 'alice' } },
+      { id: 'p3', createdAt: '2024-01-15T00:00:00Z', updatedAt: '2024-01-15T00:00:00Z', title: 'Dritter', views: 20, author: { collection: 'author', id: 'bob' } },
+    ])
+    expect((await query('author')).map(author => author.id)).toEqual(['alice', 'bob'])
   })
 
-  it('paginates with offset and limit', async () => {
-    expect(ids(await query('post').sort('views', 'asc').offset(1).limit(1))).toEqual(['p3'])
-  })
-})
+  it('need .locale() for translated collections and a locale of the site', async () => {
+    const { query } = await site()
 
-describe('locale', () => {
-  it('flattens translated fields to the chosen locale', async () => {
-    const posts = await query('post').locale('de')
-    expect(posts[0]!.title).toBe('Erste')
+    await expect(Promise.resolve(query('post'))).rejects.toThrow('[forgepress] "post" is translated, so query("post") needs .locale(), such as .locale("en")')
+    await expect(Promise.resolve(query('post').locale('fr'))).rejects.toThrow('[forgepress] "fr" is not a locale of this site; use "en", "de"')
+    await expect(Promise.resolve(query('page'))).rejects.toThrow('[forgepress] the content output has no collection "page"')
   })
 
-  it('leaves translated maps intact when not called', async () => {
-    const posts = await query('post')
-    expect(posts[0]!.title).toEqual({ en: 'First', de: 'Erste' })
-  })
-})
+  it('filter and sort indexed fields in the manifest and read only the entries they return', async () => {
+    const { query, reads } = await site()
 
-describe('with', () => {
-  it('resolves a single relation to its row', async () => {
-    const post = await query('post').where('id', 'p1').first()
-    const resolved = (await query('post').where('id', 'p1').with('author'))[0]!
-    expect(post!.author).toBe('a1')
-    expect((resolved.author as Entry).name).toBe('Alice')
+    expect(await query('post').locale('en').where('author', 'alice').sort('title', 'desc').limit(1)).toMatchObject([{ id: 'p2', title: 'Second' }])
+    expect(reads).toEqual(['index.json', 'post/en/index', 'post/en/p2'])
   })
 
-  it('resolves a multiple relation to an array of rows', async () => {
-    const author = (await query('author').where('id', 'a1').with('posts'))[0]!
-    expect(ids(author.posts as Entry[])).toEqual(['p1', 'p2'])
+  it('pick indexed fields without reading any entry', async () => {
+    const { query, reads } = await site()
+
+    expect(await query('author').sort('name', 'desc').pick('id', 'name')).toEqual([{ id: 'bob', name: 'Bob' }, { id: 'alice', name: 'Alice' }])
+    expect(reads).toEqual(['index.json', 'author/index'])
   })
 
-  it('localizes resolved relation rows when a locale is active', async () => {
-    const author = (await query('author').locale('en').with('posts'))[0]!
-    expect((author.posts as Entry[])[0]!.title).toBe('First')
+  it('read every entry to filter by a field that is not indexed, and say so in development', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const built = await site()
+
+    expect((await built.query('post').locale('en').where('views', 'gt', 15)).map(post => post.id)).toEqual(['p2', 'p3'])
+    expect(built.reads).toEqual(['index.json', 'post/en/index', 'post/en/p1', 'post/en/p2', 'post/en/p3'])
+    expect(warn).not.toHaveBeenCalled()
+
+    const dev = await site(true)
+
+    await dev.query('post').locale('en').sort('views')
+    expect(warn).toHaveBeenCalledWith('[forgepress] query("post") filters or sorts by "views", which is not indexed, so every entry is loaded. Add index: true to the field in the schema')
   })
 
-  it('drops relation ids that do not resolve', async () => {
-    const content = fixtures()
-    content.author![0]!.posts = ['p1', 'missing']
-    const author = (await createBuilder('author', backend(content)).where('id', 'a1').with('posts'))[0]!
-    expect(ids(author.posts as Entry[])).toEqual(['p1'])
-  })
-})
+  it('read one entry for first()', async () => {
+    const { query, reads } = await site()
 
-describe('pick', () => {
-  it('projects rows down to the chosen fields', async () => {
-    const posts = await query('post').pick('id', 'views')
-    expect(Object.keys(posts[0]!)).toEqual(['id', 'views'])
+    expect(await query('post').locale('en').offset(1).first()).toMatchObject({ id: 'p2' })
+    expect(await query('post').locale('en').where('title', 'Nothing').first()).toBeUndefined()
+    expect(reads.filter(path => path.startsWith('post/en/p'))).toEqual(['post/en/p2'])
   })
 
-  it('runs after where/sort/with so dropped fields can still drive the query', async () => {
-    const posts = await query('post').locale('en').with('author').where('status', 'published').sort('views', 'desc').pick('title')
-    expect(posts.map(row => row.title)).toEqual(['Second', 'First'])
-    expect(Object.keys(posts[0]!)).toEqual(['title'])
-  })
-})
+  it('load relations as entries and blocks with their collection', async () => {
+    const { query } = await site()
+    const post = await query('post').locale('en').with('author').with('blocks').first()
 
-describe('first', () => {
-  it('returns the first row', async () => {
-    expect((await query('post').sort('views', 'asc').first())!.id).toBe('p1')
+    expect(post).toMatchObject({
+      author: { id: 'alice', name: 'Alice', posts: [{ collection: 'post', id: 'p1' }, { collection: 'post', id: 'p2' }] },
+      blocks: [
+        { collection: 'hero', id: 'h1', entry: { id: 'h1', headline: 'Hello' } },
+        { collection: 'author', id: 'bob', entry: { id: 'bob', name: 'Bob' } },
+      ],
+    })
+
+    expect((await query('author').locale('de').with('posts')).map(author => (author.posts as { title: string }[]).map(item => item.title))).toEqual([['Erster', 'Zweiter'], ['Dritter']])
   })
 
-  it('returns undefined when nothing matches', async () => {
-    expect(await query('post').where('status', 'nope').first()).toBeUndefined()
-  })
-})
+  it('need a locale to load translated entries, and a field that links', async () => {
+    const { query } = await site()
 
-describe('thenable', () => {
-  it('is awaitable and chains through then()', async () => {
-    const count = await query('post').then(rows => rows.length)
-    expect(count).toBe(3)
+    await expect(Promise.resolve(query('author').with('posts'))).rejects.toThrow('[forgepress] .with("posts") loads "post" entries, which are translated, so query("author") needs .locale(), such as .locale("en")')
+    await expect(Promise.resolve(query('author').with('name'))).rejects.toThrow('[forgepress] .with() loads relation and dynamic fields, and "name" is not one in "author"')
   })
-})
 
-describe('immutability', () => {
-  it('does not mutate the source rows when resolving relations', async () => {
-    const content = fixtures()
-    await createBuilder('post', backend(content)).locale('en').with('author')
-    expect(content.post![0]!.author).toBe('a1')
-    expect(content.post![0]!.title).toEqual({ en: 'First', de: 'Erste' })
-  })
-})
+  it('return copies, so changing a result changes nothing else', async () => {
+    const { query } = await site()
+    const [first] = await query('author').with('posts').locale('en')
 
-describe('combinations', () => {
-  it('applies locale, where, sort and limit together', async () => {
-    const posts = await query('post').locale('en').where('status', 'published').sort('views', 'desc').limit(1)
-    expect(posts.map(row => ({ id: row.id, title: row.title }))).toEqual([{ id: 'p2', title: 'Second' }])
+    first!.name = 'Changed'
+    ;(first!.posts as { title: string }[])[0]!.title = 'Changed'
+
+    expect(await query('author').locale('en').with('posts').first()).toMatchObject({ name: 'Alice', posts: [{ title: 'First' }, { title: 'Second' }] })
   })
 })

@@ -19,7 +19,7 @@ let forge: Forge | undefined
 const blobs = new Map<string, string>()
 const pinned: string[] = []
 
-vi.doMock('../../../src/store/bundle', () => ({
+vi.doMock('../../../src/editor/settings', () => ({
   baked: async () => ({ local: false, media, provider: undefined, format: undefined, paths: defaultPaths }),
 }))
 

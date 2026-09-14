@@ -1,13 +1,23 @@
-import type { EntryOf } from '../types/entry'
-import type { RegisteredSchema } from '../types/schema'
-import type { QueryBackend, QueryBuilder } from './types'
-import { source } from '#content-source'
-import { createBuilder } from './builder'
+import type { ForgePressSchema, RegisteredSchema } from '../types/schema'
+import type { Query } from './types'
+import { reader } from '#content-reader'
+import { Builder } from './builder'
+import { createLoader } from './client'
+import { fetchReader } from './fetch'
 
-const backend: QueryBackend = { source }
-
-export function query<TName extends keyof RegisteredSchema['collections'] & string>(
-  collection: TName,
-): QueryBuilder<RegisteredSchema, TName, EntryOf<RegisteredSchema, TName>> {
-  return createBuilder(collection, backend) as unknown as QueryBuilder<RegisteredSchema, TName, EntryOf<RegisteredSchema, TName>>
+export interface ClientOptions {
+  url?: string
 }
+
+export interface Client<TSchema extends ForgePressSchema = RegisteredSchema> {
+  query: Query<TSchema>
+}
+
+export function createClient<TSchema extends ForgePressSchema = RegisteredSchema>(options: ClientOptions = {}): Client<TSchema> {
+  const loader = createLoader(options.url === undefined ? reader : fetchReader(options.url))
+  const query = (collection: string): Builder => new Builder(loader, collection)
+
+  return { query: query as unknown as Query<TSchema> }
+}
+
+export const query: Query<RegisteredSchema> = createClient().query

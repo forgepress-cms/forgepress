@@ -6,9 +6,9 @@
   "license": "MIT",
   "sideEffects": false,
   "imports": {
-    "#content-source": {
-      "node": "./dist/disk/source.mjs",
-      "default": "./dist/store/bundle.mjs"
+    "#content-reader": {
+      "node": "./dist/disk/reader.mjs",
+      "default": "./dist/query/fetch.mjs"
     }
   },
   "exports": {

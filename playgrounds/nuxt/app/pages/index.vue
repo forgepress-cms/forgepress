@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { query } from 'forgepress'
 
+const { data: home } = await useAsyncData('home', () =>
+  query('page')
+    .locale('en')
+    .where('slug', '/')
+    .with('content')
+    .first()
+    .then(page => page ?? null))
+
 const { data: posts } = await useAsyncData('blog-posts', () =>
   query('blogPost')
     .locale('en')
     .with('author')
-    .where('status', 'published')
     .sort('createdAt', 'desc'))
 
 const { data: authors } = await useAsyncData('blog-authors', () =>
@@ -29,6 +36,21 @@ async function getInBrowser2() {
 
 <template>
   <main>
+    <section v-if="home">
+      <h1>{{ home.title }}</h1>
+
+      <template v-for="block in home.content" :key="block.id">
+        <div v-if="block.collection === 'hero'">
+          <h2>{{ block.entry.headline }}</h2>
+          <p>{{ block.entry.subheadline }}</p>
+        </div>
+
+        <p v-else>
+          {{ block.entry.content }}
+        </p>
+      </template>
+    </section>
+
     <h1>Blog</h1>
 
     <article v-for="post in posts" :key="post.id">

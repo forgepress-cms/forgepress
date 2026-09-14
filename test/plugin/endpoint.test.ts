@@ -74,7 +74,7 @@ beforeAll(async () => {
 
   await vite.configureServer({
     config: { logger: { info: () => {}, warn: () => {}, error: () => {} } },
-    moduleGraph: { idToModuleMap: new Map([['\0virtual:forgepress/content', {}]]), invalidateModule: () => {} },
+    moduleGraph: { getModuleById: () => undefined, invalidateModule: () => {} },
     watcher: { add: () => {}, on: () => {} },
     ws: { send: (payload: unknown) => reloads.push(payload) },
     middlewares: {
@@ -135,6 +135,9 @@ describe('dev endpoint', () => {
     expect(reloads).toEqual([])
 
     await writer.writeEntry('author', { id: 'author_3', status: 'unpublished', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', name: 'Carol' })
+
+    for (let attempt = 0; attempt < 100 && reloads.length === 0; attempt += 1)
+      await new Promise(resolve => setTimeout(resolve, 20))
 
     expect(reloads).toEqual([{ type: 'full-reload' }])
     expect((await reader.entry('author', 'author_3'))?.name).toBe('Carol')

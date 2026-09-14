@@ -154,6 +154,7 @@ async function remove(): Promise<void> {
             icon="i-lucide-trash-2"
             color="error"
             variant="ghost"
+            class="text-default hover:text-error focus-visible:text-error"
             :aria-label="`Delete ${label(row.original)}`"
             @click="removing = [String(row.original.id)]"
           />

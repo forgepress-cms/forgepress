@@ -1,4 +1,5 @@
 import type { Field, FieldContent } from '../schema/fields'
+import type { RelationField } from '../schema/fields/relation'
 import type { Collection, ForgePressSchema, RegisteredSchema, SchemaLocale } from './schema'
 
 export type EntryStatus = 'published' | 'unpublished'
@@ -10,9 +11,15 @@ export interface EntryMeta {
   updatedAt: string
 }
 
-export interface EntryRef {
-  collection: string
+export interface EntryRef<TCollectionName extends string = string> {
+  collection: TCollectionName
   id: string
+}
+
+export interface OutputMeta {
+  id: string
+  createdAt: string
+  updatedAt: string
 }
 
 export type Entry = EntryMeta & {
@@ -56,5 +63,20 @@ export type EntryOf<
 export type ForgePressEntry<TCollectionName extends keyof RegisteredSchema['collections']>
   = EntryOf<RegisteredSchema, TCollectionName>
 
-export type ForgePressContent<TCollectionName extends keyof RegisteredSchema['collections']>
-  = EntryOf<RegisteredSchema, TCollectionName>[]
+type OutputValue<TField extends Field> = TField extends RelationField
+  ? TField['multiple'] extends true ? EntryRef<TField['collection']>[] : EntryRef<TField['collection']>
+  : FieldContent<TField>
+
+type CollectionOutput<TCollection extends Collection> = OutputMeta & {
+  [TKey in RequiredKeys<TCollection>]: OutputValue<TCollection['fields'][TKey]>
+} & {
+  [TKey in OptionalKeys<TCollection>]?: OutputValue<TCollection['fields'][TKey]>
+}
+
+export type OutputOf<
+  TSchema extends ForgePressSchema,
+  TCollectionName extends keyof TSchema['collections'],
+> = CollectionOutput<TSchema['collections'][TCollectionName]>
+
+export type ForgePressOutput<TCollectionName extends keyof RegisteredSchema['collections']>
+  = OutputOf<RegisteredSchema, TCollectionName>

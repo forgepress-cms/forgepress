@@ -7,10 +7,8 @@ import { sortByCreation } from '../entries/order'
 import { toCollectionDir } from '../files/paths'
 import { digest } from '../utils/encoding'
 import { defined } from '../utils/value'
-import { indexedFields, isLocalized, toOutputEntry } from './entry'
-import { OUTPUT_VERSION } from './types'
-
-export const OUTPUT_INDEX = 'index.json'
+import { indexedFields, isLocalized, linkFields, toOutputEntry } from './entry'
+import { OUTPUT_INDEX, OUTPUT_VERSION } from './types'
 
 export const OUTPUT_DEFAULTS = {
   dir: 'public/content',
@@ -58,6 +56,7 @@ async function collectionOutput(schema: ForgePressSchema, collection: string, en
 
   const manifest: OutputManifest = {
     indexed,
+    links: linkFields(schema, collection),
     entries: converted.map(entry => listed(entry, indexed)),
     files: Object.fromEntries(converted.map((entry, index) => [entry.id, files[index]!.path])),
   }
@@ -71,7 +70,8 @@ export async function createOutput(schema: ForgePressSchema, content: ContentEnt
   const collections: Record<string, OutputCollection> = {}
 
   for (const collection of Object.keys(schema.collections)) {
-    const entries = sortByCreation(Object.values(content[collection] ?? {}).filter(entry => entry.status === 'published'))
+    const stored = Object.entries(content[collection] ?? {}).map(([id, entry]) => entry.id === id ? entry : { ...entry, id })
+    const entries = sortByCreation(stored.filter(entry => entry.status === 'published'))
 
     if (!isLocalized(schema, collection)) {
       const output = await collectionOutput(schema, collection, entries)

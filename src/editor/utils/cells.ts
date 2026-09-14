@@ -39,7 +39,7 @@ export function thumbnails(items: MediaContent[], kind: MediaKind): VNode {
       { class: 'block h-8 w-12 overflow-hidden rounded bg-elevated', title: item.alt ?? '' },
       h(MediaPreview, { url: item.url, kind, alt: item.alt }),
     )),
-    items.length > THUMBNAILS && h('span', { class: 'text-xs text-dimmed' }, `+${items.length - THUMBNAILS}`),
+    items.length > THUMBNAILS && h('span', { class: 'text-xs text-muted' }, `+${items.length - THUMBNAILS}`),
   ])
 }
 

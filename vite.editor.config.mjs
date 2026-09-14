@@ -26,7 +26,7 @@ export default defineConfig({
     ui({
       router: false,
       colorMode: false,
-      ui: { colors: { primary: 'brand', neutral: 'zinc' } },
+      ui: { colors: { primary: 'brand', neutral: 'umber' } },
     }),
     Types(),
   ],

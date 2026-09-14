@@ -114,6 +114,7 @@ describe('createOutput', () => {
     const authors = read<OutputManifest>(files, (index.collections.author as { manifest: string }).manifest)
 
     expect(english.indexed).toEqual(['title', 'summary', 'author'])
+    expect(english.links).toEqual({ author: 'relation', blocks: 'dynamic' })
     expect(english.entries).toEqual([
       { id: 'post_1', createdAt: '2024-02-01T00:00:00Z', updatedAt: '2024-02-05T00:00:00Z', title: 'First', summary: 'Short', author: { collection: 'author', id: 'author_1' } },
       { id: 'post_2', createdAt: '2024-03-01T00:00:00Z', updatedAt: '2024-03-01T00:00:00Z', title: 'Second', author: { collection: 'author', id: 'author_1' } },
@@ -123,6 +124,7 @@ describe('createOutput', () => {
 
     expect(authors).toEqual({
       indexed: ['name'],
+      links: {},
       entries: [{ id: 'author_1', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', name: 'Alice' }],
       files: { author_1: expect.stringMatching(/^author\/author_1\.[\da-f]{8}\.json$/) },
     })

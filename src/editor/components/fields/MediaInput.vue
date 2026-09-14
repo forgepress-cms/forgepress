@@ -84,7 +84,7 @@ async function link(): Promise<void> {
           <div class="flex items-center gap-2">
             <span class="truncate text-sm font-medium text-highlighted">{{ fileName(item.url) }}</span>
 
-            <span v-if="item.width && item.height" class="shrink-0 text-xs text-dimmed">
+            <span v-if="item.width && item.height" class="shrink-0 text-xs text-muted">
               {{ item.width }} × {{ item.height }}
             </span>
 
