@@ -23,3 +23,11 @@ export interface KeyValueStore<TValue> {
   write: (value: TValue) => Promise<void>
   clear: () => Promise<void>
 }
+
+export interface RepositoryCache {
+  readListing: (commit: string, directory: string) => Promise<ReadonlyMap<string, string> | undefined>
+  writeListing: (commit: string, directory: string, files: ReadonlyMap<string, string>) => Promise<void>
+  keep: (hashes: ReadonlySet<string>) => Promise<ReadonlyMap<string, string>>
+  writeFile: (hash: string, text: string) => Promise<void>
+  clear: () => Promise<void>
+}

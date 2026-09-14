@@ -11,7 +11,7 @@ import { lazyMedia, lazyStore } from '../../store/lazy'
 import { useSession } from '../composables/useSession'
 import { reader, writer } from '../endpoint'
 import { media } from '../media'
-import { persist } from '../storage'
+import { persist, repositoryCache } from '../storage'
 
 export type EditorMode = 'development' | 'static'
 
@@ -42,7 +42,7 @@ async function build(): Promise<Resolved> {
     return { store: { ...reader, ...writer }, media }
 
   const session = useSession()
-  const source = createForgeSource(() => session.forge(), settings.paths, settings.provider?.base)
+  const source = createForgeSource(() => session.forge(), settings.paths, settings.provider?.base, repositoryCache())
   const changes = createChanges(source, async () => (await baked()).media, persist<Changes>('changes'), source.hashes)
 
   return { store: changes.content, media: changes.media, changes, source }

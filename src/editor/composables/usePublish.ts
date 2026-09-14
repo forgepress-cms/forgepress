@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref } from 'vue'
-import type { ChangeSummary, FileDiff, Resolution } from '../../changes/types'
+import type { ChangeService, ChangeSummary, FileDiff, Resolution } from '../../changes/types'
 import type { Conflict, RepoTarget } from '../../forge/types'
 import { computed, ref, shallowRef } from 'vue'
 import { commitMessage, toFiles } from '../../forge'
@@ -33,6 +33,7 @@ const diff = shallowRef<FileDiff[]>([])
 const publishing = ref(false)
 const error = ref('')
 const conflicts = shallowRef<readonly Conflict[]>([])
+const followed = new WeakSet<ChangeService>()
 
 const count = computed(() => {
   const current = summary.value
@@ -41,6 +42,19 @@ const count = computed(() => {
     + current.uploaded.length + current.deleted.length
     + (current.schema ? 1 : 0)
 })
+
+function follow(changes: ChangeService): void {
+  if (followed.has(changes))
+    return
+
+  followed.add(changes)
+
+  changes.subscribe(() => {
+    changes.summary().then((next) => {
+      summary.value = next
+    }, () => undefined)
+  })
+}
 
 export function usePublish(): Publisher {
   const content = useContent()
@@ -66,6 +80,8 @@ export function usePublish(): Publisher {
 
       return
     }
+
+    follow(changes)
 
     summary.value = await changes.summary()
     diff.value = await changes.diff(await target())

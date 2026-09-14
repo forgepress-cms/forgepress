@@ -37,6 +37,8 @@ export function createGitLabForge(config: ProviderConfig, token: TokenGetter): F
   const { api } = describe(config)
   const base = `${api}/projects/${encodeURIComponent(`${config.repository.owner}/${config.repository.name}`)}`
 
+  let branch = config.repository.branch
+
   async function send(path: string, init?: RequestInit): Promise<Response> {
     return fetch(path.startsWith('http') ? path : `${base}${path}`, {
       ...init,
@@ -61,7 +63,9 @@ export function createGitLabForge(config: ProviderConfig, token: TokenGetter): F
   }
 
   async function branchName(): Promise<string> {
-    return config.repository.branch ?? (await call<Project>('')).default_branch
+    branch ??= (await call<Project>('')).default_branch
+
+    return branch
   }
 
   async function existing(path: string, ref: string): Promise<ExistingFile | undefined> {
@@ -80,6 +84,8 @@ export function createGitLabForge(config: ProviderConfig, token: TokenGetter): F
         call<Project>(''),
       ])
 
+      branch ??= project.default_branch
+
       return {
         identity: {
           login: user.username,
@@ -87,7 +93,7 @@ export function createGitLabForge(config: ProviderConfig, token: TokenGetter): F
           ...user.avatar_url ? { avatar: user.avatar_url } : {},
         },
         writable: writable(project),
-        branch: config.repository.branch ?? project.default_branch,
+        branch,
       }
     },
 

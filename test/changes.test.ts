@@ -252,6 +252,28 @@ describe('summary', () => {
     expect(summary.uploaded).toHaveLength(1)
     expect(summary.deleted).toEqual([banner.name])
   })
+
+  it('tells subscribers about every change until they unsubscribe', async () => {
+    const { changes } = make()
+    const counts: number[] = []
+
+    const unsubscribe = changes.subscribe(() => {
+      void changes.summary().then(summary => counts.push(summary.written.length + summary.deleted.length + summary.uploaded.length))
+    })
+
+    await changes.content.writeEntry('hero', row('b'))
+    await changes.media.remove(banner.name)
+    await changes.media.upload(file('photo.png'))
+    await changes.published()
+    await changes.content.removeEntry('hero', 'b')
+    await changes.discard()
+
+    unsubscribe()
+
+    await changes.content.writeEntry('hero', row('c'))
+
+    expect(counts).toEqual([1, 2, 3, 0, 0, 0])
+  })
 })
 
 describe('diff', () => {

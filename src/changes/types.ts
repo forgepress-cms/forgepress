@@ -64,4 +64,5 @@ export interface ChangeService {
   resolve: (conflicts: readonly Conflict[], target: RepoTarget, keep: Resolution) => Promise<void>
   published: () => Promise<void>
   discard: () => Promise<void>
+  subscribe: (listener: () => void) => () => void
 }

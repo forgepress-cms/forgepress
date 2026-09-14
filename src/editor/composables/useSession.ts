@@ -8,7 +8,7 @@ import { createGitHubForge } from '../../forge/github'
 import { createGitLabForge } from '../../forge/gitlab'
 import { authorizeUrl, createChallenge, createState, createVerifier, exchange, expired, renew } from '../../forge/oauth'
 import { baked } from '../../store/bundle'
-import { persist } from '../storage'
+import { persist, repositoryCache } from '../storage'
 
 const PKCE = 'forgepress:pkce'
 
@@ -33,6 +33,7 @@ const pending = ref(false)
 const error = ref('')
 
 const store = persist<OAuthTokens | string>('token')
+const cache = repositoryCache()
 
 let tokens: OAuthTokens | undefined
 let forge: Forge | undefined
@@ -278,6 +279,7 @@ export function useSession(): Session {
       error.value = ''
 
       await store.clear().catch(() => undefined)
+      await cache?.clear().catch(() => undefined)
     },
 
     forge: () => forge,

@@ -17,6 +17,8 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
   const { owner, name } = config.repository
   const base = `${api}/repos/${owner}/${name}`
 
+  let branch = config.repository.branch
+
   async function send(path: string, init?: RequestInit, accept = 'application/vnd.github+json'): Promise<Response> {
     return fetch(path.startsWith('http') ? path : `${base}${path}`, {
       ...init,
@@ -47,7 +49,9 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
   }
 
   async function branchName(): Promise<string> {
-    return config.repository.branch ?? (await call<Repository>('')).default_branch
+    branch ??= (await call<Repository>('')).default_branch
+
+    return branch
   }
 
   async function folder(commit: string, directory: string): Promise<string | undefined> {
@@ -72,6 +76,8 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
         call<Repository>(''),
       ])
 
+      branch ??= repository.default_branch
+
       return {
         identity: {
           login: user.login,
@@ -79,7 +85,7 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
           ...user.avatar_url ? { avatar: user.avatar_url } : {},
         },
         writable: repository.permissions?.push === true,
-        branch: config.repository.branch ?? repository.default_branch,
+        branch,
       }
     },
 

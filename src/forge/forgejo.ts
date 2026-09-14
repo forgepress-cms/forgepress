@@ -25,6 +25,8 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
   const { owner, name } = config.repository
   const base = `${api}/repos/${owner}/${name}`
 
+  let branch = config.repository.branch
+
   async function send(path: string, init?: RequestInit): Promise<Response> {
     return fetch(path.startsWith('http') ? path : `${base}${path}`, {
       ...init,
@@ -50,7 +52,9 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
   }
 
   async function branchName(): Promise<string> {
-    return config.repository.branch ?? (await call<Repository>('')).default_branch
+    branch ??= (await call<Repository>('')).default_branch
+
+    return branch
   }
 
   async function entries(tree: string, recursive: boolean): Promise<TreeItem[]> {
@@ -97,6 +101,8 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
         call<Repository>(''),
       ])
 
+      branch ??= repository.default_branch
+
       return {
         identity: {
           login: user.login,
@@ -104,7 +110,7 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
           ...user.avatar_url ? { avatar: user.avatar_url } : {},
         },
         writable: repository.permissions?.push === true,
-        branch: config.repository.branch ?? repository.default_branch,
+        branch,
       }
     },
 

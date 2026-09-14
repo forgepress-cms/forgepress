@@ -1,6 +1,6 @@
 import type { HashSource } from '../changes/types'
 import type { ContentPaths } from '../files/paths'
-import type { ContentSource } from '../store/types'
+import type { ContentSource, RepositoryCache } from '../store/types'
 import type { ContentRow } from '../types/entry'
 import type { Forge } from './types'
 import { toMeta } from '../entries/meta'
@@ -41,7 +41,7 @@ function limit(size: number): <TResult>(task: Task<TResult>) => Promise<TResult>
   }
 }
 
-export function createForgeSource(forge: () => Forge | undefined, paths: ContentPaths, base?: string): ForgeSource {
+export function createForgeSource(forge: () => Forge | undefined, paths: ContentPaths, base?: string, cache?: RepositoryCache): ForgeSource {
   const at = prefixer(base)
   const queue = limit(CONCURRENCY)
   const texts = new Map<string, Promise<string>>()
@@ -58,11 +58,37 @@ export function createForgeSource(forge: () => Forge | undefined, paths: Content
     return current
   }
 
+  async function restore(hashes: ReadonlySet<string>): Promise<void> {
+    const cached = await cache?.keep(hashes).catch(() => undefined)
+
+    for (const [sha, content] of cached ?? []) {
+      if (!texts.has(sha))
+        texts.set(sha, Promise.resolve(content))
+    }
+  }
+
+  async function listing(commit: string): Promise<ReadonlyMap<string, string>> {
+    const directory = at(paths.dir)
+    const stored = await cache?.readListing(commit, directory).catch(() => undefined)
+
+    if (stored)
+      return stored
+
+    const listed = new Map((await client().files(commit, directory)).map(file => [file.path, file.sha]))
+
+    if (forge())
+      cache?.writeListing(commit, directory, listed).catch(() => undefined)
+
+    return listed
+  }
+
   async function load(): Promise<ReadonlyMap<string, string>> {
     const commit = pinned ?? await client().head()
-    const files = await client().files(commit, at(paths.dir))
+    const listed = await listing(commit)
 
-    return new Map(files.map(file => [file.path, file.sha]))
+    await restore(new Set(listed.values()))
+
+    return listed
   }
 
   function files(): Promise<ReadonlyMap<string, string>> {
@@ -85,7 +111,7 @@ export function createForgeSource(forge: () => Forge | undefined, paths: Content
     if (!pending) {
       pending = queue(() => client().read(sha))
       texts.set(sha, pending)
-      pending.catch(() => texts.delete(sha))
+      pending.then(content => forge() && cache?.writeFile(sha, content), () => texts.delete(sha)).catch(() => undefined)
     }
 
     return pending

@@ -20,8 +20,14 @@ function refs(changes: Changes, staged: boolean): EntryRef[] {
 
 export function createChanges(base: ContentSource, baked: () => Promise<BakedMedia>, store: KeyValueStore<Changes>, hashes?: HashSource): ChangeService {
   const previews = createPreviews()
+  const listeners = new Set<() => void>()
 
   let loaded: Promise<Changes> | undefined
+
+  function notify(): void {
+    for (const listener of listeners)
+      listener()
+  }
 
   function ready(): Promise<Changes> {
     loaded ??= store.read().then(changes => changes ? { ...empty(), ...changes } : empty())
@@ -58,6 +64,7 @@ export function createChanges(base: ContentSource, baked: () => Promise<BakedMed
     const changes = await ready()
 
     apply(changes)
+    notify()
 
     await track(changes)
     await store.write(changes)
@@ -136,6 +143,7 @@ export function createChanges(base: ContentSource, baked: () => Promise<BakedMed
       const next: Changes = { ...empty(), ...Object.keys(media).length > 0 ? { publishedMedia: media } : {} }
 
       loaded = Promise.resolve(next)
+      notify()
 
       await (next.publishedMedia ? store.write(next) : store.clear())
     },
@@ -146,8 +154,17 @@ export function createChanges(base: ContentSource, baked: () => Promise<BakedMed
 
       previews.clear()
       loaded = Promise.resolve(next)
+      notify()
 
       await (publishedMedia ? store.write(next) : store.clear())
+    },
+
+    subscribe: (listener) => {
+      listeners.add(listener)
+
+      return () => {
+        listeners.delete(listener)
+      }
     },
   }
 }

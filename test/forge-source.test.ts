@@ -1,4 +1,5 @@
 import type { Forge } from '../src/forge/types'
+import type { RepositoryCache } from '../src/store/types'
 import { describe, expect, it } from 'vitest'
 import { createPaths, defaultPaths } from '../src/files/paths'
 import { createForgeSource } from '../src/forge/source'
@@ -23,7 +24,7 @@ const first: Record<string, string> = {
 function repository(commits: Record<string, Record<string, string>>) {
   const blobs = new Map<string, string>()
   const calls: string[] = []
-  const state = { branch: Object.keys(commits)[0]!, failures: 0 }
+  const state: { branch: string, failures: number, gate?: Promise<void> } = { branch: Object.keys(commits)[0]!, failures: 0 }
 
   const shaOf = (text: string): string => {
     const sha = `blob-${[...text].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 7).toString(16)}`
@@ -45,6 +46,8 @@ function repository(commits: Record<string, Record<string, string>>) {
     files: async (commit, directory) => {
       calls.push(`files ${commit} ${directory}`)
 
+      await state.gate
+
       if (state.failures > 0) {
         state.failures -= 1
         throw new Error('GitHub 502')
@@ -56,6 +59,8 @@ function repository(commits: Record<string, Record<string, string>>) {
     },
     read: async (sha) => {
       calls.push(`read ${sha}`)
+
+      await state.gate
 
       return blobs.get(sha)!
     },
@@ -73,7 +78,64 @@ function repository(commits: Record<string, Record<string, string>>) {
     fail: (times: number) => {
       state.failures = times
     },
+    hold: () => {
+      let release = (): void => {}
+
+      state.gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+
+      return release
+    },
   }
+}
+
+function browserCache(available = true) {
+  const files = new Map<string, string>()
+  const listings = new Map<string, { commit: string, files: ReadonlyMap<string, string> }>()
+
+  function reachable(): void {
+    if (!available)
+      throw new Error('IndexedDB is unavailable')
+  }
+
+  const cache: RepositoryCache = {
+    readListing: async (commit, directory) => {
+      reachable()
+
+      const stored = listings.get(directory)
+
+      return stored?.commit === commit ? stored.files : undefined
+    },
+    writeListing: async (commit, directory, listed) => {
+      reachable()
+      listings.set(directory, { commit, files: listed })
+    },
+    keep: async (hashes) => {
+      reachable()
+
+      for (const hash of files.keys()) {
+        if (!hashes.has(hash))
+          files.delete(hash)
+      }
+
+      return new Map(files)
+    },
+    writeFile: async (hash, text) => {
+      reachable()
+      files.set(hash, text)
+    },
+    clear: async () => {
+      files.clear()
+      listings.clear()
+    },
+  }
+
+  return { cache, files, listings }
+}
+
+function settle(): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, 0))
 }
 
 describe('forge source', () => {
@@ -160,6 +222,130 @@ describe('forge source', () => {
 
     expect(await source.hashes.entry('author', 'author_1')).toBe(repo.shaOf(changed))
     expect(repo.reads()).toBe(0)
+  })
+
+  it('keeps the files it read for the next page load and fetches only files that changed', async () => {
+    const changed = entry('author_1', 'published', '2024-01-01T00:00:00Z', 'Alice')
+    const repo = repository({ c1: first, c2: { ...first, '.forgepress/content/author/author_1.ts': changed } })
+    const { cache, files } = browserCache()
+
+    await createForgeSource(() => repo.forge, defaultPaths, undefined, cache).list('author')
+    await settle()
+
+    expect(repo.reads()).toBe(2)
+
+    const reloaded = createForgeSource(() => repo.forge, defaultPaths, undefined, cache)
+
+    expect((await reloaded.list('author')).map(row => row.name)).toEqual(['author_1', 'author_2'])
+    expect(repo.reads()).toBe(2)
+    expect(repo.calls.filter(call => call === 'head')).toHaveLength(2)
+    expect(repo.calls.filter(call => call.startsWith('files'))).toHaveLength(1)
+
+    repo.move('c2')
+
+    const moved = createForgeSource(() => repo.forge, defaultPaths, undefined, cache)
+
+    expect((await moved.list('author')).map(row => row.name)).toEqual(['Alice', 'author_2'])
+    await settle()
+
+    expect(repo.reads()).toBe(3)
+    expect(new Set(files.keys())).toEqual(new Set([repo.shaOf(changed), repo.shaOf(first['.forgepress/content/author/author_2.ts']!)]))
+    expect(files.get(repo.shaOf(changed))).toBe(changed)
+  })
+
+  it('keeps the listing of the commit it read last', async () => {
+    const repo = repository({ c1: first, c2: { ...first, '.forgepress/content/author/author_1.ts': entry('author_1', 'published', '2024-01-01T00:00:00Z', 'Alice') } })
+    const { cache, listings } = browserCache()
+    const listed = (): number => repo.calls.filter(call => call.startsWith('files')).length
+    const open = () => createForgeSource(() => repo.forge, defaultPaths, undefined, cache)
+
+    await open().list('author')
+    await settle()
+    await open().list('author')
+
+    expect(listed()).toBe(1)
+    expect(repo.calls.filter(call => call === 'head')).toHaveLength(2)
+
+    repo.move('c2')
+
+    expect((await open().entry('author', 'author_1'))?.name).toBe('Alice')
+    await settle()
+    expect((await open().entry('author', 'author_1'))?.name).toBe('Alice')
+    expect(listed()).toBe(2)
+    expect([...listings.values()].map(stored => stored.commit)).toEqual(['c2'])
+
+    const pinned = open()
+
+    pinned.reset('c1')
+
+    expect((await pinned.entry('author', 'author_1'))?.name).toBe('author_1')
+    expect(listed()).toBe(3)
+  })
+
+  it('uses a stored listing only for the folder it was made for', async () => {
+    const nested = Object.fromEntries(Object.entries(first).map(([path, text]) => [`apps/site/${path}`, text]))
+    const repo = repository({ c1: { ...first, ...nested } })
+    const { cache } = browserCache()
+
+    await createForgeSource(() => repo.forge, defaultPaths, undefined, cache).list('author')
+    await settle()
+
+    expect((await createForgeSource(() => repo.forge, defaultPaths, 'apps/site', cache).list('author')).map(row => row.id)).toEqual(['author_1', 'author_2'])
+    expect(repo.calls.filter(call => call.startsWith('files'))).toEqual(['files c1 .forgepress', 'files c1 apps/site/.forgepress'])
+  })
+
+  it('reads the repository when the browser cannot keep anything', async () => {
+    const repo = repository({ c1: first })
+    const { cache } = browserCache(false)
+
+    expect(await createForgeSource(() => repo.forge, defaultPaths, undefined, cache).list('author')).toHaveLength(2)
+    expect(await createForgeSource(() => repo.forge, defaultPaths, undefined, cache).list('author')).toHaveLength(2)
+    expect(repo.reads()).toBe(4)
+    expect(repo.calls.filter(call => call.startsWith('files'))).toHaveLength(2)
+  })
+
+  it('keeps no listing that finishes loading after signing out', async () => {
+    const repo = repository({ c1: first })
+    const { cache, listings } = browserCache()
+    let signedIn = true
+
+    const source = createForgeSource(() => signedIn ? repo.forge : undefined, defaultPaths, undefined, cache)
+    const release = repo.hold()
+    const hash = source.hashes.schema()
+
+    await settle()
+
+    signedIn = false
+    release()
+
+    expect(await hash).toBe(repo.shaOf(schema))
+    await settle()
+
+    expect(listings.size).toBe(0)
+  })
+
+  it('keeps no file that finishes loading after signing out', async () => {
+    const repo = repository({ c1: first })
+    const { cache, files } = browserCache()
+    let signedIn = true
+
+    const source = createForgeSource(() => signedIn ? repo.forge : undefined, defaultPaths, undefined, cache)
+
+    await source.hashes.schema()
+
+    const release = repo.hold()
+    const listing = source.list('author')
+
+    await settle()
+    expect(repo.reads()).toBe(2)
+
+    signedIn = false
+    release()
+
+    expect(await listing).toHaveLength(2)
+    await settle()
+
+    expect(files.size).toBe(0)
   })
 
   it('tries again after the forge failed', async () => {
