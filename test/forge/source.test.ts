@@ -65,6 +65,8 @@ function repository(commits: Record<string, Record<string, string>>) {
       return blobs.get(sha)!
     },
     commit: async () => 'unused',
+    checks: async () => [],
+    contains: async () => false,
   }
 
   return {

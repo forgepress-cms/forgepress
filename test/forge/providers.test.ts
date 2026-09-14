@@ -1,6 +1,6 @@
 import type { ProviderConfig } from '../../src/types/config'
 import { expect, describe as group, it } from 'vitest'
-import { describe as descriptor } from '../../src/forge/providers'
+import { commitUrl, describe as descriptor } from '../../src/forge/providers'
 
 function config(partial: Partial<ProviderConfig> = {}): ProviderConfig {
   return { type: 'gitlab', repository: { owner: 'acme', name: 'site' }, ...partial }
@@ -39,6 +39,16 @@ group('provider descriptors', () => {
   it('lets configured scopes override the defaults', () => {
     expect(descriptor(config({ scopes: ['read_api'] })).scopes).toEqual(['read_api'])
     expect(descriptor(config()).scopes).toEqual(['api'])
+  })
+
+  it('links a commit on the forge\'s website', () => {
+    expect(commitUrl(config({ type: 'github' }), 'c1')).toBe('https://github.com/acme/site/commit/c1')
+    expect(commitUrl(config({ repository: { owner: 'acme/web', name: 'site' } }), 'c1')).toBe('https://gitlab.com/acme/web/site/-/commit/c1')
+    expect(commitUrl(config({ type: 'forgejo', url: 'http://127.0.0.1:3310/' }), 'c1')).toBe('http://127.0.0.1:3310/acme/site/commit/c1')
+  })
+
+  it('names what a token needs, including reading builds on GitHub', () => {
+    expect(descriptor(config({ type: 'github' })).permissions).toBe('read and write access to contents, and read access to actions and commit statuses')
   })
 
   it('names the forge and where to create a token', () => {

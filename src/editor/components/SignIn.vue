@@ -41,7 +41,7 @@ const repository = computed(() => {
       <form v-else class="flex flex-col gap-4" @submit.prevent="signIn(token)">
         <UFormField
           label="Access token"
-          :help="`A ${name} token limited to this repository, with permission to write repository contents.`"
+          :help="`A ${name} token limited to this repository, with ${forge?.permissions ?? 'permission to write repository contents'}.`"
         >
           <UInput
             v-model="token"

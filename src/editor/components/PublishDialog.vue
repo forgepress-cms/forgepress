@@ -77,7 +77,7 @@ async function overwrite(): Promise<void> {
           color="success"
           variant="soft"
           :title="`Published as ${commit.slice(0, 7)}`"
-          description="The site rebuilds from this commit. New media keeps its preview here until it does."
+          description="The site rebuilds from this commit, and the header shows when it's live. New media keeps its preview here until then."
         />
 
         <UAlert

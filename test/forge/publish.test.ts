@@ -71,6 +71,8 @@ function repository(files: Record<string, string>) {
 
       return push(Object.fromEntries(changes.map(change => [change.path, 'removed' in change ? null : change.data])))
     },
+    checks: async () => [],
+    contains: async () => false,
   }
 
   return {

@@ -18,6 +18,7 @@ let changes: ChangeService | undefined
 let forge: Forge | undefined
 const blobs = new Map<string, string>()
 const pinned: string[] = []
+const tracked: string[] = []
 
 vi.doMock('../../../src/editor/settings', () => ({
   baked: async () => ({ local: false, media, provider: undefined, format: undefined, paths: defaultPaths }),
@@ -25,6 +26,14 @@ vi.doMock('../../../src/editor/settings', () => ({
 
 vi.doMock('../../../src/editor/composables/useSession', () => ({
   useSession: () => ({ forge: () => forge, provider: ref(undefined) }),
+}))
+
+vi.doMock('../../../src/editor/composables/useBuild', () => ({
+  useBuild: () => ({
+    track: async (commit: string) => {
+      tracked.push(commit)
+    },
+  }),
 }))
 
 vi.doMock('../../../src/editor/composables/useContent', () => ({
@@ -93,6 +102,8 @@ function site() {
 
       return 'c2'
     },
+    checks: async () => [],
+    contains: async () => false,
   }
 
   changes = createChanges({
@@ -111,6 +122,7 @@ let app: App | undefined
 afterEach(() => {
   app?.unmount()
   pinned.length = 0
+  tracked.length = 0
 })
 
 describe('publish count', () => {
@@ -160,6 +172,7 @@ describe('publishing', () => {
     expect(await publisher.publish('remove alice')).toBeUndefined()
     expect(commits).toEqual([])
     expect(pinned).toEqual(['c1'])
+    expect(tracked).toEqual([])
     expect(publisher.error.value).toBe('')
     expect(publisher.issues.value).toEqual([{
       path: '.forgepress/content/blog-post/post_1.ts',
@@ -179,5 +192,6 @@ describe('publishing', () => {
     expect(await publisher.publish('remove alice')).toBe('c2')
     expect(commits).toEqual(['.forgepress/content/author/author_1.ts .forgepress/content/blog-post/post_1.ts'])
     expect(publisher.issues.value).toEqual([])
+    expect(tracked).toEqual(['c2'])
   })
 })

@@ -8,6 +8,7 @@ import { useRouter } from '../../composables/useRouter'
 import { useSession } from '../../composables/useSession'
 import PublishDialog from '../PublishDialog.vue'
 
+import BuildStatus from './BuildStatus.vue'
 import Logo from './Logo.vue'
 
 const props = defineProps<{
@@ -57,6 +58,8 @@ const icons: Record<ColorMode, string> = {
         color="neutral"
         :variant="route.path.startsWith(link.to) ? 'soft' : 'ghost'"
       />
+
+      <BuildStatus v-if="deployed && identity" />
 
       <UButton
         v-if="identity"

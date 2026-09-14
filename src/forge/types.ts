@@ -34,6 +34,7 @@ export interface ForgeDescriptor {
   root: string
   api: string
   tokens: string
+  permissions: string
   scopes: readonly string[]
   oauth?: OAuthEndpoints
 }
@@ -49,6 +50,14 @@ export interface ForgeFile {
   sha: string
 }
 
+export type CheckState = 'pending' | 'success' | 'failure' | 'skipped'
+
+export interface BuildCheck {
+  name: string
+  state: CheckState
+  url?: string
+}
+
 export interface HashSource {
   entry: (collection: string, id: string) => Promise<string | undefined>
 }
@@ -59,6 +68,8 @@ export interface Forge {
   files: (commit: string, directory: string) => Promise<ForgeFile[]>
   read: (sha: string) => Promise<string>
   commit: (files: FileChange[], message: string, parent: string) => Promise<string>
+  checks: (commit: string) => Promise<BuildCheck[]>
+  contains: (commit: string, ancestor: string) => Promise<boolean>
 }
 
 export interface RepoTarget {

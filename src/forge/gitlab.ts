@@ -1,11 +1,12 @@
 import type { ProviderConfig } from '../types/config'
-import type { Forge, ForgeAccess, ForgeFile, TokenGetter } from './types'
+import type { BuildCheck, CheckState, Forge, ForgeAccess, ForgeFile, TokenGetter } from './types'
 import { describe } from './providers'
 import { publishable } from './publish'
 import { createRepositoryApi } from './repository'
 
 const DEVELOPER = 30
 const PAGE_SIZE = 100
+const RUNNING = new Set(['created', 'waiting_for_resource', 'preparing', 'pending', 'running', 'scheduled', 'waiting_for_callback'])
 
 interface Project {
   default_branch: string
@@ -25,10 +26,29 @@ interface TreeItem {
   path: string
 }
 
+interface Pipeline {
+  id: number
+  iid?: number
+  name?: string | null
+  status: string
+  source: string
+  web_url: string
+}
+
 function writable(project: Project): boolean {
   const levels = [project.permissions?.project_access?.access_level, project.permissions?.group_access?.access_level]
 
   return levels.some(level => typeof level === 'number' && level >= DEVELOPER)
+}
+
+function pipelineState(status: string): CheckState {
+  if (status === 'success')
+    return 'success'
+
+  if (status === 'failed')
+    return 'failure'
+
+  return RUNNING.has(status) ? 'pending' : 'skipped'
 }
 
 function nextPage(link: string | null): string | undefined {
@@ -108,6 +128,20 @@ export function createGitLabForge(config: ProviderConfig, token: TokenGetter): F
       const created = await repo.post<{ id: string }>('/repository/commits', { branch: await repo.branch(), commit_message: message, actions })
 
       return created.id
+    },
+
+    async checks(commit): Promise<BuildCheck[]> {
+      const pipelines = await repo.call<Pipeline[]>(`/pipelines?sha=${commit}&per_page=${PAGE_SIZE}`)
+
+      return pipelines
+        .filter(pipeline => pipeline.source !== 'schedule')
+        .map(pipeline => ({ name: pipeline.name || `Pipeline #${pipeline.iid ?? pipeline.id}`, state: pipelineState(pipeline.status), url: pipeline.web_url }))
+    },
+
+    async contains(commit, ancestor): Promise<boolean> {
+      const refs = new URLSearchParams([['refs[]', commit], ['refs[]', ancestor]])
+
+      return commit === ancestor || (await repo.call<{ id: string }>(`/repository/merge_base?${refs.toString()}`)).id === ancestor
     },
   }
 }

@@ -7,6 +7,7 @@ import { checkResult } from '../../forge/check'
 import { commitMessage, ConflictError, InvalidContentError, publishFiles } from '../../forge/publish'
 import { errorMessage } from '../../utils/error'
 import { fileIssues } from '../utils/issues'
+import { useBuild } from './useBuild'
 import { useContent } from './useContent'
 import { useSession } from './useSession'
 
@@ -57,6 +58,7 @@ function follow(changes: ChangeService): void {
 export function usePublish(): Publisher {
   const content = useContent()
   const session = useSession()
+  const build = useBuild()
 
   async function refresh(): Promise<void> {
     issues.value = []
@@ -129,6 +131,7 @@ export function usePublish(): Publisher {
         conflicts.value = []
 
         await content.published(commit)
+        await build.track(commit)
         await refresh()
 
         return commit

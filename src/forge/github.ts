@@ -1,6 +1,6 @@
 import type { ProviderConfig } from '../types/config'
 import type { TreeItem } from './repository'
-import type { Forge, ForgeAccess, ForgeFile, TokenGetter } from './types'
+import type { BuildCheck, CheckState, Forge, ForgeAccess, ForgeFile, TokenGetter } from './types'
 import { describe } from './providers'
 import { publishable } from './publish'
 import { createRepositoryApi, findTree } from './repository'
@@ -15,6 +15,51 @@ interface Tree {
   tree: TreeItem[]
 }
 
+interface WorkflowRun {
+  name: string | null
+  event: string
+  path: string
+  status: string
+  conclusion: string | null
+  html_url: string
+}
+
+interface CheckRun {
+  name: string
+  status: string
+  conclusion: string | null
+  html_url: string | null
+  details_url: string | null
+  app: { slug: string } | null
+}
+
+interface CommitStatus {
+  context: string
+  state: string
+  target_url: string | null
+}
+
+const BUILD_EVENTS = new Set(['push', 'workflow_run'])
+const FAILED = new Set(['failure', 'timed_out', 'startup_failure'])
+
+function runState(status: string, conclusion: string | null): CheckState {
+  if (status !== 'completed' || conclusion === 'action_required')
+    return 'pending'
+
+  if (conclusion === 'success')
+    return 'success'
+
+  return conclusion !== null && FAILED.has(conclusion) ? 'failure' : 'skipped'
+}
+
+function statusState(state: string): CheckState {
+  return state === 'success' || state === 'pending' ? state : 'failure'
+}
+
+function linked(url: string | null): { url: string } | Record<never, never> {
+  return url ? { url } : {}
+}
+
 export function createGitHubForge(config: ProviderConfig, token: TokenGetter): Forge {
   const { api } = describe(config)
   const { owner, name } = config.repository
@@ -22,6 +67,45 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
     'accept': 'application/vnd.github+json',
     'x-github-api-version': '2022-11-28',
   })
+
+  let apps = true
+
+  async function readable<TResult>(path: string): Promise<TResult | undefined> {
+    const response = await repo.send(path)
+
+    if (response.status === 403 || response.status === 404)
+      return undefined
+
+    return await (await repo.check(response)).json() as TResult
+  }
+
+  async function runs(commit: string): Promise<BuildCheck[] | undefined> {
+    const found = await readable<{ workflow_runs: WorkflowRun[] }>(`/actions/runs?head_sha=${commit}&per_page=100`)
+
+    return found?.workflow_runs
+      .filter(run => BUILD_EVENTS.has(run.event) || run.path.startsWith('dynamic/pages/'))
+      .map(run => ({ name: run.name ?? run.path, state: runState(run.status, run.conclusion), url: run.html_url }))
+  }
+
+  async function statuses(commit: string): Promise<BuildCheck[] | undefined> {
+    const found = await readable<{ statuses: CommitStatus[] }>(`/commits/${commit}/status?per_page=100`)
+
+    return found?.statuses.map(status => ({ name: status.context, state: statusState(status.state), ...linked(status.target_url) }))
+  }
+
+  async function others(commit: string): Promise<BuildCheck[]> {
+    const found = apps ? await readable<{ check_runs: CheckRun[] }>(`/commits/${commit}/check-runs?per_page=100`) : undefined
+
+    if (!found) {
+      apps = false
+
+      return []
+    }
+
+    return found.check_runs
+      .filter(run => run.app?.slug !== 'github-actions')
+      .map(run => ({ name: run.name, state: runState(run.status, run.conclusion), ...linked(run.html_url ?? run.details_url) }))
+  }
 
   return {
     async access(): Promise<ForgeAccess> {
@@ -87,6 +171,19 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
       })
 
       return created.sha
+    },
+
+    async checks(commit): Promise<BuildCheck[]> {
+      const [built, reported, rest] = await Promise.all([runs(commit), statuses(commit), others(commit)])
+
+      if (!built && !reported)
+        throw new Error('[forgepress] the GitHub token can\'t read the builds of this repository; give it read access to actions and commit statuses')
+
+      return [...built ?? [], ...reported ?? [], ...rest]
+    },
+
+    async contains(commit, ancestor): Promise<boolean> {
+      return commit === ancestor || (await repo.call<{ ahead_by: number }>(`/compare/${commit}...${ancestor}?per_page=1`)).ahead_by === 0
     },
   }
 }

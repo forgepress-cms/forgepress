@@ -5,18 +5,38 @@ interface Provider {
   name: string
   root: string
   tokens: string
+  permissions: string
+  commits: string
 }
 
 const PROVIDERS: Record<ProviderType, Provider> = {
-  github: { name: 'GitHub', root: 'https://github.com', tokens: '/settings/personal-access-tokens/new' },
-  gitlab: { name: 'GitLab', root: 'https://gitlab.com', tokens: '/-/user_settings/personal_access_tokens' },
-  forgejo: { name: 'Forgejo', root: 'https://codeberg.org', tokens: '/user/settings/applications' },
+  github: {
+    name: 'GitHub',
+    root: 'https://github.com',
+    tokens: '/settings/personal-access-tokens/new',
+    permissions: 'read and write access to contents, and read access to actions and commit statuses',
+    commits: '/commit/',
+  },
+  gitlab: {
+    name: 'GitLab',
+    root: 'https://gitlab.com',
+    tokens: '/-/user_settings/personal_access_tokens',
+    permissions: 'the api scope',
+    commits: '/-/commit/',
+  },
+  forgejo: {
+    name: 'Forgejo',
+    root: 'https://codeberg.org',
+    tokens: '/user/settings/applications',
+    permissions: 'read access to your user, and read and write access to repositories',
+    commits: '/commit/',
+  },
 }
 
 export function describe(config: ProviderConfig): ForgeDescriptor {
   const provider = PROVIDERS[config.type]
   const root = (config.url ?? provider.root).replace(/\/+$/, '')
-  const shared = { name: provider.name, root, tokens: `${root}${provider.tokens}` }
+  const shared = { name: provider.name, root, tokens: `${root}${provider.tokens}`, permissions: provider.permissions }
 
   if (config.type === 'github') {
     return {
@@ -41,4 +61,10 @@ export function describe(config: ProviderConfig): ForgeDescriptor {
     scopes: config.scopes ?? ['read:user', 'write:repository'],
     oauth: { authorize: `${root}/login/oauth/authorize`, token: `${root}/login/oauth/access_token` },
   }
+}
+
+export function commitUrl(config: ProviderConfig, commit: string): string {
+  const { root } = describe(config)
+
+  return `${root}/${config.repository.owner}/${config.repository.name}${PROVIDERS[config.type].commits}${commit}`
 }

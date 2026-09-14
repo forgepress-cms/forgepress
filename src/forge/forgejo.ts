@@ -1,12 +1,14 @@
 import type { ProviderConfig } from '../types/config'
 import type { TreeItem } from './repository'
-import type { Forge, ForgeAccess, ForgeFile, TokenGetter } from './types'
+import type { BuildCheck, CheckState, Forge, ForgeAccess, ForgeFile, TokenGetter } from './types'
 import { base64ToText, textToBase64 } from '../utils/encoding'
 import { describe } from './providers'
 import { publishable } from './publish'
 import { createRepositoryApi, findTree } from './repository'
 
 const PAGE_SIZE = 1000
+const STATUS_LIMIT = 50
+const SCHEDULED = /\(schedule\)$/
 
 interface Repository {
   default_branch: string
@@ -18,12 +20,25 @@ interface Tree {
   tree: TreeItem[]
 }
 
+interface CommitStatus {
+  status: string
+  context: string
+  target_url: string | null
+}
+
+function statusState(status: string): CheckState {
+  if (status === 'success' || status === 'pending')
+    return status
+
+  return status === 'failure' || status === 'error' ? 'failure' : 'skipped'
+}
+
 function encodePath(path: string): string {
   return path.split('/').map(encodeURIComponent).join('/')
 }
 
 export function createForgejoForge(config: ProviderConfig, token: TokenGetter): Forge {
-  const { api } = describe(config)
+  const { api, root } = describe(config)
   const { owner, name } = config.repository
   const repo = createRepositoryApi(config, `${api}/repos/${owner}/${name}`, token, { accept: 'application/json' })
 
@@ -103,6 +118,22 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
       const created = await repo.post<{ commit: { sha: string } }>('/contents', { branch: await repo.branch(), message, files: operations })
 
       return created.commit.sha
+    },
+
+    async checks(commit): Promise<BuildCheck[]> {
+      const found = await repo.call<{ statuses: CommitStatus[] | null }>(`/commits/${commit}/status?limit=${STATUS_LIMIT}`)
+
+      return (found.statuses ?? [])
+        .filter(status => !SCHEDULED.test(status.context))
+        .map(status => ({
+          name: status.context,
+          state: statusState(status.status),
+          ...status.target_url ? { url: new URL(status.target_url, `${root}/`).href } : {},
+        }))
+    },
+
+    async contains(commit, ancestor): Promise<boolean> {
+      return commit === ancestor || (await repo.call<{ total_commits: number }>(`/compare/${commit}...${ancestor}`)).total_commits === 0
     },
   }
 }
