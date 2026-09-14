@@ -3,6 +3,7 @@ export const ENDPOINT = '/__forgepress'
 
 const ENTRY_FILE = /\.ts$/
 const ENTRY_ID = /^[\w-]+$/
+const COLLECTION_NAME = /^[a-z][a-zA-Z\d]*$/
 const EDGE_SLASHES = /^\/+|\/+$/g
 
 export interface ContentPaths {
@@ -36,6 +37,10 @@ export function toEntryId(file: string): string {
 
 export function isEntryId(id: string): boolean {
   return ENTRY_ID.test(id)
+}
+
+export function isCollectionName(name: string): boolean {
+  return COLLECTION_NAME.test(name)
 }
 
 export function isEntryFile(file: string): boolean {

@@ -2,7 +2,7 @@
 import type { Column } from '../../utils/table'
 import { computed, reactive, ref } from 'vue'
 
-import { COLLECTION_NAME } from '../../../schema/validate'
+import { isCollectionName } from '../../../files/paths'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import DataTable from '../../components/DataTable.vue'
 import DragHandle from '../../components/DragHandle.vue'
@@ -61,7 +61,7 @@ const invalid = computed(() => {
   if (!form.key)
     return 'A key is required'
 
-  if (!COLLECTION_NAME.test(form.key))
+  if (!isCollectionName(form.key))
     return 'A key has to start with a lowercase letter and hold only letters and digits'
 
   if (taken.value.includes(form.key))

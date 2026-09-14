@@ -1,11 +1,11 @@
 import type { FieldOptionType } from '../types/field'
 import type { ValueIssue, ValuePath } from '../types/issues'
 import { META_KEYS } from '../entries/meta'
+import { isCollectionName } from '../files/paths'
 import { isRecord, quote } from '../utils/value'
 import { fieldTypeNames, fieldTypes } from './fields'
 import { compilePattern } from './fields/text'
 
-export const COLLECTION_NAME = /^[a-z][a-zA-Z\d]*$/
 export const LOCALE_CODE = /^[a-z][\w-]*$/i
 export const RESERVED_FIELDS: readonly string[] = META_KEYS
 
@@ -165,7 +165,7 @@ function checkCollection(context: Context, name: string, collection: unknown): v
   const { report } = context
   const path = ['collections', name]
 
-  if (!COLLECTION_NAME.test(name))
+  if (!isCollectionName(name))
     report(path, `Collection ${quote(name)} has to start with a lowercase letter and contain only letters and digits`)
 
   if (!isRecord(collection))

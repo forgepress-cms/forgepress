@@ -49,6 +49,21 @@ describe('node writer', () => {
     expect(existsSync(join(root, defaultPaths.collection('hero')))).toBe(false)
   })
 
+  it('refuses collection names and ids that would leave the content folder', async () => {
+    const { root, writer } = project()
+
+    await writer.writeEntry('hero', row('a'))
+
+    await expect(writer.removeCollection('../..')).rejects.toThrow('"../.." is not a collection name')
+    await expect(writer.removeEntry('hero', '../../schema')).rejects.toThrow('"../../schema" is not an entry id')
+    await expect(writer.writeEntry('Hero', row('b'))).rejects.toThrow('"Hero" is not a collection name')
+    await expect(writer.writeEntry('hero', row('../../../escaped'))).rejects.toThrow('is not an entry id')
+    await expect(writer.writeContent('hero', [row('b'), row('../c')])).rejects.toThrow('"../c" is not an entry id')
+
+    expect(readdirSync(join(root, defaultPaths.collection('hero')))).toEqual(['a.ts'])
+    expect(readdirSync(root)).toEqual(['.forgepress'])
+  })
+
   it('replaces a collection, deleting entries that are gone', async () => {
     const { root, writer } = project()
 

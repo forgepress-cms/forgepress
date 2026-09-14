@@ -11,7 +11,7 @@ import { loadConfig } from '../disk/config'
 import { findRoot } from '../disk/root'
 import { ContentError } from '../files/issues'
 import { ENDPOINT } from '../files/paths'
-import { handle } from './endpoint'
+import { EndpointError, handle } from './endpoint'
 import { ENTRY_PREFIX, findCollection, generateEntry, generateList, generateRoot, LIST_PREFIX, resolved, VIRTUAL_ID } from './modules'
 
 export interface Options {
@@ -150,7 +150,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
                 invalidate()
             })
             .catch((error: unknown) => {
-              response.statusCode = 500
+              response.statusCode = error instanceof EndpointError ? error.status : 500
               response.end(error instanceof Error ? error.message : String(error))
             })
         })

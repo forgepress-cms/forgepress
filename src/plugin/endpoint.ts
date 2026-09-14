@@ -6,7 +6,43 @@ import { Buffer } from 'node:buffer'
 import { createMediaStore } from '../disk/media'
 import { createSource } from '../disk/source'
 import { createWriter } from '../disk/writer'
-import { ENDPOINT, isEntryId } from '../files/paths'
+import { ENDPOINT, isCollectionName, isEntryId } from '../files/paths'
+import { isAssetName, mediaType } from '../media'
+import { validateSchema } from '../schema/validate'
+import { isRecord } from '../utils/value'
+
+export class EndpointError extends Error {
+  readonly status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'EndpointError'
+    this.status = status
+  }
+}
+
+function sameOrigin(request: IncomingMessage): boolean {
+  const site = request.headers['sec-fetch-site']
+
+  if (site !== undefined)
+    return site === 'same-origin' || site === 'none'
+
+  const { origin, host } = request.headers
+
+  if (origin === undefined)
+    return true
+
+  try {
+    return new URL(origin).host === host
+  }
+  catch {
+    return false
+  }
+}
+
+function missing(path: string): EndpointError {
+  return new EndpointError(404, `there is no endpoint ${JSON.stringify(path)}`)
+}
 
 async function bytes(request: IncomingMessage): Promise<Buffer> {
   const chunks: Buffer[] = []
@@ -17,7 +53,14 @@ async function bytes(request: IncomingMessage): Promise<Buffer> {
 }
 
 async function body(request: IncomingMessage): Promise<unknown> {
-  return JSON.parse((await bytes(request)).toString('utf8'))
+  const text = (await bytes(request)).toString('utf8')
+
+  try {
+    return JSON.parse(text)
+  }
+  catch {
+    throw new EndpointError(400, 'the request body is not valid JSON')
+  }
 }
 
 function json(response: ServerResponse, payload: unknown): void {
@@ -26,43 +69,93 @@ function json(response: ServerResponse, payload: unknown): void {
   response.end(JSON.stringify(payload))
 }
 
-async function media(config: ResolvedConfig, root: string, path: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
-  const store = createMediaStore(root, config.media)
-  const name = decodeURIComponent(path.slice('/media/'.length))
-
-  if (request.method === 'GET')
-    return json(response, await store.list())
-
-  if (request.method !== 'DELETE')
-    return json(response, await store.write({ name, data: await bytes(request) }))
-
-  await store.remove(name)
-
+function done(response: ServerResponse): void {
   response.statusCode = 204
   response.end()
 }
 
-function segments(path: string, prefix: string): string[] {
-  return path.slice(prefix.length).split('/').filter(Boolean).map(decodeURIComponent)
+function decode(value: string, path: string): string {
+  try {
+    return decodeURIComponent(value)
+  }
+  catch {
+    throw new EndpointError(400, `${JSON.stringify(path)} is not a valid path`)
+  }
+}
+
+function segments(path: string, prefix: string, count: number): (string | undefined)[] {
+  const found = path.slice(prefix.length).split('/').filter(Boolean).map(segment => decode(segment, path))
+
+  if (found.length > count)
+    throw missing(path)
+
+  return found
+}
+
+function collectionName(name: string | undefined): string {
+  if (name === undefined || !isCollectionName(name))
+    throw new EndpointError(400, `${JSON.stringify(name ?? '')} is not a collection name`)
+
+  return name
+}
+
+function entryId(id: unknown): string {
+  if (typeof id !== 'string' || !isEntryId(id))
+    throw new EndpointError(400, `${JSON.stringify(id ?? '')} is not an entry id`)
+
+  return id
+}
+
+function entry(value: unknown): ContentRow {
+  if (!isRecord(value))
+    throw new EndpointError(400, 'an entry has to be an object')
+
+  entryId(value.id)
+
+  return value as ContentRow
+}
+
+async function media(config: ResolvedConfig, root: string, path: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
+  const store = createMediaStore(root, config.media)
+
+  if (request.method === 'GET')
+    return json(response, await store.list())
+
+  const name = decode(path.slice('/media/'.length), path)
+
+  if (request.method === 'DELETE') {
+    if (!isAssetName(name))
+      throw new EndpointError(400, `${JSON.stringify(name)} is not an asset name`)
+
+    await store.remove(name)
+
+    return done(response)
+  }
+
+  if (!mediaType(name))
+    throw new EndpointError(400, `${JSON.stringify(name)} is not a supported media file`)
+
+  return json(response, await store.write({ name, data: await bytes(request) }))
 }
 
 async function read(config: ResolvedConfig, root: string, path: string, response: ServerResponse): Promise<void> {
   const source = createSource(root, config.paths, { unpublished: true })
-  const schema = await source.schema()
 
   if (path === '/schema')
-    return json(response, schema)
+    return json(response, await source.schema())
 
   if (path.startsWith('/content/')) {
-    const [collection = ''] = segments(path, '/content/')
+    const [collection = ''] = segments(path, '/content/', 1)
+    const schema = await source.schema()
 
     return json(response, Object.hasOwn(schema.collections, collection) ? await source.list(collection) : [])
   }
 
   if (!path.startsWith('/entry/'))
-    throw new Error(`unknown endpoint "${path}"`)
+    throw missing(path)
 
-  const [collection = '', id = ''] = segments(path, '/entry/')
+  const [collection = '', id = ''] = segments(path, '/entry/', 2)
+  const schema = await source.schema()
   const row = Object.hasOwn(schema.collections, collection) && isEntryId(id) ? await source.entry(collection, id) : undefined
 
   if (row)
@@ -72,9 +165,63 @@ async function read(config: ResolvedConfig, root: string, path: string, response
   response.end()
 }
 
-export async function handle(config: ResolvedConfig, root: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
-  const path = (request.url ?? '').slice(ENDPOINT.length)
+async function write(config: ResolvedConfig, root: string, path: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
   const writer = createWriter(root, config.paths, config.content)
+  const removing = request.method === 'DELETE'
+
+  if (path === '/schema' && !removing) {
+    const schema = await body(request)
+    const issues = validateSchema(schema)
+
+    if (issues.length > 0)
+      throw new EndpointError(400, `the schema is not valid:\n${issues.map(issue => issue.message).join('\n')}`)
+
+    await writer.writeSchema(schema as ForgePressSchema)
+  }
+  else if (path.startsWith('/entry/')) {
+    const [name, id] = segments(path, '/entry/', 2)
+    const collection = collectionName(name)
+
+    if (removing) {
+      await writer.removeEntry(collection, entryId(id))
+    }
+    else {
+      const row = entry(await body(request))
+
+      if (row.id !== entryId(id))
+        throw new EndpointError(400, `the entry id ${JSON.stringify(row.id)} doesn't match the path`)
+
+      await writer.writeEntry(collection, row)
+    }
+  }
+  else if (path.startsWith('/content/')) {
+    const [name] = segments(path, '/content/', 1)
+    const collection = collectionName(name)
+
+    if (removing) {
+      await writer.removeCollection(collection)
+    }
+    else {
+      const rows = await body(request)
+
+      if (!Array.isArray(rows))
+        throw new EndpointError(400, 'the entries have to be a list')
+
+      await writer.writeContent(collection, rows.map(entry))
+    }
+  }
+  else {
+    throw missing(path)
+  }
+
+  done(response)
+}
+
+export async function handle(config: ResolvedConfig, root: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
+  if (!sameOrigin(request))
+    throw new EndpointError(403, 'the dev endpoint only accepts requests from pages on its own origin')
+
+  const path = (request.url ?? '').slice(ENDPOINT.length)
 
   if (path === '/media' || path.startsWith('/media/'))
     return media(config, root, path, request, response)
@@ -82,35 +229,5 @@ export async function handle(config: ResolvedConfig, root: string, request: Inco
   if (request.method === 'GET')
     return read(config, root, path, response)
 
-  if (path === '/schema') {
-    await writer.writeSchema(await body(request) as ForgePressSchema)
-  }
-  else if (path.startsWith('/entry/')) {
-    const [collection, id] = segments(path, '/entry/')
-
-    if (!collection || !id)
-      throw new Error(`unknown endpoint "${path}"`)
-
-    if (request.method === 'DELETE')
-      await writer.removeEntry(collection, id)
-    else
-      await writer.writeEntry(collection, await body(request) as ContentRow)
-  }
-  else if (path.startsWith('/content/')) {
-    const [collection] = segments(path, '/content/')
-
-    if (!collection)
-      throw new Error(`unknown endpoint "${path}"`)
-
-    if (request.method === 'DELETE')
-      await writer.removeCollection(collection)
-    else
-      await writer.writeContent(collection, await body(request) as ContentRow[])
-  }
-  else {
-    throw new Error(`unknown endpoint "${path}"`)
-  }
-
-  response.statusCode = 204
-  response.end()
+  return write(config, root, path, request, response)
 }

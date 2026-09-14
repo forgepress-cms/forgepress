@@ -1,8 +1,9 @@
 import type { IncomingMessage, Server, ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import type { UnpluginContextMeta } from 'unplugin'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
-import { createServer } from 'node:http'
+import { Buffer } from 'node:buffer'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createServer, request as send } from 'node:http'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -25,6 +26,34 @@ const files: Record<string, string> = {
 
 const reloads: unknown[] = []
 let server: Server
+let base = ''
+
+interface Answer {
+  status: number
+  text: string
+}
+
+function call(method: string, path: string, options: { headers?: Record<string, string>, body?: string } = {}): Promise<Answer> {
+  return new Promise((resolve, reject) => {
+    const outgoing = send(`${base}/__forgepress${path}`, { method, headers: options.headers ?? {} }, (incoming) => {
+      const chunks: Buffer[] = []
+
+      incoming.on('data', (chunk: Buffer) => chunks.push(chunk))
+      incoming.on('end', () => resolve({ status: incoming.statusCode ?? 0, text: Buffer.concat(chunks).toString('utf8') }))
+    })
+
+    outgoing.on('error', reject)
+    outgoing.end(options.body)
+  })
+}
+
+function exists(path: string): boolean {
+  return existsSync(join(scratch, path))
+}
+
+function author(id: string): string {
+  return JSON.stringify({ id, status: 'unpublished', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', name: 'Eve' })
+}
 
 beforeAll(async () => {
   for (const [path, text] of Object.entries(files)) {
@@ -62,10 +91,10 @@ beforeAll(async () => {
 
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
 
-  const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+  base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
   const fetch = globalThis.fetch
 
-  vi.stubGlobal('fetch', (path: string, init?: RequestInit) => fetch(`${origin}${path}`, init))
+  vi.stubGlobal('fetch', (path: string, init?: RequestInit) => fetch(`${base}${path}`, init))
 })
 
 beforeEach(() => {
@@ -110,5 +139,75 @@ describe('dev endpoint', () => {
 
     expect(reloads).toEqual([{ type: 'full-reload' }])
     expect((await reader.entry('author', 'author_3'))?.name).toBe('Carol')
+  })
+})
+
+describe('dev endpoint protection', () => {
+  it('refuses requests from pages on other origins', async () => {
+    const strangers = [{ 'sec-fetch-site': 'cross-site' }, { 'sec-fetch-site': 'same-site' }, { origin: 'http://attacker.example' }, { origin: 'null' }]
+
+    for (const headers of strangers) {
+      expect((await call('POST', '/entry/author/author_7', { headers, body: author('author_7') })).status).toBe(403)
+      expect((await call('DELETE', '/entry/author/author_1', { headers })).status).toBe(403)
+      expect((await call('GET', '/content/author', { headers })).status).toBe(403)
+      expect((await call('POST', '/media/photo.png', { headers, body: 'png' })).status).toBe(403)
+    }
+
+    expect(exists('.forgepress/content/author/author_7.ts')).toBe(false)
+    expect(exists('.forgepress/content/author/author_1.ts')).toBe(true)
+    expect(exists('public/uploads')).toBe(false)
+    expect(reloads).toEqual([])
+  })
+
+  it('answers its own origin and tools that are not browsers', async () => {
+    expect((await call('GET', '/schema', { headers: { 'sec-fetch-site': 'same-origin' } })).status).toBe(200)
+    expect((await call('GET', '/schema', { headers: { 'sec-fetch-site': 'none' } })).status).toBe(200)
+    expect((await call('GET', '/schema', { headers: { origin: base } })).status).toBe(200)
+    expect((await call('GET', '/schema')).status).toBe(200)
+  })
+
+  it('refuses names that lead out of the content folder', async () => {
+    const escape = encodeURIComponent('../../../escaped')
+    const attempts: [method: string, path: string, body?: string][] = [
+      ['POST', '/entry/author/x', JSON.stringify({ id: '../../../escaped' })],
+      ['POST', `/entry/author/${escape}`, JSON.stringify({ id: '../../../escaped' })],
+      ['POST', `/entry/${encodeURIComponent('../..')}/escaped`, author('escaped')],
+      ['POST', `/content/${encodeURIComponent('../..')}`, '[]'],
+      ['POST', '/content/author', JSON.stringify([JSON.parse(author('author_1')), { id: '../../../escaped' }])],
+      ['DELETE', `/entry/author/${encodeURIComponent('../../schema')}`],
+      ['DELETE', `/content/${encodeURIComponent('../..')}`],
+      ['DELETE', `/media/${encodeURIComponent('../../package.json')}`],
+      ['POST', '/media/notes.txt', 'text'],
+    ]
+
+    for (const [method, path, body] of attempts)
+      expect((await call(method, path, body === undefined ? {} : { body })).status, `${method} ${path}`).toBe(400)
+
+    expect(exists('escaped.ts')).toBe(false)
+    expect(exists('.forgepress/schema.ts')).toBe(true)
+    expect(readFileSync(join(scratch, '.forgepress/content/author/author_1.ts'), 'utf8')).toBe(files['.forgepress/content/author/author_1.ts'])
+    expect(exists('.forgepress/content/author/author_2.ts')).toBe(true)
+    expect(reloads).toEqual([])
+  })
+
+  it('refuses bodies that are not entries and a schema that does not validate', async () => {
+    expect((await call('POST', '/entry/author/author_8', { body: author('author_9') })).status).toBe(400)
+    expect((await call('POST', '/entry/author/author_8', { body: '{"id":' })).status).toBe(400)
+    expect((await call('POST', '/content/author', { body: author('author_8') })).status).toBe(400)
+
+    const refused = await call('POST', '/schema', { body: JSON.stringify({ collections: { 'Bad Name': { fields: {} } } }) })
+
+    expect(refused).toMatchObject({ status: 400, text: expect.stringContaining('has to start with a lowercase letter') })
+    expect(readFileSync(join(scratch, '.forgepress/schema.ts'), 'utf8')).toBe(files['.forgepress/schema.ts'])
+    expect(exists('.forgepress/content/author/author_8.ts')).toBe(false)
+    expect(reloads).toEqual([])
+  })
+
+  it('answers unknown and malformed paths without touching anything', async () => {
+    expect((await call('POST', '/somewhere')).status).toBe(404)
+    expect((await call('GET', '/somewhere')).status).toBe(404)
+    expect((await call('DELETE', '/entry/author/author_1/extra')).status).toBe(404)
+    expect((await call('DELETE', '/entry/author/%E0%A4%A')).status).toBe(400)
+    expect(exists('.forgepress/content/author/author_1.ts')).toBe(true)
   })
 })
