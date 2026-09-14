@@ -1,4 +1,4 @@
-import type { ContentRow, EntryRef } from '../../types/entry'
+import type { Entry, EntryRef } from '../../types/entry'
 import type { StatusColor } from '../utils/entry'
 import { entryKey, entryReferences } from '../../entries/references'
 import { entryLabel, statusColor, titleField } from '../utils/entry'
@@ -15,7 +15,7 @@ export interface Entries {
   options: (collection: string) => EntryOption[]
   label: (collection: string, id: unknown) => string
   collectionLabel: (collection: string) => string
-  row: (collection: string, id: string) => ContentRow | undefined
+  row: (collection: string, id: string) => Entry | undefined
   usedBy: (collection: string, id: string) => EntryRef[]
 }
 

@@ -18,9 +18,9 @@ describe('validateSchema', () => {
           label: 'Author',
           description: 'People who write',
           fields: {
-            name: { type: 'text', label: 'Name', validation: '^\\w+$' },
+            name: { type: 'text', label: 'Name', validation: '^\\w+$', index: true },
             bio: { type: 'richtext', translate: true, optional: false },
-            age: { type: 'number', min: 0, max: 120, step: 1, optional: true },
+            age: { type: 'number', min: 0, max: 120, step: 1, optional: true, index: false },
             portrait: { type: 'image', multiple: false },
             intro: { type: 'video', multiple: true },
             posts: { type: 'relation', collection: 'blogPost2', multiple: true },
@@ -28,7 +28,7 @@ describe('validateSchema', () => {
         },
         blogPost2: {
           fields: {
-            author: { type: 'relation', collection: 'author' },
+            author: { type: 'relation', collection: 'author', index: true },
             blocks: { type: 'dynamic', collections: ['author', 'blogPost2'] },
             empty: { type: 'dynamic', collections: [] },
           },
@@ -108,6 +108,22 @@ describe('validateSchema', () => {
     expect(issues(withField({ type: 'text', multiple: true, colour: 'red' }))).toEqual([
       { path: ['collections', 'post', 'fields', 'field', 'multiple'], message: 'Field "post.field" has no option "multiple"' },
       { path: ['collections', 'post', 'fields', 'field', 'colour'], message: 'Field "post.field" has no option "colour"' },
+    ])
+  })
+
+  it('indexes only text, number and relation fields', () => {
+    for (const type of ['richtext', 'image', 'video']) {
+      expect(issues(withField({ type, index: true }))).toEqual([
+        { path: ['collections', 'post', 'fields', 'field', 'index'], message: 'Field "post.field" can\'t be indexed; only text, number and relation fields can' },
+      ])
+    }
+
+    expect(issues(withField({ type: 'dynamic', collections: [], index: true }))).toEqual([
+      { path: ['collections', 'post', 'fields', 'field', 'index'], message: 'Field "post.field" can\'t be indexed; only text, number and relation fields can' },
+    ])
+
+    expect(issues(withField({ type: 'text', index: 'yes' }))).toEqual([
+      { path: ['collections', 'post', 'fields', 'field', 'index'], message: '"index" of field "post.field" has to be true or false' },
     ])
   })
 

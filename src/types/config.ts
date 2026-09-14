@@ -28,9 +28,14 @@ export interface MediaConfig {
   maxSize?: number
 }
 
+export interface OutputConfig {
+  dir?: string
+}
+
 export interface ForgePressConfig {
   path?: string
   provider?: ProviderConfig
   content?: ContentConfig
   media?: MediaConfig
+  output?: OutputConfig
 }

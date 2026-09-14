@@ -2,7 +2,7 @@ import type { Changes } from '../../src/changes/types'
 import type { HashSource } from '../../src/forge/types'
 import type { BakedMedia, MediaAsset } from '../../src/media/types'
 import type { ContentSource, KeyValueStore } from '../../src/store/types'
-import type { ContentRow } from '../../src/types/entry'
+import type { Entry } from '../../src/types/entry'
 import type { ForgePressSchema } from '../../src/types/schema'
 import { describe, expect, it } from 'vitest'
 import { reactive } from 'vue'
@@ -22,12 +22,12 @@ const banner = {
   modifiedAt: '2026-01-01T00:00:00.000Z',
 }
 
-function row(id: string, title = 'Hello'): ContentRow {
+function row(id: string, title = 'Hello'): Entry {
   return { id, status: 'published', createdAt: '', updatedAt: '', title }
 }
 
 function base(): ContentSource {
-  const rows = (collection: string): ContentRow[] => collection === 'hero' ? [row('a')] : []
+  const rows = (collection: string): Entry[] => collection === 'hero' ? [row('a')] : []
 
   return {
     schema: async () => baseSchema,

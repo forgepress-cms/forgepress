@@ -4,7 +4,7 @@ import type { Entries } from '../../../../src/editor/composables/useEntries'
 import type { NestedEntries } from '../../../../src/editor/composables/useNestedEntries'
 import type { EditorRouter } from '../../../../src/editor/plugins/router'
 import type { DynamicBlock } from '../../../../src/schema/fields/dynamic'
-import type { ContentRow, EntryRef } from '../../../../src/types/entry'
+import type { Entry, EntryRef } from '../../../../src/types/entry'
 import type { ForgePressSchema } from '../../../../src/types/schema'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, nextTick, ref } from 'vue'
@@ -25,7 +25,7 @@ const { default: DynamicInput } = await import('../../../../src/editor/component
 const { default: RelationInput } = await import('../../../../src/editor/components/fields/RelationInput.vue')
 const { useNestedEntries } = await import('../../../../src/editor/composables/useNestedEntries')
 
-const rows: Record<string, ContentRow> = {
+const rows: Record<string, Entry> = {
   'hero/hero_1': { id: 'hero_1', status: 'published', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', headline: 'Welcome' },
   'hero/hero_2': { id: 'hero_2', status: 'unpublished', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', headline: 'Goodbye' },
   'page/page_1': { id: 'page_1', status: 'published', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', content: [] },

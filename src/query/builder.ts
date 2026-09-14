@@ -1,5 +1,5 @@
 import type { Field } from '../schema/fields'
-import type { ContentRow } from '../types/entry'
+import type { Entry } from '../types/entry'
 import type { ForgePressSchema } from '../types/schema'
 import type { Operator, QueryBackend, QueryPlan } from './types'
 import { evaluate, localize } from './evaluator'
@@ -58,7 +58,7 @@ class Builder {
     return this
   }
 
-  private async run(): Promise<ContentRow[]> {
+  private async run(): Promise<Entry[]> {
     const [rows, schema] = await Promise.all([
       this.backend.source.list(this.collection),
       this.backend.source.schema(),
@@ -72,12 +72,12 @@ class Builder {
 
     const { pick } = this.plan
     if (pick)
-      result = result.map(row => Object.fromEntries(pick.map(field => [field, row[field]])) as ContentRow)
+      result = result.map(row => Object.fromEntries(pick.map(field => [field, row[field]])) as Entry)
 
     return result
   }
 
-  private async resolve(rows: ContentRow[], schema: ForgePressSchema, fields: Fields): Promise<ContentRow[]> {
+  private async resolve(rows: Entry[], schema: ForgePressSchema, fields: Fields): Promise<Entry[]> {
     const resolved = rows.map(row => ({ ...row }))
 
     for (const field of this.relations) {
@@ -88,7 +88,7 @@ class Builder {
       const target = config.collection
       const related = translatedFields(collectionFields(schema, target))
       const locale = this.plan.locale
-      const fetch = async (id: string): Promise<ContentRow | undefined> => {
+      const fetch = async (id: string): Promise<Entry | undefined> => {
         const row = await this.backend.source.entry(target, id)
         return row && locale ? localize(row, related, locale) : row
       }
@@ -104,12 +104,12 @@ class Builder {
     return resolved
   }
 
-  async first(): Promise<ContentRow | undefined> {
+  async first(): Promise<Entry | undefined> {
     return (await this.run())[0]
   }
 
-  then<TResult1 = ContentRow[], TResult2 = never>(
-    onFulfilled?: ((value: ContentRow[]) => TResult1 | PromiseLike<TResult1>) | null,
+  then<TResult1 = Entry[], TResult2 = never>(
+    onFulfilled?: ((value: Entry[]) => TResult1 | PromiseLike<TResult1>) | null,
     onRejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
     return this.run().then(onFulfilled, onRejected)
@@ -117,11 +117,11 @@ class Builder {
 
   catch<TResult = never>(
     onRejected?: ((reason: unknown) => TResult | PromiseLike<TResult>) | null,
-  ): Promise<ContentRow[] | TResult> {
+  ): Promise<Entry[] | TResult> {
     return this.run().catch(onRejected)
   }
 
-  finally(onFinally?: (() => void) | null): Promise<ContentRow[]> {
+  finally(onFinally?: (() => void) | null): Promise<Entry[]> {
     return this.run().finally(onFinally)
   }
 

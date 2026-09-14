@@ -1,4 +1,4 @@
-import type { ContentRow } from '../../src/types/entry'
+import type { Entry } from '../../src/types/entry'
 import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -16,7 +16,7 @@ function project() {
   return { root, writer: createWriter(root) }
 }
 
-function row(id: string): ContentRow {
+function row(id: string): Entry {
   return { id, status: 'published', createdAt: '', updatedAt: '' }
 }
 

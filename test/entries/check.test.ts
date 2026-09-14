@@ -1,6 +1,6 @@
 import type { EntryFile } from '../../src/entries/check'
 import { describe, expect, it } from 'vitest'
-import { checkFiles } from '../../src/entries/check'
+import { checkFiles, parseContent } from '../../src/entries/check'
 import { formatIssue } from '../../src/files/issues'
 
 const schema = {
@@ -100,5 +100,28 @@ describe('checkFiles', () => {
     expect(problems([], { ...schema, text: 'export default defineSchema({})\n' })).toEqual([
       '.forgepress/schema.ts:1:16 `defineSchema` is not a literal value; variables, calls and expressions are not allowed',
     ])
+  })
+})
+
+describe('parseContent', () => {
+  it('hands over the schema and the entries it checked', () => {
+    const parsed = parseContent(schema, [
+      entry('author', 'author_1', [...meta('author_1'), 'name: \'Alice\',']),
+      entry('blogPost', 'post_1', [...meta('post_1', 'unpublished'), 'title: { en: \'Hello\', de: \'Hallo\' },', 'author: \'author_1\','], 'blog-post'),
+    ])
+
+    expect(parsed.issues).toEqual([])
+    expect(Object.keys(parsed.schema!.collections)).toEqual(['author', 'blogPost'])
+    expect(parsed.content).toEqual({
+      author: { author_1: { id: 'author_1', status: 'published', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', name: 'Alice' } },
+      blogPost: { post_1: { id: 'post_1', status: 'unpublished', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', title: { en: 'Hello', de: 'Hallo' }, author: 'author_1' } },
+    })
+  })
+
+  it('has no schema when the schema has problems', () => {
+    const parsed = parseContent({ ...schema, text: schema.text.replace('collection: \'author\'', 'collection: \'autor\'') }, [])
+
+    expect(parsed.schema).toBeUndefined()
+    expect(parsed.issues).toHaveLength(1)
   })
 })

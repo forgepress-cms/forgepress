@@ -1,6 +1,6 @@
 import type { MediaAsset, MediaClient } from '../media/types'
 import type { ContentSource, ContentWriter, SchemaWriter } from '../store/types'
-import type { ContentRow } from '../types/entry'
+import type { Entry } from '../types/entry'
 import type { ForgePressSchema } from '../types/schema'
 import { ENDPOINT } from '../files/paths'
 
@@ -28,12 +28,12 @@ function segment(value: string): string {
 export const reader: ContentSource = {
   schema: async () => await (await request('GET', '/schema')).json() as ForgePressSchema,
 
-  list: async collection => await (await request('GET', `/content/${segment(collection)}`)).json() as ContentRow[],
+  list: async collection => await (await request('GET', `/content/${segment(collection)}`)).json() as Entry[],
 
   entry: async (collection, id) => {
     const response = await request('GET', `/entry/${segment(collection)}/${segment(id)}`)
 
-    return response.status === 404 ? undefined : await response.json() as ContentRow
+    return response.status === 404 ? undefined : await response.json() as Entry
   },
 }
 

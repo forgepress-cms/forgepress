@@ -1,4 +1,4 @@
-import type { ContentRow } from '../types/entry'
+import type { Entry } from '../types/entry'
 import type { Field } from './fields'
 import { asList, filled, isRecord, same } from '../utils/value'
 
@@ -6,7 +6,7 @@ const TEXTUAL = new Set<Field['type']>(['text', 'richtext'])
 const MEDIA = new Set<Field['type']>(['image', 'video'])
 
 export interface Migration {
-  rows: ContentRow[]
+  rows: Entry[]
   changed: number
   lost: number
   missing: number
@@ -109,7 +109,7 @@ function complete(value: unknown, after: Field, locales: readonly string[]): boo
 }
 
 export function migrate(
-  rows: ContentRow[],
+  rows: Entry[],
   key: string,
   before: Field,
   after: Field,
@@ -132,7 +132,7 @@ export function migrate(
     if (after.optional !== true && !complete(next, after, locales))
       missing += 1
 
-    const copy: ContentRow = { ...row }
+    const copy: Entry = { ...row }
 
     if (next === undefined)
       delete copy[key]

@@ -1,4 +1,4 @@
-import type { ContentRow, EntryStatus } from '../../types/entry'
+import type { Entry, EntryStatus } from '../../types/entry'
 import type { EntryValues } from '../utils/entry'
 import type { LocalizedField } from '../utils/schema'
 import { reactive } from 'vue'
@@ -9,7 +9,7 @@ import { useContent } from './useContent'
 export interface NestedDraft {
   id: string
   collection: string
-  row: ContentRow
+  row: Entry
   fields: LocalizedField[]
   values: EntryValues
   linked: boolean
@@ -18,12 +18,12 @@ export interface NestedDraft {
 export interface NestedEntries {
   drafts: Record<string, NestedDraft>
   create: (collection: string, owner: string) => string
-  open: (collection: string, row: ContentRow) => void
+  open: (collection: string, row: Entry) => void
   copy: (id: string, owner: string) => string
   discard: (id: string) => void
   clear: () => void
   missing: () => string[]
-  rows: (status: EntryStatus) => Record<string, ContentRow[]>
+  rows: (status: EntryStatus) => Record<string, Entry[]>
 }
 
 export async function useNestedEntries(): Promise<NestedEntries> {
@@ -35,7 +35,7 @@ export async function useNestedEntries(): Promise<NestedEntries> {
   const owners = new Map<string, string>()
   const opened = new Map<string, string>()
 
-  function add(collection: string, row: ContentRow, linked: boolean, values?: EntryValues): NestedDraft {
+  function add(collection: string, row: Entry, linked: boolean, values?: EntryValues): NestedDraft {
     const fields = toLocalizedFields(schema.collections[collection] ?? { fields: {} }, locales)
 
     drafts[row.id] = {
@@ -50,7 +50,7 @@ export async function useNestedEntries(): Promise<NestedEntries> {
     return drafts[row.id]!
   }
 
-  function build(entry: NestedDraft, status: EntryStatus): ContentRow {
+  function build(entry: NestedDraft, status: EntryStatus): Entry {
     return toRow(entry.fields, entry.values, { ...entry.row, status })
   }
 
@@ -115,7 +115,7 @@ export async function useNestedEntries(): Promise<NestedEntries> {
         : `${field.label} of the new ${entry.collection}`),
     ),
 
-    rows: status => Object.values(drafts).filter(pending).reduce<Record<string, ContentRow[]>>((written, entry) => {
+    rows: status => Object.values(drafts).filter(pending).reduce<Record<string, Entry[]>>((written, entry) => {
       const next = build(entry, entry.linked ? entry.row.status : statusOf(owners.get(entry.id), status))
 
       written[entry.collection] = [...written[entry.collection] ?? [], next]

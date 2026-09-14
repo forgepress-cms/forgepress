@@ -1,5 +1,5 @@
 import type { Changes } from '../../src/changes/types'
-import type { ContentRow } from '../../src/types/entry'
+import type { Entry } from '../../src/types/entry'
 import { describe, expect, it } from 'vitest'
 import { toFiles } from '../../src/changes/files'
 import { defaultPaths } from '../../src/files/paths'
@@ -10,7 +10,7 @@ function changes(partial: Partial<Changes> = {}): Changes {
   return { entries: {}, uploads: {}, removed: [], ...partial }
 }
 
-function row(id: string): ContentRow {
+function row(id: string): Entry {
   return { id, status: 'published', createdAt: '', updatedAt: '' }
 }
 

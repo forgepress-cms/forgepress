@@ -1,6 +1,6 @@
 import type { ContentPaths } from '../files/paths'
 import type { ContentSource } from '../store/types'
-import type { ContentRow } from '../types/entry'
+import type { Entry } from '../types/entry'
 import type { ForgePressSchema } from '../types/schema'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
@@ -17,26 +17,26 @@ export interface SourceOptions {
 }
 
 export function createSource(start?: string, paths: ContentPaths = defaultPaths, options: SourceOptions = {}): ContentSource {
-  const rows = new Map<string, Promise<ContentRow[]>>()
+  const rows = new Map<string, Promise<Entry[]>>()
   let root: string | undefined
   let schema: Promise<ForgePressSchema> | undefined
 
   const resolve = (): string => (root ??= findRoot(start, paths.dir))
-  const visible = (row: ContentRow): boolean => options.unpublished === true || row.status === 'published'
+  const visible = (row: Entry): boolean => options.unpublished === true || row.status === 'published'
 
-  async function read(collection: string, id: string): Promise<ContentRow> {
+  async function read(collection: string, id: string): Promise<Entry> {
     const file = paths.entry(collection, id)
 
     return parseEntry(await readFile(join(resolve(), file), 'utf8'), file)
   }
 
-  async function load(collection: string): Promise<ContentRow[]> {
+  async function load(collection: string): Promise<Entry[]> {
     const ids = readEntryIds(join(resolve(), paths.collection(collection)))
 
     return sortByCreation((await Promise.all(ids.map(id => read(collection, id)))).filter(visible))
   }
 
-  function all(collection: string): Promise<ContentRow[]> {
+  function all(collection: string): Promise<Entry[]> {
     let pending = rows.get(collection)
 
     if (!pending) {

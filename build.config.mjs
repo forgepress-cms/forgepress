@@ -9,6 +9,7 @@ export default defineBuildConfig({
         './src/unplugin.ts',
         './src/store/bundle.ts',
         './src/disk/source.ts',
+        './src/cli/bin.ts',
       ],
       dts: true,
       rolldown: {

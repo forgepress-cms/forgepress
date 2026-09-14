@@ -1,7 +1,8 @@
 import type { ParsedModule } from '../files/module'
-import type { ContentRow } from '../types/entry'
+import type { Entry } from '../types/entry'
 import type { ContentIssue, ValueIssue } from '../types/issues'
 import type { ForgePressSchema } from '../types/schema'
+import type { ContentEntries } from './references'
 import { ContentError } from '../files/issues'
 import { parseModule } from '../files/module'
 import { toEntryFile } from '../files/paths'
@@ -18,6 +19,12 @@ export interface ContentFile {
 export interface EntryFile extends ContentFile {
   collection: string
   id: string
+}
+
+export interface ParsedContent {
+  issues: ContentIssue[]
+  schema: ForgePressSchema | undefined
+  content: ContentEntries
 }
 
 function parse(file: ContentFile): ParsedModule | readonly ContentIssue[] {
@@ -40,21 +47,21 @@ function byPosition(left: ContentIssue, right: ContentIssue): number {
   return left.line - right.line || left.column - right.column
 }
 
-export function checkFiles(schemaFile: ContentFile, entryFiles: readonly EntryFile[]): ContentIssue[] {
+export function parseContent(schemaFile: ContentFile, entryFiles: readonly EntryFile[]): ParsedContent {
   const schemaModule = parse(schemaFile)
 
   if (!('value' in schemaModule))
-    return [...schemaModule]
+    return { issues: [...schemaModule], schema: undefined, content: {} }
 
   const schemaIssues = validateSchema(schemaModule.value)
 
   if (schemaIssues.length > 0)
-    return schemaIssues.map(issue => located(schemaFile.path, schemaModule, issue))
+    return { issues: schemaIssues.map(issue => located(schemaFile.path, schemaModule, issue)), schema: undefined, content: {} }
 
   const schema = schemaModule.value as ForgePressSchema
   const issues = new Map(entryFiles.map(file => [file.path, [] as ContentIssue[]]))
   const sources = new Map<string, { path: string, parsed: ParsedModule }>()
-  const content: Record<string, Record<string, ContentRow>> = {}
+  const content: Record<string, Record<string, Entry>> = {}
 
   for (const file of entryFiles) {
     const { collection, id, path } = file
@@ -75,7 +82,7 @@ export function checkFiles(schemaFile: ContentFile, entryFiles: readonly EntryFi
       found.push(located(path, parsed, { path: ['id'], message: `"id" is ${quote(parsed.value.id)}, but the file is named ${toEntryFile(id)}` }))
 
     content[collection] ??= {}
-    content[collection][id] = parsed.value as ContentRow
+    content[collection][id] = parsed.value as Entry
     sources.set(entryKey(collection, id), { path, parsed })
   }
 
@@ -85,5 +92,9 @@ export function checkFiles(schemaFile: ContentFile, entryFiles: readonly EntryFi
     issues.get(source.path)!.push(located(source.path, source.parsed, issue))
   }
 
-  return [...issues.values()].flatMap(found => found.sort(byPosition))
+  return { issues: [...issues.values()].flatMap(found => found.sort(byPosition)), schema, content }
+}
+
+export function checkFiles(schemaFile: ContentFile, entryFiles: readonly EntryFile[]): ContentIssue[] {
+  return parseContent(schemaFile, entryFiles).issues
 }

@@ -1,5 +1,5 @@
-import type { EntryRow } from '../../entries/references'
-import type { ContentRow, EntryStatus } from '../../types/entry'
+import type { CollectionEntry } from '../../entries/references'
+import type { Entry, EntryStatus } from '../../types/entry'
 import type { Collection } from '../../types/schema'
 import type { FormField, LocalizedField } from './schema'
 import { entryKey } from '../../entries/references'
@@ -41,7 +41,7 @@ export function entryId(collection: string): string {
   return `${collection}_${toHex(crypto.getRandomValues(new Uint8Array(6)))}`
 }
 
-export function newEntry(collection: string): ContentRow {
+export function newEntry(collection: string): Entry {
   const now = new Date().toISOString()
 
   return { id: entryId(collection), status: 'unpublished', createdAt: now, updatedAt: now }
@@ -53,7 +53,7 @@ export function condense(value: string): string {
   return line.length > 80 ? `${line.slice(0, 80)}…` : line
 }
 
-export function entryLabel(row: ContentRow, field: FormField | undefined, locale?: string): string {
+export function entryLabel(row: Entry, field: FormField | undefined, locale?: string): string {
   const value = field && chips(localized(row[field.key], field.translated ? locale : undefined))[0]
 
   return (value && condense(value)) || String(row.id)
@@ -90,7 +90,7 @@ function empty(field: FormField): unknown {
   return ''
 }
 
-export function toValues(fields: FormField[], row: ContentRow, locales: readonly string[]): EntryValues {
+export function toValues(fields: FormField[], row: Entry, locales: readonly string[]): EntryValues {
   return Object.fromEntries(fields.map((field) => {
     const current = row[field.key]
 
@@ -114,8 +114,8 @@ export function fromValues(field: FormField, values: EntryValues): unknown {
   return translations.length ? Object.fromEntries(translations) : undefined
 }
 
-export function toRow(fields: readonly FormField[], values: EntryValues, row: ContentRow): ContentRow {
-  const next: ContentRow = { ...row }
+export function toRow(fields: readonly FormField[], values: EntryValues, row: Entry): Entry {
+  const next: Entry = { ...row }
 
   for (const field of fields) {
     const value = fromValues(field, values)
@@ -142,14 +142,14 @@ export function missingFields<TField extends FormField>(fields: TField[], values
   })
 }
 
-export function withPublished(entries: readonly EntryRow[], linked: readonly EntryRow[], updatedAt: string): EntryRow[] {
-  const key = (entry: EntryRow): string => entryKey(entry.collection, entry.row.id)
+export function withPublished(entries: readonly CollectionEntry[], linked: readonly CollectionEntry[], updatedAt: string): CollectionEntry[] {
+  const key = (item: CollectionEntry): string => entryKey(item.collection, item.entry.id)
   const publishing = new Set(linked.map(key))
   const writing = new Set(entries.map(key))
-  const publish = (entry: EntryRow): EntryRow => ({ collection: entry.collection, row: { ...entry.row, status: 'published', updatedAt } })
+  const publish = (item: CollectionEntry): CollectionEntry => ({ collection: item.collection, entry: { ...item.entry, status: 'published', updatedAt } })
 
   return [
-    ...linked.filter(entry => !writing.has(key(entry))).map(publish),
-    ...entries.map(entry => publishing.has(key(entry)) ? publish(entry) : entry),
+    ...linked.filter(item => !writing.has(key(item))).map(publish),
+    ...entries.map(item => publishing.has(key(item)) ? publish(item) : item),
   ]
 }

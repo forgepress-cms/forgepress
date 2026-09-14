@@ -1,10 +1,10 @@
 import type { Conflict, FileChange, RepoTarget } from '../forge/types'
 import type { MediaAsset, MediaClient, PendingUpload } from '../media/types'
 import type { ContentStore } from '../store/types'
-import type { ContentRow, EntryRef } from '../types/entry'
+import type { Entry, EntryRef } from '../types/entry'
 
 export interface Changes {
-  entries: Record<string, Record<string, ContentRow | null>>
+  entries: Record<string, Record<string, Entry | null>>
   uploads: Record<string, PendingUpload>
   removed: string[]
   publishedMedia?: Record<string, PendingUpload | null>

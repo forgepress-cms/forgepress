@@ -1,4 +1,4 @@
-import type { ContentRow } from '../../src/types/entry'
+import type { Entry } from '../../src/types/entry'
 import type { ForgePressSchema } from '../../src/types/schema'
 import { describe, expect, it } from 'vitest'
 import { entryReferences, unpublishedReferences, validateReferences } from '../../src/entries/references'
@@ -19,7 +19,7 @@ const schema = {
   },
 } as const satisfies ForgePressSchema
 
-function entry(id: string, fields: Record<string, unknown> = {}, status: ContentRow['status'] = 'published'): ContentRow {
+function entry(id: string, fields: Record<string, unknown> = {}, status: Entry['status'] = 'published'): Entry {
   return { id, status, createdAt: '2024-01-01', updatedAt: '2024-01-01', ...fields }
 }
 
@@ -115,7 +115,7 @@ describe('entryReferences', () => {
 })
 
 describe('unpublishedReferences', () => {
-  const stored: Record<string, ContentRow> = {
+  const stored: Record<string, Entry> = {
     'author/author_1': entry('author_1', {}, 'unpublished'),
     'author/author_2': entry('author_2'),
     'hero/hero_1': entry('hero_1', {}, 'unpublished'),
@@ -123,16 +123,16 @@ describe('unpublishedReferences', () => {
     'page/page_3': entry('page_3', { editors: ['author_9'] }, 'unpublished'),
   }
 
-  const find = (collection: string, id: string): ContentRow | undefined => stored[`${collection}/${id}`]
+  const find = (collection: string, id: string): Entry | undefined => stored[`${collection}/${id}`]
 
   it('finds the unpublished entries a published one links to, and what those link to', () => {
     expect(unpublishedReferences(schema, [
-      { collection: 'page', row: entry('page_1', { author: 'author_2', blocks: [{ collection: 'hero', id: 'hero_1' }], links: { en: ['page_2', 'page_9'] } }) },
+      { collection: 'page', entry: entry('page_1', { author: 'author_2', blocks: [{ collection: 'hero', id: 'hero_1' }], links: { en: ['page_2', 'page_9'] } }) },
     ], find)).toEqual([
-      { collection: 'hero', row: stored['hero/hero_1'] },
-      { collection: 'page', row: stored['page/page_2'] },
-      { collection: 'author', row: stored['author/author_1'] },
-      { collection: 'page', row: stored['page/page_3'] },
+      { collection: 'hero', entry: stored['hero/hero_1'] },
+      { collection: 'page', entry: stored['page/page_2'] },
+      { collection: 'author', entry: stored['author/author_1'] },
+      { collection: 'page', entry: stored['page/page_3'] },
     ])
   })
 
@@ -141,21 +141,21 @@ describe('unpublishedReferences', () => {
     const author = entry('author_2', {}, 'unpublished')
 
     expect(unpublishedReferences(schema, [
-      { collection: 'hero', row: entry('hero_1') },
-      { collection: 'page', row: entry('page_1', { author: 'author_2', editors: ['author_2'], blocks: [{ collection: 'hero', id: 'hero_1' }] }) },
-      { collection: 'author', row: author },
-    ], find)).toEqual([{ collection: 'author', row: author }])
+      { collection: 'hero', entry: entry('hero_1') },
+      { collection: 'page', entry: entry('page_1', { author: 'author_2', editors: ['author_2'], blocks: [{ collection: 'hero', id: 'hero_1' }] }) },
+      { collection: 'author', entry: author },
+    ], find)).toEqual([{ collection: 'author', entry: author }])
 
     expect(unpublishedReferences(schema, [
-      { collection: 'hero', row: block },
-      { collection: 'page', row: entry('page_1', { blocks: [{ collection: 'hero', id: 'hero_1' }] }) },
-    ], find)).toEqual([{ collection: 'hero', row: block }])
+      { collection: 'hero', entry: block },
+      { collection: 'page', entry: entry('page_1', { blocks: [{ collection: 'hero', id: 'hero_1' }] }) },
+    ], find)).toEqual([{ collection: 'hero', entry: block }])
   })
 
   it('finds nothing when the entries being saved are unpublished', () => {
     expect(unpublishedReferences(schema, [
-      { collection: 'page', row: entry('page_1', { author: 'author_1' }, 'unpublished') },
-      { collection: 'hero', row: entry('hero_1', {}, 'unpublished') },
+      { collection: 'page', entry: entry('page_1', { author: 'author_1' }, 'unpublished') },
+      { collection: 'hero', entry: entry('hero_1', {}, 'unpublished') },
     ], find)).toEqual([])
   })
 })

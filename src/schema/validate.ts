@@ -29,6 +29,8 @@ const BASE_OPTIONS: Record<string, FieldOptionType> = {
   translate: 'boolean',
 }
 
+const INDEXABLE = fieldTypeNames.filter(type => 'index' in fieldTypes[type].options)
+
 const KINDS: Record<FieldOptionType, string> = {
   text: 'a string',
   number: 'a number',
@@ -146,6 +148,8 @@ function checkField(context: Context, path: ValuePath, collection: string, key: 
 
     if (kind)
       checkOption(context, [...path, option], label, option, kind, value)
+    else if (option === 'index')
+      report([...path, option], `Field ${quote(label)} can't be indexed; only ${INDEXABLE.slice(0, -1).join(', ')} and ${INDEXABLE.at(-1)} fields can`)
     else
       report([...path, option], `Field ${quote(label)} has no option ${quote(option)}`)
   }

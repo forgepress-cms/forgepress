@@ -1,5 +1,5 @@
 import type { Field } from '../schema/fields'
-import type { ContentRow, EntryRef } from '../types/entry'
+import type { Entry, EntryRef } from '../types/entry'
 import type { ValueIssue, ValuePath } from '../types/issues'
 import type { ForgePressSchema } from '../types/schema'
 import { isRecord, quote } from '../utils/value'
@@ -9,15 +9,15 @@ export interface EntryIssue extends ValueIssue {
   id: string
 }
 
-export type ContentEntries = Readonly<Record<string, Readonly<Record<string, ContentRow>>>>
+export type ContentEntries = Readonly<Record<string, Readonly<Record<string, Entry>>>>
 
 export interface Reference extends EntryRef {
   path: ValuePath
 }
 
-export interface EntryRow {
+export interface CollectionEntry {
   collection: string
-  row: ContentRow
+  entry: Entry
 }
 
 export function entryKey(collection: string, id: string): string {
@@ -53,7 +53,7 @@ function references(field: Field, value: unknown, path: ValuePath): Reference[] 
   return []
 }
 
-export function entryReferences(schema: ForgePressSchema, collection: string, row: ContentRow): Reference[] {
+export function entryReferences(schema: ForgePressSchema, collection: string, row: Entry): Reference[] {
   const translatable = (schema.locales ?? []).length > 0
 
   return Object.entries(schema.collections[collection]?.fields ?? {}).flatMap(([key, field]) =>
@@ -82,14 +82,14 @@ export function validateReferences(schema: ForgePressSchema, content: ContentEnt
   return issues
 }
 
-export function unpublishedReferences(schema: ForgePressSchema, entries: readonly EntryRow[], find: (collection: string, id: string) => ContentRow | undefined): EntryRow[] {
-  const given = new Map(entries.map(entry => [entryKey(entry.collection, entry.row.id), entry.row]))
-  const pending = entries.filter(entry => entry.row.status === 'published')
-  const seen = new Set(pending.map(entry => entryKey(entry.collection, entry.row.id)))
-  const found: EntryRow[] = []
+export function unpublishedReferences(schema: ForgePressSchema, entries: readonly CollectionEntry[], find: (collection: string, id: string) => Entry | undefined): CollectionEntry[] {
+  const given = new Map(entries.map(item => [entryKey(item.collection, item.entry.id), item.entry]))
+  const pending = entries.filter(item => item.entry.status === 'published')
+  const seen = new Set(pending.map(item => entryKey(item.collection, item.entry.id)))
+  const found: CollectionEntry[] = []
 
-  for (const { collection, row } of pending) {
-    for (const reference of entryReferences(schema, collection, row)) {
+  for (const { collection, entry } of pending) {
+    for (const reference of entryReferences(schema, collection, entry)) {
       const key = entryKey(reference.collection, reference.id)
       const target = given.get(key) ?? find(reference.collection, reference.id)
 
@@ -97,8 +97,8 @@ export function unpublishedReferences(schema: ForgePressSchema, entries: readonl
         continue
 
       seen.add(key)
-      found.push({ collection: reference.collection, row: target })
-      pending.push({ collection: reference.collection, row: target })
+      found.push({ collection: reference.collection, entry: target })
+      pending.push({ collection: reference.collection, entry: target })
     }
   }
 

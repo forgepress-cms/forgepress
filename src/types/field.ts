@@ -10,6 +10,7 @@ export type FieldOptionType = 'text' | 'number' | 'boolean' | 'collection' | 'co
 export interface FieldOption {
   label: string
   type: FieldOptionType
+  description?: string
   required?: true
 }
 

@@ -1,5 +1,5 @@
 import type { Field } from '../../src/schema/fields'
-import type { ContentRow } from '../../src/types/entry'
+import type { Entry } from '../../src/types/entry'
 import { describe, expect, it } from 'vitest'
 import { migrate } from '../../src/schema/migrate'
 
@@ -8,7 +8,7 @@ const locales = ['en', 'de']
 const hero = { url: '/uploads/hero.png', width: 1920, height: 1080 }
 const banner = { url: '/uploads/banner.png' }
 
-function rows(...values: unknown[]): ContentRow[] {
+function rows(...values: unknown[]): Entry[] {
   return values.map((value, index) => ({
     id: `hero_${index}`,
     status: 'published' as const,

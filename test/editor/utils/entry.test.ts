@@ -198,13 +198,13 @@ describe('withPublished', () => {
     const author = { id: 'author_1', status: 'unpublished' as const, ...meta, name: 'Alice' }
 
     expect(withPublished(
-      [{ collection: 'hero', row: block }, { collection: 'page', row: page }],
-      [{ collection: 'author', row: author }, { collection: 'hero', row: block }],
+      [{ collection: 'hero', entry: block }, { collection: 'page', entry: page }],
+      [{ collection: 'author', entry: author }, { collection: 'hero', entry: block }],
       '2024-06-01T00:00:00Z',
     )).toEqual([
-      { collection: 'author', row: { ...author, status: 'published', updatedAt: '2024-06-01T00:00:00Z' } },
-      { collection: 'hero', row: { ...block, status: 'published', updatedAt: '2024-06-01T00:00:00Z' } },
-      { collection: 'page', row: page },
+      { collection: 'author', entry: { ...author, status: 'published', updatedAt: '2024-06-01T00:00:00Z' } },
+      { collection: 'hero', entry: { ...block, status: 'published', updatedAt: '2024-06-01T00:00:00Z' } },
+      { collection: 'page', entry: page },
     ])
     expect(author.status).toBe('unpublished')
   })

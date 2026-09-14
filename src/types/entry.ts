@@ -15,7 +15,7 @@ export interface EntryRef {
   id: string
 }
 
-export type ContentRow = EntryMeta & {
+export type Entry = EntryMeta & {
   [field: string]: unknown
 }
 

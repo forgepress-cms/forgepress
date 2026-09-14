@@ -1,5 +1,5 @@
 declare module 'virtual:forgepress/content' {
-  type Row = import('../types/entry').ContentRow
+  type Row = import('../types/entry').Entry
 
   interface CollectionLoaders {
     list: () => Promise<{ default: Row[] }>

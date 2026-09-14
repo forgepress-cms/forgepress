@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { EntryRow } from '../../../../entries/references'
+import type { CollectionEntry } from '../../../../entries/references'
 import type { EntryStatus } from '../../../../types/entry'
 import { computed, reactive, shallowRef } from 'vue'
 import { entryKey, unpublishedReferences } from '../../../../entries/references'
@@ -67,12 +67,12 @@ const missing = computed(() => [
 
 const { saving, error, save } = useSave()
 
-const linked = shallowRef<EntryRow[]>([])
+const linked = shallowRef<CollectionEntry[]>([])
 
-const offered = computed(() => linked.value.map(entry => ({
-  key: entryKey(entry.collection, entry.row.id),
-  collection: entries.collectionLabel(entry.collection),
-  label: entries.label(entry.collection, entry.row.id),
+const offered = computed(() => linked.value.map(item => ({
+  key: entryKey(item.collection, item.entry.id),
+  collection: entries.collectionLabel(item.collection),
+  label: entries.label(item.collection, item.entry.id),
 })))
 
 async function submit(linkedStatus?: EntryStatus): Promise<void> {
@@ -81,8 +81,8 @@ async function submit(linkedStatus?: EntryStatus): Promise<void> {
   const changed = creating || JSON.stringify(draft()) !== original
 
   const saved = [
-    ...Object.entries(nested.rows(next.status)).flatMap(([collection, related]) => related.map(entry => ({ collection, row: { ...entry, updatedAt } }))),
-    ...changed ? [{ collection: name, row: next }] : [],
+    ...Object.entries(nested.rows(next.status)).flatMap(([collection, related]) => related.map(entry => ({ collection, entry: { ...entry, updatedAt } }))),
+    ...changed ? [{ collection: name, entry: next }] : [],
   ]
 
   const unpublished = unpublishedReferences(schema, saved, entries.row)
@@ -97,14 +97,14 @@ async function submit(linkedStatus?: EntryStatus): Promise<void> {
   const writes = linkedStatus === 'published' ? withPublished(saved, unpublished, updatedAt) : saved
 
   const written = await save(async () => {
-    for (const entry of writes)
-      await store.writeEntry(entry.collection, entry.row)
+    for (const item of writes)
+      await store.writeEntry(item.collection, item.entry)
   })
 
   if (!written)
     return
 
-  const own = writes.find(entry => entry.collection === name && entry.row.id === row.id)?.row
+  const own = writes.find(item => item.collection === name && item.entry.id === row.id)?.entry
 
   if (own && creating)
     rows.push(own)

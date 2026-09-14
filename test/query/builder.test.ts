@@ -1,5 +1,5 @@
 import type { QueryBackend } from '../../src/query/types'
-import type { ContentRow } from '../../src/types/entry'
+import type { Entry } from '../../src/types/entry'
 import type { ForgePressSchema } from '../../src/types/schema'
 import { describe, expect, it } from 'vitest'
 import { createBuilder } from '../../src/query/builder'
@@ -24,7 +24,7 @@ const schema = {
   },
 } as const satisfies ForgePressSchema
 
-function fixtures(): Record<string, ContentRow[]> {
+function fixtures(): Record<string, Entry[]> {
   return {
     author: [
       { id: 'a1', status: 'published', createdAt: '2024-01-01', updatedAt: '2024-01-01', name: 'Alice', bio: { en: 'Alice bio', de: 'Alice Bio' }, posts: ['p1', 'p2'] },
@@ -38,7 +38,7 @@ function fixtures(): Record<string, ContentRow[]> {
   }
 }
 
-function backend(content: Record<string, ContentRow[]>): QueryBackend {
+function backend(content: Record<string, Entry[]>): QueryBackend {
   return {
     source: {
       schema: async () => schema,
@@ -52,7 +52,7 @@ function query(collection: string, content = fixtures()) {
   return createBuilder(collection, backend(content))
 }
 
-const ids = (rows: ContentRow[]) => rows.map(row => row.id)
+const ids = (rows: Entry[]) => rows.map(row => row.id)
 
 describe('where', () => {
   it('two-argument form is an eq shorthand', async () => {
@@ -95,24 +95,24 @@ describe('with', () => {
     const post = await query('post').where('id', 'p1').first()
     const resolved = (await query('post').where('id', 'p1').with('author'))[0]!
     expect(post!.author).toBe('a1')
-    expect((resolved.author as ContentRow).name).toBe('Alice')
+    expect((resolved.author as Entry).name).toBe('Alice')
   })
 
   it('resolves a multiple relation to an array of rows', async () => {
     const author = (await query('author').where('id', 'a1').with('posts'))[0]!
-    expect(ids(author.posts as ContentRow[])).toEqual(['p1', 'p2'])
+    expect(ids(author.posts as Entry[])).toEqual(['p1', 'p2'])
   })
 
   it('localizes resolved relation rows when a locale is active', async () => {
     const author = (await query('author').locale('en').with('posts'))[0]!
-    expect((author.posts as ContentRow[])[0]!.title).toBe('First')
+    expect((author.posts as Entry[])[0]!.title).toBe('First')
   })
 
   it('drops relation ids that do not resolve', async () => {
     const content = fixtures()
     content.author![0]!.posts = ['p1', 'missing']
     const author = (await createBuilder('author', backend(content)).where('id', 'a1').with('posts'))[0]!
-    expect(ids(author.posts as ContentRow[])).toEqual(['p1'])
+    expect(ids(author.posts as Entry[])).toEqual(['p1'])
   })
 })
 

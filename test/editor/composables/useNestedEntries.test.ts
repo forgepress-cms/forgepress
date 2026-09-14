@@ -1,4 +1,4 @@
-import type { ContentRow, EntryStatus } from '../../../src/types/entry'
+import type { Entry, EntryStatus } from '../../../src/types/entry'
 import type { ForgePressSchema } from '../../../src/types/schema'
 import { describe, expect, it, vi } from 'vitest'
 import { SINGLE } from '../../../src/editor/utils/entry'
@@ -20,7 +20,7 @@ function nested() {
   return useNestedEntries()
 }
 
-function stored(id: string, status: EntryStatus, fields: Record<string, unknown> = {}): ContentRow {
+function stored(id: string, status: EntryStatus, fields: Record<string, unknown> = {}): Entry {
   return { id, status, createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', ...fields }
 }
 

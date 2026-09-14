@@ -11,6 +11,7 @@ export default {
           type: 'text',
           label: 'Name',
           description: 'The name of the author',
+          index: true,
         },
         portrait: {
           type: 'image',
@@ -41,6 +42,7 @@ export default {
           label: 'Author',
           description: 'The author of this blog post',
           collection: 'author',
+          index: true,
         },
         title: {
           type: 'text',
@@ -113,6 +115,7 @@ export default {
           label: 'Slug',
           description: 'The URL slug for the page',
           translate: true,
+          index: true,
         },
         content: {
           type: 'dynamic',

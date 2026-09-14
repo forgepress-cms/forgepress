@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ContentRow } from '../../../../types/entry'
+import type { Entry } from '../../../../types/entry'
 import type { Column } from '../../../utils/table'
 
 import UBadge from '@nuxt/ui/components/Badge.vue'
@@ -36,13 +36,13 @@ const primary = titleField(fields)
 
 const entries = await useEntries()
 
-function label(row: ContentRow): string {
+function label(row: Entry): string {
   return entryLabel(row, primary, locale)
 }
 
 const { visibility, items } = useColumnVisibility(name, fields, primary ? [primary.key] : [])
 
-const columns: Column<ContentRow>[] = [
+const columns: Column<Entry>[] = [
   selectionColumn(label),
   {
     id: 'entry',
@@ -62,7 +62,7 @@ const columns: Column<ContentRow>[] = [
   ...fields.map(field => ({
     accessorKey: field.key,
     header: field.label,
-    cell: ({ row }: { row: { original: ContentRow } }) =>
+    cell: ({ row }: { row: { original: Entry } }) =>
       fieldCell(field, localized(row.original[field.key], field.translated ? locale : undefined), entries),
   })),
   actionsColumn(),

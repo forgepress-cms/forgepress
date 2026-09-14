@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Field } from '../../../../schema/fields'
-import type { ContentRow } from '../../../../types/entry'
+import type { Entry } from '../../../../types/entry'
 import type { FormField } from '../../../utils/schema'
 import type { Column } from '../../../utils/table'
 
@@ -94,7 +94,7 @@ async function create(label: string, key: string): Promise<void> {
 async function remove(): Promise<void> {
   const key = removing.value
   const rows = await store.list(name)
-  const stripped = rows.map(({ [key]: _, ...rest }) => rest as ContentRow)
+  const stripped = rows.map(({ [key]: _, ...rest }) => rest as Entry)
 
   const written = await write((draft) => {
     delete draft.collections[name]!.fields[key]

@@ -1,4 +1,4 @@
-import type { ContentRow } from '../types/entry'
+import type { Entry } from '../types/entry'
 import type { ForgePressSchema } from '../types/schema'
 import { validateSchema } from '../schema/validate'
 import { isRecord } from '../utils/value'
@@ -15,11 +15,11 @@ export function parseSchema(text: string, file: string): ForgePressSchema {
   return value as ForgePressSchema
 }
 
-export function parseEntry(text: string, file: string): ContentRow {
+export function parseEntry(text: string, file: string): Entry {
   const { value, locate } = parseModule(text, file)
 
   if (!isRecord(value))
     throw new ContentError([{ file, ...locate([]), message: 'An entry has to be an object' }])
 
-  return value as ContentRow
+  return value as Entry
 }

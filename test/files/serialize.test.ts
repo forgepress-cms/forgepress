@@ -1,4 +1,4 @@
-import type { ContentRow } from '../../src/types/entry'
+import type { Entry } from '../../src/types/entry'
 import type { ForgePressSchema } from '../../src/types/schema'
 import { describe, expect, it } from 'vitest'
 import { parseEntry, parseSchema } from '../../src/files/parse'
@@ -56,7 +56,7 @@ export default {
 })
 
 describe('serializeEntry', () => {
-  const row: ContentRow = {
+  const row: Entry = {
     id: 'blog-post-1',
     status: 'published',
     createdAt: '2024-01-01T00:00:00Z',
@@ -84,13 +84,13 @@ export default {
   })
 
   it('writes the metadata keys first regardless of row order', () => {
-    const shuffled: ContentRow = {
+    const shuffled: Entry = {
       title: 'Late',
       updatedAt: 'u',
       id: 'a',
       createdAt: 'c',
       status: 'unpublished',
-    } as ContentRow
+    } as Entry
 
     const keys = [...serializeEntry('post', shuffled).matchAll(/^ {2}(\w+):/gm)].map(match => match[1])
 
@@ -98,7 +98,7 @@ export default {
   })
 
   it('writes a list of media objects one per entry', () => {
-    const entry: ContentRow = {
+    const entry: Entry = {
       id: 'a',
       status: 'unpublished',
       createdAt: '',
@@ -119,19 +119,19 @@ export default {
   })
 
   it('escapes quotes and newlines', () => {
-    const entry: ContentRow = { id: 'a', status: 'unpublished', createdAt: '', updatedAt: '', body: 'it\'s\nfine' }
+    const entry: Entry = { id: 'a', status: 'unpublished', createdAt: '', updatedAt: '', body: 'it\'s\nfine' }
 
     expect(serializeEntry('page', entry)).toContain('body: \'it\\\'s\\nfine\',')
   })
 
   it('quotes keys that are not identifiers', () => {
-    const entry: ContentRow = { 'id': 'a', 'status': 'unpublished', 'createdAt': '', 'updatedAt': '', 'meta-data': 1 }
+    const entry: Entry = { 'id': 'a', 'status': 'unpublished', 'createdAt': '', 'updatedAt': '', 'meta-data': 1 }
 
     expect(serializeEntry('page', entry)).toContain('\'meta-data\': 1,')
   })
 
   it('leaves out values an entry file cannot hold', () => {
-    const entry = { id: 'a', status: 'unpublished', createdAt: '', updatedAt: '', gone: null, count: Number.NaN, list: [1, null, undefined, Infinity, 2] } as ContentRow
+    const entry = { id: 'a', status: 'unpublished', createdAt: '', updatedAt: '', gone: null, count: Number.NaN, list: [1, null, undefined, Infinity, 2] } as Entry
 
     expect(parseEntry(serializeEntry('page', entry), 'a.ts')).toEqual({ id: 'a', status: 'unpublished', createdAt: '', updatedAt: '', list: [1, 2] })
   })
@@ -139,7 +139,7 @@ export default {
 
 describe('string escaping', () => {
   function roundTrip(fields: Record<string, unknown>): Record<string, unknown> {
-    const row = { id: 'a', status: 'unpublished', createdAt: '', updatedAt: '', ...fields } as ContentRow
+    const row = { id: 'a', status: 'unpublished', createdAt: '', updatedAt: '', ...fields } as Entry
 
     return parseEntry(serializeEntry('post', row), 'post.ts')
   }

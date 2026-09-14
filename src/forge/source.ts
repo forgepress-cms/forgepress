@@ -1,6 +1,6 @@
 import type { ContentPaths } from '../files/paths'
 import type { ContentSource, RepositoryCache } from '../store/types'
-import type { ContentRow } from '../types/entry'
+import type { Entry } from '../types/entry'
 import type { Forge, HashSource } from './types'
 import { sortByCreation } from '../entries/order'
 import { parseEntry, parseSchema } from '../files/parse'
@@ -120,7 +120,7 @@ export function createForgeSource(forge: () => Forge | undefined, paths: Content
     return (await files()).get(path)
   }
 
-  async function list(collection: string): Promise<ContentRow[]> {
+  async function list(collection: string): Promise<Entry[]> {
     const directory = `${at(paths.collection(collection))}/`
 
     const rows = [...await files()]

@@ -1,5 +1,5 @@
 import type { ContentConfig } from '../types/config'
-import type { ContentRow } from '../types/entry'
+import type { Entry } from '../types/entry'
 import type { ForgePressSchema } from '../types/schema'
 import { META_KEYS } from '../entries/meta'
 
@@ -103,7 +103,7 @@ export function serializeSchema(schema: ForgePressSchema, config?: ContentConfig
   ].join('\n')
 }
 
-function ordered(row: ContentRow): [string, unknown][] {
+function ordered(row: Entry): [string, unknown][] {
   const entries = Object.entries(row).filter(([, item]) => storable(item))
   const rank = (name: string): number => {
     const index = (META_KEYS as readonly string[]).indexOf(name)
@@ -114,7 +114,7 @@ function ordered(row: ContentRow): [string, unknown][] {
   return entries.sort(([left], [right]) => rank(left) - rank(right))
 }
 
-export function serializeEntry(collection: string, row: ContentRow, config?: ContentConfig): string {
+export function serializeEntry(collection: string, row: Entry, config?: ContentConfig): string {
   const current = style(config)
 
   const body = ordered(row)

@@ -208,6 +208,7 @@ function submit(): void {
           v-for="(option, optionKey) in definition.options"
           :key="optionKey"
           :label="option.label"
+          :description="'description' in option ? option.description : ''"
           :required="'required' in option"
           :ui="{ container: 'mt-2' }"
         >

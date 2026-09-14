@@ -5,6 +5,7 @@ const text = {
   label: 'Text',
   options: {
     validation: { label: 'Validation Pattern', type: 'text' },
+    index: { label: 'Indexed', type: 'boolean', description: 'Listed in the collection manifest, so queries can filter and sort on it without loading every entry.' },
   },
 } as const satisfies FieldTypeDefinition
 

@@ -3,7 +3,7 @@ import type { App } from 'vue'
 import type { ChangeService } from '../../../src/changes/types'
 import type { Forge } from '../../../src/forge/types'
 import type { ContentSource } from '../../../src/store/types'
-import type { ContentRow } from '../../../src/types/entry'
+import type { Entry } from '../../../src/types/entry'
 import type { ForgePressSchema } from '../../../src/types/schema'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, onMounted, ref } from 'vue'
@@ -41,7 +41,7 @@ vi.doMock('../../../src/editor/composables/useContent', () => ({
 
 const { usePublish } = await import('../../../src/editor/composables/usePublish')
 
-function row(id: string): ContentRow {
+function row(id: string): Entry {
   return { id, status: 'published', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' }
 }
 
@@ -62,7 +62,7 @@ function site() {
       blogPost: { fields: { author: { type: 'relation', collection: 'author', optional: true } } },
     },
   }
-  const content: Record<string, Record<string, ContentRow>> = {
+  const content: Record<string, Record<string, Entry>> = {
     author: { author_1: { ...row('author_1'), name: 'Alice' } },
     blogPost: { post_1: { ...row('post_1'), author: 'author_1' } },
   }

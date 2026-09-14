@@ -1,5 +1,5 @@
 import type { QueryPlan } from '../../src/query/types'
-import type { ContentRow } from '../../src/types/entry'
+import type { Entry } from '../../src/types/entry'
 import { describe, expect, it } from 'vitest'
 import { evaluate, localize } from '../../src/query/evaluator'
 
@@ -7,7 +7,7 @@ function plan(overrides: Partial<QueryPlan> = {}): QueryPlan {
   return { where: [], sort: [], offset: 0, ...overrides }
 }
 
-function rows(): ContentRow[] {
+function rows(): Entry[] {
   return [
     { id: 'a', status: 'published', createdAt: '2024-01-01', updatedAt: '2024-01-01', views: 10, slug: 'apple-pie', title: { en: 'Apple', de: 'Apfel' }, tags: ['x', 'y'] },
     { id: 'b', status: 'unpublished', createdAt: '2024-03-01', updatedAt: '2024-03-01', views: 30, slug: 'banana-bread', title: { en: 'Banana', de: 'Banane' }, tags: ['y', 'z'] },
@@ -15,7 +15,7 @@ function rows(): ContentRow[] {
   ]
 }
 
-const ids = (result: ContentRow[]) => result.map(row => row.id)
+const ids = (result: Entry[]) => result.map(row => row.id)
 
 describe('localize', () => {
   it('flattens translated fields to the chosen locale and leaves others untouched', () => {

@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { ResolvedConfig } from '../config/resolve'
-import type { ContentRow } from '../types/entry'
+import type { Entry } from '../types/entry'
 import type { ForgePressSchema } from '../types/schema'
 import { Buffer } from 'node:buffer'
 import { createMediaStore } from '../disk/media'
@@ -106,13 +106,13 @@ function entryId(id: unknown): string {
   return id
 }
 
-function entry(value: unknown): ContentRow {
+function entry(value: unknown): Entry {
   if (!isRecord(value))
     throw new EndpointError(400, 'an entry has to be an object')
 
   entryId(value.id)
 
-  return value as ContentRow
+  return value as Entry
 }
 
 async function media(config: ResolvedConfig, root: string, path: string, request: IncomingMessage, response: ServerResponse): Promise<void> {

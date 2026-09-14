@@ -1,4 +1,4 @@
-import type { ContentRow } from '../types/entry'
+import type { Entry } from '../types/entry'
 import type { QueryPlan, WhereClause } from './types'
 
 function compare(a: unknown, b: unknown): number {
@@ -12,7 +12,7 @@ function compare(a: unknown, b: unknown): number {
   return a < b ? -1 : 1
 }
 
-function matches(row: ContentRow, { field, op, value }: WhereClause): boolean {
+function matches(row: Entry, { field, op, value }: WhereClause): boolean {
   const actual = row[field]
 
   switch (op) {
@@ -30,8 +30,8 @@ function matches(row: ContentRow, { field, op, value }: WhereClause): boolean {
   }
 }
 
-export function localize(row: ContentRow, translated: Set<string>, locale: string): ContentRow {
-  const out: ContentRow = { ...row }
+export function localize(row: Entry, translated: Set<string>, locale: string): Entry {
+  const out: Entry = { ...row }
 
   for (const field of translated) {
     const value = out[field]
@@ -43,7 +43,7 @@ export function localize(row: ContentRow, translated: Set<string>, locale: strin
   return out
 }
 
-export function evaluate(rows: ContentRow[], plan: QueryPlan, translated: Set<string>): ContentRow[] {
+export function evaluate(rows: Entry[], plan: QueryPlan, translated: Set<string>): Entry[] {
   let result = plan.locale
     ? rows.map(row => localize(row, translated, plan.locale!))
     : rows

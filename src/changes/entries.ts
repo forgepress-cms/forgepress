@@ -1,9 +1,9 @@
-import type { ContentRow } from '../types/entry'
+import type { Entry } from '../types/entry'
 import { same } from '../utils/value'
 
-export type Overlay = Record<string, ContentRow | null>
+export type Overlay = Record<string, Entry | null>
 
-export function mergeEntries(rows: readonly ContentRow[], overlay?: Overlay): ContentRow[] {
+export function mergeEntries(rows: readonly Entry[], overlay?: Overlay): Entry[] {
   if (!overlay)
     return [...rows]
 
@@ -19,7 +19,7 @@ export function mergeEntries(rows: readonly ContentRow[], overlay?: Overlay): Co
   return [...merged.values()]
 }
 
-export function stage(overlay: Overlay, before: ContentRow | undefined, row: ContentRow): void {
+export function stage(overlay: Overlay, before: Entry | undefined, row: Entry): void {
   if (same(before, row))
     delete overlay[row.id]
   else

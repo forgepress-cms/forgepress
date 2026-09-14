@@ -1,6 +1,6 @@
 import type { FileChange, RepoTarget } from '../forge/types'
 import type { PendingUpload } from '../media/types'
-import type { ContentRow } from '../types/entry'
+import type { Entry } from '../types/entry'
 import type { Changes } from './types'
 import { prefixer } from '../files/paths'
 import { serializeEntry } from '../files/serialize'
@@ -10,7 +10,7 @@ export interface ChangedEntry {
   path: string
   collection: string
   id: string
-  row: ContentRow | null
+  row: Entry | null
   hash: string | null | undefined
 }
 

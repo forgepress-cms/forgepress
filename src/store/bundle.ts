@@ -2,7 +2,7 @@
 import type { ContentPaths } from '../files/paths'
 import type { BakedMedia } from '../media/types'
 import type { ContentConfig, ProviderConfig } from '../types/config'
-import type { ContentRow } from '../types/entry'
+import type { Entry } from '../types/entry'
 import type { ContentSource } from './types'
 import { sortByCreation } from '../entries/order'
 import { createPaths } from '../files/paths'
@@ -36,7 +36,7 @@ export function baked(): Promise<BakedSettings> {
   return settings
 }
 
-async function list(collection: string): Promise<ContentRow[]> {
+async function list(collection: string): Promise<Entry[]> {
   const loaders = (await loadBundle()).content[collection]
 
   return loaders ? sortByCreation((await loaders.list()).default) : []
