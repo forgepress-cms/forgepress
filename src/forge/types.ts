@@ -30,8 +30,10 @@ export interface OAuthEndpoints {
 }
 
 export interface ForgeDescriptor {
+  name: string
   root: string
   api: string
+  tokens: string
   scopes: readonly string[]
   oauth?: OAuthEndpoints
 }
@@ -45,6 +47,10 @@ export interface OAuthTokens {
 export interface ForgeFile {
   path: string
   sha: string
+}
+
+export interface HashSource {
+  entry: (collection: string, id: string) => Promise<string | undefined>
 }
 
 export interface Forge {

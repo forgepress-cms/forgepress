@@ -1,8 +1,8 @@
 import type { VNode } from 'vue'
 import type { MediaKind } from '../../media'
+import type { MediaContent } from '../../media/types'
 import type { DynamicBlock } from '../../schema/fields/dynamic'
 import type { Entries } from '../composables/useEntries'
-import type { MediaValue } from './media'
 import type { FormField } from './schema'
 import { h } from 'vue'
 import { asList } from '../../utils/value'
@@ -29,7 +29,7 @@ export function flag(value: boolean): VNode {
   return h('span', { class: value ? 'text-highlighted' : 'text-dimmed' }, value ? 'Yes' : '—')
 }
 
-export function thumbnails(items: MediaValue[], kind: MediaKind): VNode {
+export function thumbnails(items: MediaContent[], kind: MediaKind): VNode {
   if (!items.length)
     return h('span', { class: 'text-dimmed' }, '—')
 

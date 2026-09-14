@@ -1,6 +1,6 @@
 import type { ContentRow } from '../types/entry'
 import type { Field } from './fields'
-import { asList, filled, isRecord } from '../utils/value'
+import { asList, filled, isRecord, same } from '../utils/value'
 
 const TEXTUAL = new Set<Field['type']>(['text', 'richtext'])
 const MEDIA = new Set<Field['type']>(['image', 'video'])
@@ -123,7 +123,7 @@ export function migrate(
     const value = row[key]
     const next = migrateField(value, before, after, locales)
 
-    if (JSON.stringify(next ?? null) !== JSON.stringify(value ?? null))
+    if (!same(next, value))
       changed += 1
 
     if (size(next, translates(after, locales)) < size(value, translates(before, locales)))

@@ -11,6 +11,7 @@ import { loadConfig } from '../disk/config'
 import { findRoot } from '../disk/root'
 import { ContentError } from '../files/issues'
 import { ENDPOINT } from '../files/paths'
+import { errorMessage } from '../utils/error'
 import { EndpointError, handle } from './endpoint'
 import { ENTRY_PREFIX, findCollection, generateEntry, generateList, generateRoot, LIST_PREFIX, resolved, VIRTUAL_ID } from './modules'
 
@@ -112,7 +113,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
           clearTimeout(pending)
 
           pending = setTimeout(() => {
-            report().catch((error: unknown) => logger.error(`[forgepress] could not check the content: ${error instanceof Error ? error.message : String(error)}`))
+            report().catch((error: unknown) => logger.error(`[forgepress] could not check the content: ${errorMessage(error)}`))
           }, 100)
         }
 
@@ -151,7 +152,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
             })
             .catch((error: unknown) => {
               response.statusCode = error instanceof EndpointError ? error.status : 500
-              response.end(error instanceof Error ? error.message : String(error))
+              response.end(errorMessage(error))
             })
         })
       },

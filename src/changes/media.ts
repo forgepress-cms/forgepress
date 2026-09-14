@@ -1,13 +1,8 @@
 import type { BakedMedia, MediaClient, PendingUpload } from '../media/types'
 import type { Mutate, Ready } from './content'
 import type { Previews } from './previews'
-import { mediaType, toAssetName } from '../media'
-
-async function digest(data: ArrayBuffer): Promise<string> {
-  const hash = await crypto.subtle.digest('SHA-256', data)
-
-  return [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, '0')).join('')
-}
+import { checkUpload, sortAssets, toAssetName } from '../media'
+import { digest } from '../utils/encoding'
 
 export function createMediaChanges(
   baked: () => Promise<BakedMedia>,
@@ -28,24 +23,16 @@ export function createMediaChanges(
       const shown = new Set(uploaded.map(asset => asset.name))
       const existing = assets.filter(item => !removed.has(item.name) && !shown.has(item.name))
 
-      return [...uploaded, ...existing].sort((left, right) =>
-        right.modifiedAt.localeCompare(left.modifiedAt) || left.name.localeCompare(right.name))
+      return sortAssets([...uploaded, ...existing])
     },
 
     upload: async (file) => {
       const { url, maxSize } = await baked()
-      const type = mediaType(file.name)
-
-      if (!type)
-        throw new Error(`[forgepress] "${file.name}" is not a supported media file`)
-
       const data = await file.arrayBuffer()
-
-      if (data.byteLength > maxSize)
-        throw new Error(`[forgepress] "${file.name}" is larger than the ${Math.round(maxSize / 1024 / 1024)} MB upload limit`)
+      const type = checkUpload(file.name, data.byteLength, maxSize)
 
       const upload: PendingUpload = {
-        name: toAssetName(file.name, await digest(data)),
+        name: toAssetName(file.name, await digest('SHA-256', data)),
         type,
         size: data.byteLength,
         modifiedAt: new Date().toISOString(),

@@ -41,7 +41,7 @@ const locked = computed(() => ready.value && deployed.value && identity.value ==
       <SignIn v-else-if="locked" />
 
       <template v-else>
-        <Header />
+        <Header :deployed="deployed" />
 
         <main class="pt-6 pb-16">
           <UContainer>

@@ -14,7 +14,7 @@ import { useNestedEntries } from '../../../composables/useNestedEntries'
 import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
 import { useSave } from '../../../composables/useSave'
-import { condense, fieldLocale, missingFields, newEntry, statusColor, STATUSES, titleField } from '../../../utils/entry'
+import { condense, missingFields, newEntry, statusColor, STATUSES, titleField, toLocalizedFields } from '../../../utils/entry'
 
 const { route, navigate, href } = useRouter()
 
@@ -23,7 +23,7 @@ const { store } = useContent()
 const name = useParam('collection')
 const id = route.value.params.id
 
-const { collection, locales, fields: schemaFields } = await useCollection(name)
+const { collection, locales } = await useCollection(name)
 
 function back(): void {
   navigate(`content/${name}`)
@@ -39,12 +39,14 @@ if (id && index < 0) {
 const creating = index < 0
 const row = creating ? newEntry(name) : rows[index]!
 
-const fields = reactive(schemaFields.map(field => ({ ...field, locale: fieldLocale(field, locales) })))
+const fields = reactive(toLocalizedFields(collection, locales))
 
 const entries = await useEntries()
 const nested = await useNestedEntries()
 
-const { values, status, draft, dirty, leaving, commit, cancel, discard, proceed } = useEntryDraft(row, fields, locales, back)
+const { values, status, draft, dirty, leaving, commit, cancel, discard, proceed } = useEntryDraft(row, fields, locales, back, next => nested.rows(next.status))
+
+const original = JSON.stringify(draft())
 
 const title = computed(() => {
   const first = titleField(fields)
@@ -63,22 +65,24 @@ const { saving, error, save } = useSave()
 
 async function submit(): Promise<void> {
   const next = { ...draft(), updatedAt: new Date().toISOString() }
+  const changed = creating || JSON.stringify(draft()) !== original
 
   const written = await save(async () => {
-    for (const [collection, created] of Object.entries(nested.rows(next.status))) {
-      for (const entry of created)
-        await store.writeEntry(collection, entry)
+    for (const [collection, related] of Object.entries(nested.rows(next.status))) {
+      for (const entry of related)
+        await store.writeEntry(collection, { ...entry, updatedAt: next.updatedAt })
     }
 
-    await store.writeEntry(name, next)
+    if (changed)
+      await store.writeEntry(name, next)
   })
 
   if (!written)
     return
 
-  if (creating)
+  if (changed && creating)
     rows.push(next)
-  else
+  else if (changed)
     rows[index] = next
 
   nested.clear()
@@ -132,6 +136,7 @@ async function submit(): Promise<void> {
         :entries="entries"
         :nested="nested"
         :locales="locales"
+        :trail="[{ collection: name, id: row.id }]"
       />
 
       <template #sidebar>

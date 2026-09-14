@@ -1,3 +1,4 @@
+import type { MediaContent } from '../../media/types'
 import type { FieldOf, FieldTypeDefinition } from '../../types/field'
 
 const image = {
@@ -10,13 +11,6 @@ const image = {
 
 export type ImageField = FieldOf<typeof image>
 
-export interface ImageContent {
-  url: string
-  alt?: string
-  width?: number
-  height?: number
-}
-
-export type ImageFieldContent<TField extends ImageField> = TField['multiple'] extends true ? ImageContent[] : ImageContent
+export type ImageFieldContent<TField extends ImageField> = TField['multiple'] extends true ? MediaContent[] : MediaContent
 
 export default image

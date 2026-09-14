@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import type { Column } from '../../utils/table'
-import { computed, reactive, ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import { isCollectionName } from '../../../files/paths'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
+import CreateDialog from '../../components/CreateDialog.vue'
 import DataTable from '../../components/DataTable.vue'
 import DragHandle from '../../components/DragHandle.vue'
 import ErrorAlert from '../../components/ErrorAlert.vue'
 import PageHeader from '../../components/layout/PageHeader.vue'
-import { useContent } from '../../composables/useContent'
 import { useDragOrder } from '../../composables/useDragOrder'
 import { useRouter } from '../../composables/useRouter'
 import { useSchema } from '../../composables/useSchema'
 import { clamp } from '../../utils/cells'
-import { moveKey, toKey } from '../../utils/schema'
+import { moveKey } from '../../utils/order'
 import { actionsColumn, dragColumn } from '../../utils/table'
 
 interface CollectionRow {
@@ -24,8 +24,6 @@ interface CollectionRow {
 }
 
 const { navigate } = useRouter()
-
-const { store } = useContent()
 
 const { schema, saving, error, write } = await useSchema()
 
@@ -53,42 +51,22 @@ const columns: Column<CollectionRow>[] = [
 const creating = ref(false)
 const removing = ref('')
 
-const form = reactive({ label: '', key: '', touched: false })
-
-const taken = computed(() => Object.keys(schema.value.collections))
-
-const invalid = computed(() => {
-  if (!form.key)
+function invalid(key: string): string {
+  if (!key)
     return 'A key is required'
 
-  if (!isCollectionName(form.key))
+  if (!isCollectionName(key))
     return 'A key has to start with a lowercase letter and hold only letters and digits'
 
-  if (taken.value.includes(form.key))
-    return `${form.key} already exists`
+  if (Object.hasOwn(schema.value.collections, key))
+    return `${key} already exists`
 
   return ''
-})
-
-function open(): void {
-  form.label = ''
-  form.key = ''
-  form.touched = false
-  creating.value = true
 }
 
-function rename(label: string): void {
-  form.label = label
-
-  if (!form.touched)
-    form.key = toKey(label)
-}
-
-async function create(): Promise<void> {
-  const key = form.key
-
+async function create(label: string, key: string): Promise<void> {
   const written = await write((draft) => {
-    draft.collections[key] = { label: form.label || key, fields: {} }
+    draft.collections[key] = { label: label || key, fields: {} }
   })
 
   if (written) {
@@ -109,7 +87,7 @@ async function remove(): Promise<void> {
 
   const written = await write((draft) => {
     delete draft.collections[key]
-  }, () => store.removeCollection(key))
+  }, writer => writer.removeCollection(key))
 
   if (written)
     removing.value = ''
@@ -126,7 +104,7 @@ function move(key: string, offset: number): Promise<boolean> {
   <div class="grid gap-6">
     <PageHeader title="Schema" description="The collections that make up your content, and the fields they hold.">
       <template #actions>
-        <UButton label="New collection" icon="i-lucide-plus" :loading="saving" @click="open()" />
+        <UButton label="New collection" icon="i-lucide-plus" :loading="saving" @click="creating = true" />
       </template>
     </PageHeader>
 
@@ -157,29 +135,15 @@ function move(key: string, offset: number): Promise<boolean> {
       </template>
     </DataTable>
 
-    <UModal v-model:open="creating" title="New collection" description="Collections describe one kind of content entry.">
-      <template #body>
-        <div class="grid gap-4">
-          <UFormField label="Name">
-            <UInput :model-value="form.label" class="w-full" @update:model-value="rename(String($event))" />
-          </UFormField>
-
-          <UFormField label="Key" description="How the collection is referenced in queries and content files.">
-            <UInput v-model="form.key" class="w-full font-mono" @update:model-value="form.touched = true" />
-          </UFormField>
-
-          <p v-if="form.key && invalid" class="text-sm text-error">
-            {{ invalid }}
-          </p>
-        </div>
-      </template>
-
-      <template #footer>
-        <UButton label="Create" :loading="saving" :disabled="!!invalid" @click="create()" />
-
-        <UButton label="Cancel" color="neutral" variant="ghost" @click="creating = false" />
-      </template>
-    </UModal>
+    <CreateDialog
+      v-model:open="creating"
+      title="New collection"
+      description="Collections describe one kind of content entry."
+      key-description="How the collection is referenced in queries and content files."
+      :loading="saving"
+      :validate="invalid"
+      @create="create"
+    />
 
     <ConfirmDialog
       :open="!!removing"

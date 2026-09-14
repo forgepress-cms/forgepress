@@ -1,5 +1,6 @@
 import type { Ref } from 'vue'
 import { ref } from 'vue'
+import { errorMessage } from '../../utils/error'
 
 export interface Save {
   saving: Ref<boolean>
@@ -20,7 +21,7 @@ export function useSave(): Save {
       return true
     }
     catch (cause) {
-      error.value = cause instanceof Error ? cause.message : String(cause)
+      error.value = errorMessage(cause)
       return false
     }
     finally {

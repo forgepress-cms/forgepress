@@ -10,6 +10,11 @@ export interface EntryMeta {
   updatedAt: string
 }
 
+export interface EntryRef {
+  collection: string
+  id: string
+}
+
 export type ContentRow = EntryMeta & {
   [field: string]: unknown
 }

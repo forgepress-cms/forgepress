@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import type { Field } from '../../../../schema/fields'
 import type { ContentRow } from '../../../../types/entry'
 import type { FormField } from '../../../utils/schema'
 import type { Column } from '../../../utils/table'
 
-import { computed, reactive, ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import { fieldTypeNames, fieldTypes } from '../../../../schema/fields'
 import { RESERVED_FIELDS } from '../../../../schema/validate'
 import ConfirmDialog from '../../../components/ConfirmDialog.vue'
+import CreateDialog from '../../../components/CreateDialog.vue'
 import DataTable from '../../../components/DataTable.vue'
 import DragHandle from '../../../components/DragHandle.vue'
 import ErrorAlert from '../../../components/ErrorAlert.vue'
@@ -18,7 +20,8 @@ import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
 import { useSchema } from '../../../composables/useSchema'
 import { flag } from '../../../utils/cells'
-import { KEY_PATTERN, moveKey, seedField, toFields, toKey } from '../../../utils/schema'
+import { moveKey } from '../../../utils/order'
+import { KEY_PATTERN, seedField, toFields } from '../../../utils/schema'
 import { actionsColumn, dragColumn } from '../../../utils/table'
 
 const { navigate, href } = useRouter()
@@ -40,7 +43,7 @@ const order = useDragOrder(move)
 
 const columns: Column<FormField>[] = [
   dragColumn<FormField>(),
-  { accessorKey: 'key', header: 'FormField' },
+  { accessorKey: 'key', header: 'Field' },
   { accessorKey: 'label', header: 'Label' },
   { accessorKey: 'typeLabel', header: 'Type' },
   { accessorKey: 'optional', header: 'Required', cell: ({ row }) => flag(!row.original.optional) },
@@ -52,47 +55,34 @@ const typeItems = fieldTypeNames.map(type => ({ label: fieldTypes[type].label, v
 
 const creating = ref(false)
 const removing = ref('')
+const type = ref<Field['type']>(fieldTypeNames[0]!)
 
-const form = reactive({ label: '', key: '', type: fieldTypeNames[0]!, touched: false })
-
-const invalid = computed(() => {
-  if (!form.key)
+function invalid(key: string): string {
+  if (!key)
     return 'A key is required'
 
-  if (!KEY_PATTERN.test(form.key))
+  if (!KEY_PATTERN.test(key))
     return 'A key has to start with a letter and hold only letters, digits or underscores'
 
-  if (RESERVED_FIELDS.includes(form.key))
-    return `${form.key} is reserved for entry metadata`
+  if (RESERVED_FIELDS.includes(key))
+    return `${key} is reserved for entry metadata`
 
-  if (Object.keys(collection.value.fields).includes(form.key))
-    return `${form.key} already exists`
+  if (Object.hasOwn(collection.value.fields, key))
+    return `${key} already exists`
 
   return ''
-})
+}
 
 function open(): void {
-  form.label = ''
-  form.key = ''
-  form.type = fieldTypeNames[0]!
-  form.touched = false
+  type.value = fieldTypeNames[0]!
   creating.value = true
 }
 
-function rename(label: string): void {
-  form.label = label
-
-  if (!form.touched)
-    form.key = toKey(label)
-}
-
-async function create(): Promise<void> {
-  const key = form.key
-
+async function create(label: string, key: string): Promise<void> {
   const written = await write((draft) => {
     const target = draft.collections[name]!.fields as Record<string, unknown>
 
-    target[key] = { ...seedField(form.type, Object.keys(draft.collections)), label: form.label || key, optional: true }
+    target[key] = { ...seedField(type.value, Object.keys(draft.collections)), label: label || key, optional: true }
   })
 
   if (written) {
@@ -108,16 +98,13 @@ async function remove(): Promise<void> {
 
   const written = await write((draft) => {
     delete draft.collections[name]!.fields[key]
-  }, async () => {
+  }, async (writer) => {
     if (rows.some(row => key in row))
-      await store.writeContent(name, stripped)
+      await writer.writeContent(name, stripped)
   })
 
-  if (!written)
-    return
-
-  rows.splice(0, rows.length, ...stripped)
-  removing.value = ''
+  if (written)
+    removing.value = ''
 }
 
 function move(key: string, offset: number): Promise<boolean> {
@@ -196,33 +183,19 @@ function move(key: string, offset: number): Promise<boolean> {
       </template>
     </DataTable>
 
-    <UModal v-model:open="creating" title="New field" :description="`A new field on ${collection.label ?? name}.`">
-      <template #body>
-        <div class="grid gap-4">
-          <UFormField label="Name">
-            <UInput :model-value="form.label" class="w-full" @update:model-value="rename(String($event))" />
-          </UFormField>
-
-          <UFormField label="Key" description="How the field is referenced in queries and content files.">
-            <UInput v-model="form.key" class="w-full font-mono" @update:model-value="form.touched = true" />
-          </UFormField>
-
-          <UFormField label="Type">
-            <USelect v-model="form.type" :items="typeItems" value-key="value" class="w-full" />
-          </UFormField>
-
-          <p v-if="form.key && invalid" class="text-sm text-error">
-            {{ invalid }}
-          </p>
-        </div>
-      </template>
-
-      <template #footer>
-        <UButton label="Create" :loading="saving" :disabled="!!invalid" @click="create()" />
-
-        <UButton label="Cancel" color="neutral" variant="ghost" @click="creating = false" />
-      </template>
-    </UModal>
+    <CreateDialog
+      v-model:open="creating"
+      title="New field"
+      :description="`A new field on ${collection.label ?? name}.`"
+      key-description="How the field is referenced in queries and content files."
+      :loading="saving"
+      :validate="invalid"
+      @create="create"
+    >
+      <UFormField label="Type">
+        <USelect v-model="type" :items="typeItems" value-key="value" class="w-full" />
+      </UFormField>
+    </CreateDialog>
 
     <ConfirmDialog
       :open="!!removing"

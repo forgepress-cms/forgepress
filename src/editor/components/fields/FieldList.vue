@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import type { EntryRef } from '../../../types/entry'
 import type { Entries } from '../../composables/useEntries'
-import type { NestedEntries, NestedField } from '../../composables/useNestedEntries'
+import type { NestedEntries } from '../../composables/useNestedEntries'
 import type { EntryValues } from '../../utils/entry'
+import type { LocalizedField } from '../../utils/schema'
 import { localeItems } from '../../utils/entry'
 import DynamicInput from './DynamicInput.vue'
 import MediaInput from './MediaInput.vue'
@@ -9,11 +11,12 @@ import RelationInput from './RelationInput.vue'
 import RichTextInput from './RichTextInput.vue'
 
 const props = defineProps<{
-  fields: NestedField[]
+  fields: LocalizedField[]
   values: EntryValues
   entries: Entries
   nested: NestedEntries
   locales: readonly string[]
+  trail: readonly EntryRef[]
 }>()
 
 const localeTabs = localeItems(props.locales)
@@ -73,6 +76,7 @@ const localeTabs = localeItems(props.locales)
       :entries="entries"
       :nested="nested"
       :locales="locales"
+      :trail="trail"
     />
 
     <UInput

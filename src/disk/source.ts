@@ -5,7 +5,6 @@ import type { ForgePressSchema } from '../types/schema'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { toMeta } from '../entries/meta'
 import { sortByCreation } from '../entries/order'
 import { parseEntry, parseSchema } from '../files/parse'
 import { defaultPaths } from '../files/paths'
@@ -53,8 +52,6 @@ export function createSource(start?: string, paths: ContentPaths = defaultPaths,
 
     list: all,
 
-    index: async collection => (await all(collection)).map(toMeta),
-
     entry: async (collection, id) => {
       if (!existsSync(join(resolve(), paths.entry(collection, id))))
         return undefined
@@ -78,6 +75,5 @@ function select(): Promise<ContentSource> {
 export const source: ContentSource = {
   schema: async () => (await select()).schema(),
   list: async collection => (await select()).list(collection),
-  index: async collection => (await select()).index(collection),
   entry: async (collection, id) => (await select()).entry(collection, id),
 }

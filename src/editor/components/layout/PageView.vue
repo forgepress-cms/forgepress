@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onErrorCaptured, ref, watch } from 'vue'
+import { errorMessage } from '../../../utils/error'
 import { useRouter } from '../../composables/useRouter'
 import ErrorAlert from '../ErrorAlert.vue'
 
@@ -18,7 +19,7 @@ onErrorCaptured((error) => {
   if (!loading.value)
     return true
 
-  failure.value = error instanceof Error ? error.message : String(error)
+  failure.value = errorMessage(error)
 
   return false
 })

@@ -1,6 +1,9 @@
 import type { ProviderConfig } from '../types/config'
+import type { TreeItem } from './repository'
 import type { Forge, ForgeAccess, ForgeFile, TokenGetter } from './types'
-import { describe } from '.'
+import { describe } from './providers'
+import { publishable } from './publish'
+import { createRepositoryApi, findTree } from './repository'
 
 interface Repository {
   default_branch: string
@@ -9,74 +12,23 @@ interface Repository {
 
 interface Tree {
   truncated: boolean
-  tree: { path: string, type: string, sha: string }[]
+  tree: TreeItem[]
 }
 
 export function createGitHubForge(config: ProviderConfig, token: TokenGetter): Forge {
   const { api } = describe(config)
   const { owner, name } = config.repository
-  const base = `${api}/repos/${owner}/${name}`
-
-  let branch = config.repository.branch
-
-  async function send(path: string, init?: RequestInit, accept = 'application/vnd.github+json'): Promise<Response> {
-    return fetch(path.startsWith('http') ? path : `${base}${path}`, {
-      ...init,
-      headers: {
-        'accept': accept,
-        'authorization': `Bearer ${await token()}`,
-        'x-github-api-version': '2022-11-28',
-        ...init?.body === undefined ? {} : { 'content-type': 'application/json' },
-      },
-    })
-  }
-
-  async function check(response: Response): Promise<Response> {
-    if (!response.ok)
-      throw new Error(`[forgepress] GitHub ${response.status}: ${(await response.text()).slice(0, 300)}`)
-
-    return response
-  }
-
-  async function call<TResult>(path: string, init?: RequestInit): Promise<TResult> {
-    const response = await check(await send(path, init))
-
-    return response.status === 204 ? undefined as TResult : await response.json() as TResult
-  }
-
-  function post<TResult>(path: string, body: unknown): Promise<TResult> {
-    return call<TResult>(path, { method: 'POST', body: JSON.stringify(body) })
-  }
-
-  async function branchName(): Promise<string> {
-    branch ??= (await call<Repository>('')).default_branch
-
-    return branch
-  }
-
-  async function folder(commit: string, directory: string): Promise<string | undefined> {
-    let sha = commit
-
-    for (const segment of directory.split('/')) {
-      const found = (await call<Tree>(`/git/trees/${sha}`)).tree.find(item => item.path === segment && item.type === 'tree')
-
-      if (!found)
-        return undefined
-
-      sha = found.sha
-    }
-
-    return sha
-  }
+  const repo = createRepositoryApi(config, `${api}/repos/${owner}/${name}`, token, {
+    'accept': 'application/vnd.github+json',
+    'x-github-api-version': '2022-11-28',
+  })
 
   return {
     async access(): Promise<ForgeAccess> {
       const [user, repository] = await Promise.all([
-        call<{ login: string, name: string | null, avatar_url: string }>(`${api}/user`),
-        call<Repository>(''),
+        repo.call<{ login: string, name: string | null, avatar_url: string }>(`${api}/user`),
+        repo.details<Repository>(),
       ])
-
-      branch ??= repository.default_branch
 
       return {
         identity: {
@@ -85,21 +37,21 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
           ...user.avatar_url ? { avatar: user.avatar_url } : {},
         },
         writable: repository.permissions?.push === true,
-        branch,
+        branch: await repo.branch(),
       }
     },
 
     async head(): Promise<string> {
-      return (await call<{ object: { sha: string } }>(`/git/ref/heads/${encodeURIComponent(await branchName())}`)).object.sha
+      return (await repo.call<{ object: { sha: string } }>(`/git/ref/heads/${encodeURIComponent(await repo.branch())}`)).object.sha
     },
 
     async files(commit, directory): Promise<ForgeFile[]> {
-      const sha = await folder(commit, directory)
+      const sha = await findTree(commit, directory, async tree => (await repo.call<Tree>(`/git/trees/${tree}`)).tree)
 
       if (!sha)
         return []
 
-      const tree = await call<Tree>(`/git/trees/${sha}?recursive=1`)
+      const tree = await repo.call<Tree>(`/git/trees/${sha}?recursive=1`)
 
       if (tree.truncated)
         throw new Error(`[forgepress] GitHub lists too many files in ${directory} to read them in one request`)
@@ -110,28 +62,26 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
     },
 
     async read(sha): Promise<string> {
-      return (await check(await send(`/git/blobs/${sha}`, undefined, 'application/vnd.github.raw+json'))).text()
+      return (await repo.check(await repo.send(`/git/blobs/${sha}`, { headers: { accept: 'application/vnd.github.raw+json' } }))).text()
     },
 
     async commit(files, message, parent): Promise<string> {
-      if (files.length === 0)
-        throw new Error('[forgepress] there is nothing to publish')
+      const pending = publishable(files)
+      const current = await repo.call<{ tree: { sha: string } }>(`/git/commits/${parent}`)
 
-      const current = await call<{ tree: { sha: string } }>(`/git/commits/${parent}`)
-
-      const tree = await Promise.all(files.map(async (file) => {
+      const tree = await Promise.all(pending.map(async (file) => {
         if ('removed' in file)
           return { path: file.path, mode: '100644', type: 'blob', sha: null }
 
-        const blob = await post<{ sha: string }>('/git/blobs', { content: file.data, encoding: file.encoding })
+        const blob = await repo.post<{ sha: string }>('/git/blobs', { content: file.data, encoding: file.encoding })
 
         return { path: file.path, mode: '100644', type: 'blob', sha: blob.sha }
       }))
 
-      const next = await post<{ sha: string }>('/git/trees', { base_tree: current.tree.sha, tree })
-      const created = await post<{ sha: string }>('/git/commits', { message, tree: next.sha, parents: [parent] })
+      const next = await repo.post<{ sha: string }>('/git/trees', { base_tree: current.tree.sha, tree })
+      const created = await repo.post<{ sha: string }>('/git/commits', { message, tree: next.sha, parents: [parent] })
 
-      await call(`/git/refs/heads/${encodeURIComponent(await branchName())}`, {
+      await repo.call(`/git/refs/heads/${encodeURIComponent(await repo.branch())}`, {
         method: 'PATCH',
         body: JSON.stringify({ sha: created.sha, force: false }),
       })

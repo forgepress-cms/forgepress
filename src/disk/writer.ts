@@ -1,5 +1,5 @@
 import type { ContentPaths } from '../files/paths'
-import type { ContentWriter } from '../store/types'
+import type { ContentWriter, SchemaWriter } from '../store/types'
 import type { ContentConfig } from '../types/config'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -21,7 +21,7 @@ function entryId(id: string): string {
   return id
 }
 
-export function createWriter(root: string, paths: ContentPaths = defaultPaths, config?: ContentConfig): ContentWriter {
+export function createWriter(root: string, paths: ContentPaths = defaultPaths, config?: ContentConfig): ContentWriter & SchemaWriter {
   const directory = (collection: string): string => join(root, paths.collection(collectionName(collection)))
   const file = (collection: string, id: string): string => join(root, paths.entry(collectionName(collection), entryId(id)))
 

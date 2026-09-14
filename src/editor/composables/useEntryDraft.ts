@@ -4,7 +4,7 @@ import type { EntryValues } from '../utils/entry'
 import type { FormField } from '../utils/schema'
 import type { Draft } from './useDraft'
 import { reactive, ref } from 'vue'
-import { fromValues, toValues } from '../utils/entry'
+import { toRow, toValues } from '../utils/entry'
 import { useDraft } from './useDraft'
 import { useLeaveGuard } from './useLeaveGuard'
 
@@ -19,24 +19,20 @@ export function useEntryDraft(
   fields: FormField[],
   locales: readonly string[],
   leave: () => void,
+  related?: (next: ContentRow) => unknown,
 ): EntryDraft {
   const values = reactive(toValues(fields, row, locales))
   const status = ref(row.status)
 
   function draft(): ContentRow {
-    const next: ContentRow = { ...row, status: status.value }
-
-    for (const field of fields) {
-      const value = fromValues(field, values)
-
-      if (value === undefined)
-        delete next[field.key]
-      else
-        next[field.key] = value
-    }
-
-    return next
+    return toRow(fields, values, { ...row, status: status.value })
   }
 
-  return { values, status, draft, ...useLeaveGuard(useDraft(draft, leave)) }
+  function snapshot(): unknown {
+    const next = draft()
+
+    return related ? [next, related(next)] : next
+  }
+
+  return { values, status, draft, ...useLeaveGuard(useDraft(snapshot, leave)) }
 }

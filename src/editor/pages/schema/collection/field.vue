@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { Field } from '../../../../schema/fields'
-import type { FieldOption } from '../../../../types/field'
 import { computed, reactive, ref, watch } from 'vue'
 
 import { fieldTypeNames, fieldTypes } from '../../../../schema/fields'
 import { migrate } from '../../../../schema/migrate'
+import { filled } from '../../../../utils/value'
 import ConfirmDialog from '../../../components/ConfirmDialog.vue'
 import DiscardDialog from '../../../components/DiscardDialog.vue'
 import ErrorAlert from '../../../components/ErrorAlert.vue'
@@ -18,6 +18,7 @@ import { useLeaveGuard } from '../../../composables/useLeaveGuard'
 import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
 import { useSchema } from '../../../composables/useSchema'
+import { seedOption } from '../../../utils/schema'
 
 const BASE_KEYS = new Set(['type', 'label', 'description', 'optional', 'translate'])
 
@@ -63,21 +64,13 @@ const collectionItems = Object.entries(schema.value.collections).map(([value, en
   value,
 }))
 
-function seed(option: FieldOption): unknown {
-  return option.type === 'boolean' ? false : option.type === 'collections' ? [] : option.type === 'number' ? null : ''
-}
-
 watch(() => form.type, () => {
-  for (const [option, spec] of Object.entries(definition.value.options)) {
-    options[option] ??= seed(spec)
-  }
+  for (const [option, spec] of Object.entries(definition.value.options))
+    options[option] ??= seedOption(spec)
 }, { immediate: true })
 
-function filled(value: unknown): boolean {
-  if (value === undefined || value === null || value === '' || value === false)
-    return false
-
-  return !(Array.isArray(value) && value.length === 0)
+function configured(value: unknown): boolean {
+  return value !== false && filled(value)
 }
 
 function back(): void {
@@ -87,7 +80,7 @@ function back(): void {
 const { dirty, leaving, commit, cancel, discard, proceed } = useLeaveGuard(useDraft(() => ({ form, options }), back))
 
 const valid = computed(() => Object.entries(definition.value.options)
-  .every(([option, spec]) => !('required' in spec) || filled(options[option])))
+  .every(([option, spec]) => !('required' in spec) || configured(options[option])))
 
 function next(): Field {
   const config: Record<string, unknown> = { type: form.type }
@@ -105,7 +98,7 @@ function next(): Field {
     config.translate = true
 
   for (const option of Object.keys(definition.value.options)) {
-    if (filled(options[option]))
+    if (configured(options[option]))
       config[option] = options[option]
   }
 
@@ -124,9 +117,9 @@ async function save(): Promise<void> {
 
   const written = await write((draft) => {
     draft.collections[name]!.fields[field] = config
-  }, async () => {
+  }, async (writer) => {
     if (changed)
-      await store.writeContent(name, migrated)
+      await writer.writeContent(name, migrated)
   })
 
   if (!written)

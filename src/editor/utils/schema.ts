@@ -1,5 +1,6 @@
 import type { Field } from '../../schema/fields'
-import type { ForgePressSchema } from '../../types/schema'
+import type { FieldOption } from '../../types/field'
+import type { Collection } from '../../types/schema'
 import { fieldTypes } from '../../schema/fields'
 
 export const FIELD_ICONS: Record<string, string> = {
@@ -11,8 +12,6 @@ export const FIELD_ICONS: Record<string, string> = {
   relation: 'i-lucide-link',
   dynamic: 'i-lucide-blocks',
 }
-
-export type SchemaCollection = ForgePressSchema['collections'][string]
 
 export interface FormField {
   key: string
@@ -26,7 +25,11 @@ export interface FormField {
   optional: boolean
 }
 
-export function toFields(collection: SchemaCollection, locales: readonly string[] = []): FormField[] {
+export interface LocalizedField extends FormField {
+  locale: string
+}
+
+export function toFields(collection: Collection, locales: readonly string[] = []): FormField[] {
   return Object.entries(collection.fields).map(([key, config]) => ({
     key,
     label: config.label ?? key,
@@ -53,29 +56,16 @@ export function toKey(value: string): string {
   return key ? key[0]!.toLowerCase() + key.slice(1) : key
 }
 
-export function moveKey<TValue>(record: Record<string, TValue>, key: string, offset: number): Record<string, TValue> {
-  const keys = Object.keys(record)
-  const from = keys.indexOf(key)
-  const to = from + offset
-
-  if (from < 0 || to < 0 || to >= keys.length)
-    return record
-
-  keys.splice(to, 0, ...keys.splice(from, 1))
-
-  return Object.fromEntries(keys.map(name => [name, record[name]!]))
+export function seedOption(option: FieldOption): unknown {
+  return option.type === 'boolean' ? false : option.type === 'collections' ? [] : option.type === 'number' ? null : ''
 }
 
 export function seedField(type: Field['type'], collections: string[]): Record<string, unknown> {
   const config: Record<string, unknown> = { type }
 
   for (const [option, spec] of Object.entries(fieldTypes[type].options)) {
-    if (!('required' in spec))
-      continue
-
-    config[option] = spec.type === 'collections'
-      ? []
-      : spec.type === 'number' ? 0 : spec.type === 'boolean' ? false : collections[0] ?? ''
+    if ('required' in spec)
+      config[option] = spec.type === 'collection' ? collections[0] ?? '' : seedOption(spec)
   }
 
   return config

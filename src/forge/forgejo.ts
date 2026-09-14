@@ -1,6 +1,10 @@
 import type { ProviderConfig } from '../types/config'
-import type { FileChange, Forge, ForgeAccess, ForgeFile, TokenGetter } from './types'
-import { base64ToText, describe, encodePath, textToBase64 } from '.'
+import type { TreeItem } from './repository'
+import type { Forge, ForgeAccess, ForgeFile, TokenGetter } from './types'
+import { base64ToText, textToBase64 } from '../utils/encoding'
+import { describe } from './providers'
+import { publishable } from './publish'
+import { createRepositoryApi, findTree } from './repository'
 
 const PAGE_SIZE = 1000
 
@@ -9,59 +13,25 @@ interface Repository {
   permissions?: { push?: boolean }
 }
 
-interface TreeItem {
-  path: string
-  type: string
-  sha: string
-}
-
 interface Tree {
   total_count: number
   tree: TreeItem[]
 }
 
+function encodePath(path: string): string {
+  return path.split('/').map(encodeURIComponent).join('/')
+}
+
 export function createForgejoForge(config: ProviderConfig, token: TokenGetter): Forge {
   const { api } = describe(config)
   const { owner, name } = config.repository
-  const base = `${api}/repos/${owner}/${name}`
-
-  let branch = config.repository.branch
-
-  async function send(path: string, init?: RequestInit): Promise<Response> {
-    return fetch(path.startsWith('http') ? path : `${base}${path}`, {
-      ...init,
-      headers: {
-        authorization: `Bearer ${await token()}`,
-        accept: 'application/json',
-        ...init?.body === undefined ? {} : { 'content-type': 'application/json' },
-      },
-    })
-  }
-
-  async function check(response: Response): Promise<Response> {
-    if (!response.ok)
-      throw new Error(`[forgepress] Forgejo ${response.status}: ${(await response.text()).slice(0, 300)}`)
-
-    return response
-  }
-
-  async function call<TResult>(path: string, init?: RequestInit): Promise<TResult> {
-    const response = await check(await send(path, init))
-
-    return response.status === 204 ? undefined as TResult : await response.json() as TResult
-  }
-
-  async function branchName(): Promise<string> {
-    branch ??= (await call<Repository>('')).default_branch
-
-    return branch
-  }
+  const repo = createRepositoryApi(config, `${api}/repos/${owner}/${name}`, token, { accept: 'application/json' })
 
   async function entries(tree: string, recursive: boolean): Promise<TreeItem[]> {
     const items: TreeItem[] = []
 
     for (let page = 1; ; page += 1) {
-      const listed = await call<Tree>(`/git/trees/${tree}?recursive=${recursive}&per_page=${PAGE_SIZE}&page=${page}`)
+      const listed = await repo.call<Tree>(`/git/trees/${tree}?recursive=${recursive}&per_page=${PAGE_SIZE}&page=${page}`)
 
       items.push(...listed.tree)
 
@@ -70,38 +40,21 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
     }
   }
 
-  async function folder(commit: string, directory: string): Promise<string | undefined> {
-    let tree = commit
-
-    for (const segment of directory.split('/')) {
-      const found = (await entries(tree, false)).find(item => item.path === segment && item.type === 'tree')
-
-      if (!found)
-        return undefined
-
-      tree = found.sha
-    }
-
-    return tree
-  }
-
   async function sha(path: string, ref: string): Promise<string | undefined> {
-    const response = await send(`/contents/${encodePath(path)}?ref=${encodeURIComponent(ref)}`)
+    const response = await repo.send(`/contents/${encodePath(path)}?ref=${encodeURIComponent(ref)}`)
 
     if (response.status === 404)
       return undefined
 
-    return (await (await check(response)).json() as { sha: string }).sha
+    return (await (await repo.check(response)).json() as { sha: string }).sha
   }
 
   return {
     async access(): Promise<ForgeAccess> {
       const [user, repository] = await Promise.all([
-        call<{ login: string, full_name: string | null, avatar_url: string | null }>(`${api}/user`),
-        call<Repository>(''),
+        repo.call<{ login: string, full_name: string | null, avatar_url: string | null }>(`${api}/user`),
+        repo.details<Repository>(),
       ])
-
-      branch ??= repository.default_branch
 
       return {
         identity: {
@@ -110,16 +63,16 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
           ...user.avatar_url ? { avatar: user.avatar_url } : {},
         },
         writable: repository.permissions?.push === true,
-        branch,
+        branch: await repo.branch(),
       }
     },
 
     async head(): Promise<string> {
-      return (await call<{ commit: { id: string } }>(`/branches/${encodeURIComponent(await branchName())}`)).commit.id
+      return (await repo.call<{ commit: { id: string } }>(`/branches/${encodeURIComponent(await repo.branch())}`)).commit.id
     },
 
     async files(commit, directory): Promise<ForgeFile[]> {
-      const tree = await folder(commit, directory)
+      const tree = await findTree(commit, directory, found => entries(found, false))
 
       if (!tree)
         return []
@@ -130,14 +83,11 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
     },
 
     async read(blob): Promise<string> {
-      return base64ToText((await call<{ content: string }>(`/git/blobs/${blob}`)).content)
+      return base64ToText((await repo.call<{ content: string }>(`/git/blobs/${blob}`)).content)
     },
 
-    async commit(files: FileChange[], message: string, parent: string): Promise<string> {
-      if (files.length === 0)
-        throw new Error('[forgepress] there is nothing to publish')
-
-      const entries = (await Promise.all(files.map(async (file) => {
+    async commit(files, message, parent): Promise<string> {
+      const operations = publishable((await Promise.all(files.map(async (file) => {
         const found = await sha(file.path, parent)
 
         if ('removed' in file)
@@ -148,15 +98,9 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
         return found
           ? { operation: 'update', path: file.path, content, sha: found }
           : { operation: 'create', path: file.path, content }
-      }))).filter(entry => entry !== undefined)
+      }))).filter(operation => operation !== undefined))
 
-      if (entries.length === 0)
-        throw new Error('[forgepress] there is nothing to publish')
-
-      const created = await call<{ commit: { sha: string } }>('/contents', {
-        method: 'POST',
-        body: JSON.stringify({ branch: await branchName(), message, files: entries }),
-      })
+      const created = await repo.post<{ commit: { sha: string } }>('/contents', { branch: await repo.branch(), message, files: operations })
 
       return created.commit.sha
     },

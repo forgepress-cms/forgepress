@@ -3,58 +3,33 @@ import type { BakedMedia } from '../media/types'
 import type { ContentSource } from '../store/types'
 import type { Previews } from './previews'
 import type { Changes, FileDiff } from './types'
-import { prefixer } from '../files/paths'
-import { serializeEntry, serializeSchema } from '../files/serialize'
+import { serializeEntry } from '../files/serialize'
+import { changedEntries, changedMedia } from './files'
 import { diffLines } from './lines'
 
-async function schemaDiff(changes: Changes, base: ContentSource, target: RepoTarget, at: (path: string) => string): Promise<FileDiff[]> {
-  if (changes.schema === undefined)
-    return []
+async function entryDiffs(changes: Changes, base: ContentSource, target: RepoTarget): Promise<FileDiff[]> {
+  const diffs = await Promise.all(changedEntries(changes, target).map(async ({ path, collection, id, row }): Promise<FileDiff> => {
+    const previous = await base.entry(collection, id)
+    const before = previous ? serializeEntry(collection, previous, target.format) : ''
 
-  return [{
-    path: at(target.paths.schema),
-    change: 'changed',
-    lines: diffLines(serializeSchema(await base.schema(), target.format), serializeSchema(changes.schema, target.format)),
-  }]
-}
+    if (row === null)
+      return { path, change: 'removed', lines: diffLines(before, '') }
 
-async function entryDiffs(changes: Changes, base: ContentSource, target: RepoTarget, at: (path: string) => string): Promise<FileDiff[]> {
-  const diffs: FileDiff[] = []
-
-  for (const [collection, overlay] of Object.entries(changes.entries)) {
-    for (const [id, row] of Object.entries(overlay)) {
-      const path = at(target.paths.entry(collection, id))
-      const previous = await base.entry(collection, id)
-      const before = previous ? serializeEntry(collection, previous, target.format) : ''
-
-      if (row === null) {
-        diffs.push({ path, change: 'removed', lines: diffLines(before, '') })
-
-        continue
-      }
-
-      const after = serializeEntry(collection, row, target.format)
-
-      diffs.push({ path, change: before ? 'changed' : 'added', lines: diffLines(before, after) })
-    }
-  }
+    return { path, change: before ? 'changed' : 'added', lines: diffLines(before, serializeEntry(collection, row, target.format)) }
+  }))
 
   return diffs.sort((left, right) => left.path.localeCompare(right.path))
 }
 
-function mediaDiffs(changes: Changes, baked: BakedMedia, previews: Previews, target: RepoTarget, at: (path: string) => string): FileDiff[] {
-  const diffs: FileDiff[] = []
+function mediaDiffs(changes: Changes, baked: BakedMedia, previews: Previews, target: RepoTarget): FileDiff[] {
+  return changedMedia(changes, target).map(({ path, name, upload }): FileDiff => {
+    if (upload)
+      return { path, change: 'added', after: previews.asset(upload, baked.url) }
 
-  for (const upload of Object.values(changes.uploads))
-    diffs.push({ path: at(`${target.mediaDir}/${upload.name}`), change: 'added', after: previews.asset(upload, baked.url) })
-
-  for (const name of changes.removed) {
     const found = baked.assets.find(item => item.name === name)
 
-    diffs.push({ path: at(`${target.mediaDir}/${name}`), change: 'removed', ...found ? { before: found } : {} })
-  }
-
-  return diffs
+    return { path, change: 'removed', ...found ? { before: found } : {} }
+  })
 }
 
 export async function diffChanges(
@@ -64,11 +39,8 @@ export async function diffChanges(
   previews: Previews,
   target: RepoTarget,
 ): Promise<FileDiff[]> {
-  const at = prefixer(target.base)
-
   return [
-    ...await schemaDiff(changes, base, target, at),
-    ...await entryDiffs(changes, base, target, at),
-    ...mediaDiffs(changes, baked, previews, target, at),
+    ...await entryDiffs(changes, base, target),
+    ...mediaDiffs(changes, baked, previews, target),
   ]
 }

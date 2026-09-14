@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { MediaKind } from '../../../media'
-import type { MediaAsset } from '../../../media/types'
-import type { MediaValue } from '../../utils/media'
+import type { MediaAsset, MediaContent } from '../../../media/types'
 import { computed, ref } from 'vue'
 import { useDragOrder } from '../../composables/useDragOrder'
 import { useMedia } from '../../composables/useMedia'
 import { fileName, measure, toList, toMedia } from '../../utils/media'
+import { moveItem } from '../../utils/order'
 import DragHandle from '../DragHandle.vue'
 import MediaLibrary from '../media/MediaLibrary.vue'
 import MediaPreview from '../media/MediaPreview.vue'
@@ -30,26 +30,14 @@ const room = computed(() => props.multiple || !items.value.length)
 
 const sortable = computed(() => props.multiple && items.value.length > 1)
 
-const order = useDragOrder((key, offset) => move(Number(key), offset))
+const order = useDragOrder((key, offset) => write(moveItem(items.value, Number(key), offset)))
 
-function write(next: MediaValue[]): void {
+function write(next: MediaContent[]): void {
   model.value = props.multiple ? next : next[0] ?? null
 }
 
-function add(values: MediaValue[]): void {
+function add(values: MediaContent[]): void {
   write(props.multiple ? [...items.value, ...values] : values.slice(0, 1))
-}
-
-function move(from: number, offset: number): void {
-  const next = [...items.value]
-  const to = from + offset
-
-  if (to < 0 || to >= next.length)
-    return
-
-  next.splice(to, 0, ...next.splice(from, 1))
-
-  write(next)
 }
 
 function remove(index: number): void {

@@ -1,5 +1,5 @@
 import type { Field } from '../schema/fields'
-import type { ContentRow } from '../types/entry'
+import type { ContentRow, EntryRef } from '../types/entry'
 import type { ValueIssue, ValuePath } from '../types/issues'
 import type { ForgePressSchema } from '../types/schema'
 import { isRecord, quote } from '../utils/value'
@@ -11,10 +11,8 @@ export interface EntryIssue extends ValueIssue {
 
 export type ContentEntries = Readonly<Record<string, Readonly<Record<string, ContentRow>>>>
 
-interface Reference {
+export interface Reference extends EntryRef {
   path: ValuePath
-  collection: string
-  id: string
 }
 
 function localized(value: unknown, path: ValuePath, translated: boolean): [ValuePath, unknown][] {
@@ -46,26 +44,28 @@ function references(field: Field, value: unknown, path: ValuePath): Reference[] 
   return []
 }
 
-export function validateReferences(schema: ForgePressSchema, content: ContentEntries): EntryIssue[] {
-  const issues: EntryIssue[] = []
+export function entryReferences(schema: ForgePressSchema, collection: string, row: ContentRow): Reference[] {
   const translatable = (schema.locales ?? []).length > 0
 
+  return Object.entries(schema.collections[collection]?.fields ?? {}).flatMap(([key, field]) =>
+    localized(row[key], [key], translatable && field.translate === true)
+      .flatMap(([path, value]) => references(field, value, path)))
+}
+
+export function validateReferences(schema: ForgePressSchema, content: ContentEntries): EntryIssue[] {
+  const issues: EntryIssue[] = []
+
   for (const [collection, entries] of Object.entries(content)) {
-    const fields = Object.entries(schema.collections[collection]?.fields ?? {})
-
     for (const [id, row] of Object.entries(entries)) {
-      for (const [key, field] of fields) {
-        for (const [path, value] of localized(row[key], [key], translatable && field.translate === true)) {
-          for (const reference of references(field, value, path)) {
-            const target = content[reference.collection]?.[reference.id]
-            const name = `${reference.collection}/${reference.id}`
+      for (const reference of entryReferences(schema, collection, row)) {
+        const target = content[reference.collection]?.[reference.id]
+        const name = `${reference.collection}/${reference.id}`
+        const field = quote(reference.path[0])
 
-            if (!target)
-              issues.push({ collection, id, path: reference.path, message: `Field ${quote(key)} references ${name}, which doesn't exist` })
-            else if (row.status === 'published' && target.status !== 'published')
-              issues.push({ collection, id, path: reference.path, message: `Field ${quote(key)} references ${name}, which is unpublished; publish it or remove the reference` })
-          }
-        }
+        if (!target)
+          issues.push({ collection, id, path: reference.path, message: `Field ${field} references ${name}, which doesn't exist` })
+        else if (row.status === 'published' && target.status !== 'published')
+          issues.push({ collection, id, path: reference.path, message: `Field ${field} references ${name}, which is unpublished; publish it or remove the reference` })
       }
     }
   }

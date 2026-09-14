@@ -10,6 +10,10 @@ import PublishDialog from '../PublishDialog.vue'
 
 import Logo from './Logo.vue'
 
+const props = defineProps<{
+  deployed: boolean
+}>()
+
 const { route, href } = useRouter()
 const { mode, cycle } = useColorMode()
 const { identity, signOut } = useSession()
@@ -24,11 +28,11 @@ const account = computed(() => [[
   { label: 'Sign out', icon: 'i-lucide-log-out', onSelect: () => void signOut() },
 ]])
 
-const links = [
+const links = computed(() => [
   { label: 'Content', to: 'content' },
-  { label: 'Schema', to: 'schema' },
+  ...props.deployed ? [] : [{ label: 'Schema', to: 'schema' }],
   { label: 'Assets', to: 'assets' },
-]
+])
 
 const icons: Record<ColorMode, string> = {
   light: 'i-lucide-sun',

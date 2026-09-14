@@ -1,9 +1,7 @@
-import type { HashSource } from '../changes/types'
 import type { ContentPaths } from '../files/paths'
 import type { ContentSource, RepositoryCache } from '../store/types'
 import type { ContentRow } from '../types/entry'
-import type { Forge } from './types'
-import { toMeta } from '../entries/meta'
+import type { Forge, HashSource } from './types'
 import { sortByCreation } from '../entries/order'
 import { parseEntry, parseSchema } from '../files/parse'
 import { isEntryFile, isEntryId, prefixer } from '../files/paths'
@@ -144,8 +142,6 @@ export function createForgeSource(forge: () => Forge | undefined, paths: Content
 
     list,
 
-    index: async collection => (await list(collection)).map(toMeta),
-
     entry: async (collection, id) => {
       const path = at(paths.entry(collection, id))
       const sha = isEntryId(id) ? await hash(path) : undefined
@@ -154,7 +150,6 @@ export function createForgeSource(forge: () => Forge | undefined, paths: Content
     },
 
     hashes: {
-      schema: () => hash(at(paths.schema)),
       entry: async (collection, id) => isEntryId(id) ? hash(at(paths.entry(collection, id))) : undefined,
     },
 

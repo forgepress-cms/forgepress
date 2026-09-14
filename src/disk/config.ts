@@ -2,6 +2,7 @@ import type { ForgePressConfig } from '../types/config'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { errorMessage } from '../utils/error'
 import { CONFIG_FILES } from './root'
 
 export async function loadConfig(root: string): Promise<ForgePressConfig | undefined> {
@@ -15,7 +16,7 @@ export async function loadConfig(root: string): Promise<ForgePressConfig | undef
       return ((await import(pathToFileURL(path).href)) as { default?: ForgePressConfig }).default
     }
     catch (cause) {
-      throw new Error(`[forgepress] could not load ${file}: ${cause instanceof Error ? cause.message : String(cause)}`, { cause })
+      throw new Error(`[forgepress] could not load ${file}: ${errorMessage(cause)}`, { cause })
     }
   }
 

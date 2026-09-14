@@ -4,6 +4,7 @@ import { usePublish } from '../composables/usePublish'
 import { useRouter } from '../composables/useRouter'
 import { useSession } from '../composables/useSession'
 import DiffView from './DiffView.vue'
+import ErrorAlert from './ErrorAlert.vue'
 
 const open = defineModel<boolean>('open', { required: true })
 
@@ -115,7 +116,7 @@ async function overwrite(): Promise<void> {
           <UInput v-model="name" placeholder="new pricing page" class="w-full" :disabled="!count" />
         </UFormField>
 
-        <UAlert v-if="error" color="error" variant="soft" :description="error" />
+        <ErrorAlert title="Publishing failed" :error="error" />
       </div>
     </template>
 

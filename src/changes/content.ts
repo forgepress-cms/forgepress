@@ -1,38 +1,20 @@
 import type { ContentSource, ContentStore } from '../store/types'
-import type { ContentRow } from '../types/entry'
 import type { Changes } from './types'
-import { toMeta } from '../entries/meta'
 import { sortByCreation } from '../entries/order'
 import { plain } from '../utils/value'
-import { discardAll, mergeEntries, reconcile, stage } from './entries'
+import { mergeEntries, stage } from './entries'
 
 export type Mutate = (apply: (changes: Changes) => void) => Promise<void>
 export type Ready = () => Promise<Changes>
 
 export function createContentChanges(base: ContentSource, ready: Ready, mutate: Mutate): ContentStore {
-  async function rows(collection: string): Promise<ContentRow[]> {
-    const changes = await ready()
-
-    if (changes.dropped.includes(collection))
-      return []
-
-    return sortByCreation(mergeEntries(await base.list(collection), changes.entries[collection]))
-  }
-
   return {
-    schema: async () => (await ready()).schema ?? await base.schema(),
+    schema: () => base.schema(),
 
-    list: rows,
-
-    index: async collection => (await rows(collection)).map(toMeta),
+    list: async collection => sortByCreation(mergeEntries(await base.list(collection), (await ready()).entries[collection])),
 
     entry: async (collection, id) => {
-      const changes = await ready()
-
-      if (changes.dropped.includes(collection))
-        return undefined
-
-      const staged = changes.entries[collection]?.[id]
+      const staged = (await ready()).entries[collection]?.[id]
 
       if (staged !== undefined)
         return staged ?? undefined
@@ -40,16 +22,11 @@ export function createContentChanges(base: ContentSource, ready: Ready, mutate: 
       return base.entry(collection, id)
     },
 
-    writeSchema: schema => mutate((changes) => {
-      changes.schema = plain(schema)
-    }),
-
     writeEntry: async (collection, row) => {
       const before = await base.entry(collection, row.id)
 
       await mutate((changes) => {
         stage(changes.entries[collection] ??= {}, before, plain(row))
-        changes.dropped = changes.dropped.filter(name => name !== collection)
       })
     },
 
@@ -63,29 +40,6 @@ export function createContentChanges(base: ContentSource, ready: Ready, mutate: 
           overlay[id] = null
         else
           delete overlay[id]
-      })
-    },
-
-    writeContent: async (collection, next) => {
-      const existing = await base.list(collection)
-
-      await mutate((changes) => {
-        reconcile(changes.entries[collection] ??= {}, existing, plain(next))
-        changes.dropped = changes.dropped.filter(name => name !== collection)
-      })
-    },
-
-    removeCollection: async (collection) => {
-      const existing = await base.list(collection)
-
-      await mutate((changes) => {
-        const overlay: Record<string, ContentRow | null> = {}
-
-        discardAll(overlay, existing)
-        changes.entries[collection] = overlay
-
-        if (!changes.dropped.includes(collection))
-          changes.dropped.push(collection)
       })
     },
   }

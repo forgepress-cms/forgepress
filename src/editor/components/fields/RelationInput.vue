@@ -12,7 +12,7 @@ const props = defineProps<{
 
 const model = defineModel<string | string[]>({ required: true })
 
-const { navigate } = useRouter()
+const { href } = useRouter()
 
 const selected = computed({
   get: () => {
@@ -34,6 +34,6 @@ const items = computed(() => props.entries.options(props.collection))
     :items="items"
     :multiple="multiple"
     :placeholder="`Add ${multiple ? 'an entry' : 'the entry'}`"
-    :open="id => navigate(`content/${collection}/${id}`)"
+    :link="id => href(`content/${collection}/${id}`)"
   />
 </template>

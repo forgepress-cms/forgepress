@@ -1,3 +1,10 @@
+export interface MediaContent {
+  url: string
+  alt?: string
+  width?: number
+  height?: number
+}
+
 export interface MediaAsset {
   name: string
   url: string

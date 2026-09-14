@@ -1,8 +1,5 @@
 import type { MediaKind } from '../../media'
-import type { MediaAsset } from '../../media/types'
-import type { ImageContent } from '../../schema/fields/image'
-
-export type MediaValue = ImageContent
+import type { MediaAsset, MediaContent } from '../../media/types'
 
 export interface Size {
   width: number
@@ -43,15 +40,15 @@ export function measure(url: string, kind: MediaKind): Promise<Size | undefined>
   })
 }
 
-export async function toMedia(asset: MediaAsset, kind: MediaKind): Promise<MediaValue> {
+export async function toMedia(asset: MediaAsset, kind: MediaKind): Promise<MediaContent> {
   const size = await measure(asset.preview ?? asset.url, kind)
 
   return { url: asset.url, ...size }
 }
 
-export function toList(value: unknown): MediaValue[] {
+export function toList(value: unknown): MediaContent[] {
   if (Array.isArray(value))
-    return value.filter(item => item && typeof item === 'object') as MediaValue[]
+    return value.filter(item => item && typeof item === 'object') as MediaContent[]
 
-  return value && typeof value === 'object' ? [value as MediaValue] : []
+  return value && typeof value === 'object' ? [value as MediaContent] : []
 }

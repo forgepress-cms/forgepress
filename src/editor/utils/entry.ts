@@ -1,27 +1,34 @@
-import type { ContentRow } from '../../types/entry'
-import type { FormField } from './schema'
+import type { ContentRow, EntryStatus } from '../../types/entry'
+import type { Collection } from '../../types/schema'
+import type { FormField, LocalizedField } from './schema'
+import { toHex } from '../../utils/encoding'
 import { filled } from '../../utils/value'
 import { markdownLines } from './markdown'
 import { chips, localized } from './preview'
-
-export { filled }
+import { toFields } from './schema'
 
 export const SINGLE = ''
 
-export const STATUSES = [
+export type StatusColor = 'neutral' | 'success' | 'warning'
+
+export const STATUSES: { label: string, value: EntryStatus }[] = [
   { label: 'Unpublished', value: 'unpublished' },
   { label: 'Published', value: 'published' },
 ]
 
-const STATUS_COLORS: Record<string, 'neutral' | 'success' | 'warning'> = {
+const STATUS_COLORS: Record<string, StatusColor> = {
   unpublished: 'warning',
   published: 'success',
 }
 
 export type EntryValues = Record<string, Record<string, any>>
 
-export function statusColor(status: unknown): 'neutral' | 'success' | 'warning' {
+export function statusColor(status: unknown): StatusColor {
   return STATUS_COLORS[String(status)] ?? 'neutral'
+}
+
+export function statusLabel(status: unknown): string {
+  return STATUSES.find(item => item.value === status)?.label ?? String(status)
 }
 
 export function localeItems(locales: readonly string[]): { label: string, value: string }[] {
@@ -29,9 +36,7 @@ export function localeItems(locales: readonly string[]): { label: string, value:
 }
 
 export function entryId(collection: string): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(6))
-
-  return `${collection}_${[...bytes].map(byte => byte.toString(16).padStart(2, '0')).join('')}`
+  return `${collection}_${toHex(crypto.getRandomValues(new Uint8Array(6)))}`
 }
 
 export function newEntry(collection: string): ContentRow {
@@ -59,6 +64,10 @@ export function titleField<TField extends FormField>(fields: TField[]): TField |
 
 export function fieldLocale(field: FormField, locales: readonly string[]): string {
   return field.translated ? locales[0] ?? SINGLE : SINGLE
+}
+
+export function toLocalizedFields(collection: Collection, locales: readonly string[]): LocalizedField[] {
+  return toFields(collection, locales).map(field => ({ ...field, locale: fieldLocale(field, locales) }))
 }
 
 function empty(field: FormField): unknown {
@@ -101,6 +110,21 @@ export function fromValues(field: FormField, values: EntryValues): unknown {
   const translations = Object.entries(value).filter(([, item]) => filled(item))
 
   return translations.length ? Object.fromEntries(translations) : undefined
+}
+
+export function toRow(fields: readonly FormField[], values: EntryValues, row: ContentRow): ContentRow {
+  const next: ContentRow = { ...row }
+
+  for (const field of fields) {
+    const value = fromValues(field, values)
+
+    if (value === undefined)
+      delete next[field.key]
+    else
+      next[field.key] = value
+  }
+
+  return next
 }
 
 export function missingFields<TField extends FormField>(fields: TField[], values: EntryValues): TField[] {

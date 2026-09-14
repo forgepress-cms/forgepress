@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { assetUrl, isAssetName, mediaType, resolveMedia, toAssetName } from '../media'
+import { assetUrl, checkUpload, isAssetName, mediaType, resolveMedia, sortAssets, toAssetName } from '../media'
 
 export function createMediaStore(root: string, config?: MediaConfig): MediaStore {
   const media = resolveMedia(config)
@@ -28,17 +28,12 @@ export function createMediaStore(root: string, config?: MediaConfig): MediaStore
         return []
 
       const files = (await readdir(dir)).filter(file => isAssetName(file) && mediaType(file))
-      const assets = await Promise.all(files.map(describe))
 
-      return assets.sort((left, right) => right.modifiedAt.localeCompare(left.modifiedAt) || left.name.localeCompare(right.name))
+      return sortAssets(await Promise.all(files.map(describe)))
     },
 
     async write({ name, data }) {
-      if (!mediaType(name))
-        throw new Error(`[forgepress] "${name}" is not a supported media file`)
-
-      if (data.byteLength > media.maxSize)
-        throw new Error(`[forgepress] "${name}" is larger than the ${Math.round(media.maxSize / 1024 / 1024)} MB upload limit`)
+      checkUpload(name, data.byteLength, media.maxSize)
 
       const file = toAssetName(name, createHash('sha256').update(data).digest('hex'))
 

@@ -17,7 +17,7 @@ import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
 import { useSave } from '../../../composables/useSave'
 import { clamp, fieldCell } from '../../../utils/cells'
-import { entryLabel, statusColor, titleField } from '../../../utils/entry'
+import { entryLabel, statusColor, statusLabel, titleField } from '../../../utils/entry'
 import { localized } from '../../../utils/preview'
 import { actionsColumn, selectionColumn } from '../../../utils/table'
 
@@ -54,7 +54,7 @@ const columns: Column<ContentRow>[] = [
     accessorKey: 'status',
     header: 'Status',
     cell: ({ row }) => h(UBadge, {
-      label: String(row.original.status),
+      label: statusLabel(row.original.status),
       color: statusColor(row.original.status),
       variant: 'subtle',
     }),

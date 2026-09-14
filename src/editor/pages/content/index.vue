@@ -3,6 +3,7 @@ import type { Column } from '../../utils/table'
 
 import { h } from 'vue'
 import DataTable from '../../components/DataTable.vue'
+import PageHeader from '../../components/layout/PageHeader.vue'
 import { useContent } from '../../composables/useContent'
 import { useRouter } from '../../composables/useRouter'
 
@@ -23,7 +24,7 @@ const collections: CollectionRow[] = await Promise.all(Object.entries(schema.col
   id: name,
   name: collection.label ?? name,
   description: collection.description ?? '',
-  entries: (await store.index(name)).length,
+  entries: (await store.list(name)).length,
 })))
 
 const columns: Column<CollectionRow>[] = [
@@ -38,15 +39,8 @@ const columns: Column<CollectionRow>[] = [
 </script>
 
 <template>
-  <div>
-    <h1 class="text-xl lg:text-2xl mb-4 font-semibold text-highlighted">
-      Content
-    </h1>
-
-    <p class="lg:text-lg mb-12">
-      The content section allows you to view and manage the content entries for each collection defined in the schema.<br>
-      Click on a collection to see its entries and details.
-    </p>
+  <div class="grid gap-6">
+    <PageHeader title="Content" description="Every collection in the schema. Pick one to see and edit its entries." />
 
     <DataTable
       :data="collections"

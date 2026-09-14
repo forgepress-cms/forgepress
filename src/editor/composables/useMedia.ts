@@ -1,6 +1,7 @@
 import type { Ref } from 'vue'
 import type { MediaAsset } from '../../media/types'
 import { ref, shallowRef } from 'vue'
+import { errorMessage } from '../../utils/error'
 import { fileName } from '../utils/media'
 import { useContent } from './useContent'
 
@@ -29,7 +30,7 @@ async function run<TResult>(action: () => Promise<TResult>, fallback: TResult): 
     return await action()
   }
   catch (cause) {
-    error.value = cause instanceof Error ? cause.message : String(cause)
+    error.value = errorMessage(cause)
 
     return fallback
   }

@@ -1,10 +1,9 @@
 import type { ComputedRef, Ref } from 'vue'
 import type { ChangeService, ChangeSummary, FileDiff, Resolution } from '../../changes/types'
-import type { Conflict, RepoTarget } from '../../forge/types'
+import type { Conflict } from '../../forge/types'
 import { computed, ref, shallowRef } from 'vue'
-import { commitMessage, toFiles } from '../../forge'
-import { ConflictError, publishFiles } from '../../forge/publish'
-import { baked } from '../../store/bundle'
+import { commitMessage, ConflictError, publishFiles } from '../../forge/publish'
+import { errorMessage } from '../../utils/error'
 import { useContent } from './useContent'
 import { useSession } from './useSession'
 
@@ -21,11 +20,7 @@ export interface Publisher {
 }
 
 function empty(): ChangeSummary {
-  return { schema: false, written: [], discarded: [], dropped: [], uploaded: [], deleted: [] }
-}
-
-function message(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause)
+  return { written: [], discarded: [], uploaded: [], deleted: [] }
 }
 
 const summary = shallowRef<ChangeSummary>(empty())
@@ -38,9 +33,7 @@ const followed = new WeakSet<ChangeService>()
 const count = computed(() => {
   const current = summary.value
 
-  return current.written.length + current.discarded.length + current.dropped.length
-    + current.uploaded.length + current.deleted.length
-    + (current.schema ? 1 : 0)
+  return current.written.length + current.discarded.length + current.uploaded.length + current.deleted.length
 })
 
 function follow(changes: ChangeService): void {
@@ -60,17 +53,6 @@ export function usePublish(): Publisher {
   const content = useContent()
   const session = useSession()
 
-  async function target(): Promise<RepoTarget> {
-    const settings = await baked()
-
-    return {
-      paths: settings.paths,
-      mediaDir: settings.media.dir,
-      base: session.provider.value?.base,
-      format: settings.format,
-    }
-  }
-
   async function refresh(): Promise<void> {
     const changes = await content.changes()
 
@@ -84,7 +66,7 @@ export function usePublish(): Publisher {
     follow(changes)
 
     summary.value = await changes.summary()
-    diff.value = await changes.diff(await target())
+    diff.value = await changes.diff(await content.target())
   }
 
   async function stop(cause: ConflictError): Promise<void> {
@@ -124,8 +106,8 @@ export function usePublish(): Publisher {
       error.value = ''
 
       try {
-        const repo = await target()
-        const files = toFiles(await changes.snapshot(), repo)
+        const target = await content.target()
+        const files = await changes.files(target)
 
         if (files.length === 0) {
           error.value = 'There is nothing to publish.'
@@ -133,7 +115,7 @@ export function usePublish(): Publisher {
           return undefined
         }
 
-        const commit = await publishFiles(forge, files, commitMessage(session.provider.value?.commitMessage, name), repo)
+        const commit = await publishFiles(forge, files, commitMessage(session.provider.value?.commitMessage, name), target)
 
         conflicts.value = []
 
@@ -145,11 +127,11 @@ export function usePublish(): Publisher {
       catch (cause) {
         if (cause instanceof ConflictError) {
           await stop(cause).catch((failure: unknown) => {
-            error.value = message(failure)
+            error.value = errorMessage(failure)
           })
         }
         else {
-          error.value = message(cause)
+          error.value = errorMessage(cause)
         }
 
         return undefined
@@ -168,7 +150,7 @@ export function usePublish(): Publisher {
       error.value = ''
 
       try {
-        await changes.resolve(conflicts.value, await target(), keep)
+        await changes.resolve(conflicts.value, await content.target(), keep)
 
         conflicts.value = []
 
@@ -177,7 +159,7 @@ export function usePublish(): Publisher {
         return true
       }
       catch (cause) {
-        error.value = message(cause)
+        error.value = errorMessage(cause)
 
         return false
       }

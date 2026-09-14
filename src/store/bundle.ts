@@ -4,7 +4,6 @@ import type { BakedMedia } from '../media/types'
 import type { ContentConfig, ProviderConfig } from '../types/config'
 import type { ContentRow } from '../types/entry'
 import type { ContentSource } from './types'
-import { toMeta } from '../entries/meta'
 import { sortByCreation } from '../entries/order'
 import { createPaths } from '../files/paths'
 
@@ -47,8 +46,6 @@ export const source: ContentSource = {
   schema: async () => (await loadBundle()).schema,
 
   list,
-
-  index: async collection => (await list(collection)).map(toMeta),
 
   entry: async (collection, id) => {
     const load = (await loadBundle()).content[collection]?.entry[id]

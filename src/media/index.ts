@@ -1,4 +1,5 @@
 import type { MediaConfig } from '../types/config'
+import type { MediaAsset } from './types'
 import { defined } from '../utils/value'
 
 export type MediaKind = 'image' | 'video'
@@ -53,6 +54,22 @@ export function mediaAccept(kind?: MediaKind): string {
     .filter(name => !kind || mediaKind(`.${name}`) === kind)
     .map(name => `.${name}`)
     .join(',')
+}
+
+export function checkUpload(name: string, size: number, maxSize: number): string {
+  const type = mediaType(name)
+
+  if (!type)
+    throw new Error(`[forgepress] "${name}" is not a supported media file`)
+
+  if (size > maxSize)
+    throw new Error(`[forgepress] "${name}" is larger than the ${Math.round(maxSize / 1024 / 1024)} MB upload limit`)
+
+  return type
+}
+
+export function sortAssets(assets: readonly MediaAsset[]): MediaAsset[] {
+  return [...assets].sort((left, right) => right.modifiedAt.localeCompare(left.modifiedAt) || left.name.localeCompare(right.name))
 }
 
 export function slugify(value: string): string {

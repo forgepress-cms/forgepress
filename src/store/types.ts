@@ -1,17 +1,19 @@
-import type { ContentRow, EntryMeta } from '../types/entry'
+import type { ContentRow } from '../types/entry'
 import type { ForgePressSchema } from '../types/schema'
 
 export interface ContentSource {
   schema: () => Promise<ForgePressSchema>
   list: (collection: string) => Promise<ContentRow[]>
-  index: (collection: string) => Promise<EntryMeta[]>
   entry: (collection: string, id: string) => Promise<ContentRow | undefined>
 }
 
 export interface ContentWriter {
-  writeSchema: (schema: ForgePressSchema) => Promise<void>
   writeEntry: (collection: string, row: ContentRow) => Promise<void>
   removeEntry: (collection: string, id: string) => Promise<void>
+}
+
+export interface SchemaWriter {
+  writeSchema: (schema: ForgePressSchema) => Promise<void>
   writeContent: (collection: string, rows: ContentRow[]) => Promise<void>
   removeCollection: (collection: string) => Promise<void>
 }

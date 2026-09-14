@@ -1,37 +1,21 @@
 <script setup lang="ts">
-import type { ProviderType } from '../../types/config'
 import { computed, ref } from 'vue'
-import { describe } from '../../forge'
+import { describe } from '../../forge/providers'
 import { useSession } from '../composables/useSession'
+import ErrorAlert from './ErrorAlert.vue'
 
 const { provider, pending, error, redirects, signIn, signInWithForge } = useSession()
 
 const token = ref('')
 
-const NAMES: Record<ProviderType, string> = {
-  github: 'GitHub',
-  gitlab: 'GitLab',
-  forgejo: 'Forgejo',
-}
+const forge = computed(() => provider.value ? describe(provider.value) : undefined)
 
-const name = computed(() => provider.value ? NAMES[provider.value.type] : '')
+const name = computed(() => forge.value?.name ?? '')
 
 const repository = computed(() => {
   const config = provider.value
 
   return config ? `${config.repository.owner}/${config.repository.name}` : ''
-})
-
-const PATHS: Record<ProviderType, string> = {
-  github: '/settings/personal-access-tokens/new',
-  gitlab: '/-/user_settings/personal_access_tokens',
-  forgejo: '/user/settings/applications',
-}
-
-const tokens = computed(() => {
-  const config = provider.value
-
-  return config ? `${describe(config).root}${PATHS[config.type]}` : ''
 })
 </script>
 
@@ -43,7 +27,7 @@ const tokens = computed(() => {
       :description="repository ? `Publishing to ${repository}` : 'No repository is configured.'"
     >
       <div v-if="redirects" class="flex flex-col gap-4">
-        <UAlert v-if="error" color="error" variant="soft" :description="error" />
+        <ErrorAlert title="Sign-in failed" :error="error" />
 
         <UButton
           :label="`Sign in with ${name}`"
@@ -69,12 +53,12 @@ const tokens = computed(() => {
           />
         </UFormField>
 
-        <UAlert v-if="error" color="error" variant="soft" :description="error" />
+        <ErrorAlert title="Sign-in failed" :error="error" />
 
         <UButton type="submit" label="Sign in" :loading="pending" :disabled="!provider" block />
 
         <UButton
-          :to="tokens"
+          :to="forge?.tokens ?? ''"
           target="_blank"
           :label="`Create a token on ${name}`"
           color="neutral"

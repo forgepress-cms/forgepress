@@ -1,26 +1,25 @@
 import type { ContentRow, EntryStatus } from '../../types/entry'
 import type { EntryValues } from '../utils/entry'
-import type { FormField } from '../utils/schema'
+import type { LocalizedField } from '../utils/schema'
 import { reactive } from 'vue'
-import { fieldLocale, fromValues, missingFields, newEntry, toValues } from '../utils/entry'
-import { toFields } from '../utils/schema'
+import { plain } from '../../utils/value'
+import { entryLabel, missingFields, newEntry, titleField, toLocalizedFields, toRow, toValues } from '../utils/entry'
 import { useContent } from './useContent'
-
-export interface NestedField extends FormField {
-  locale: string
-}
 
 export interface NestedDraft {
   id: string
   collection: string
   row: ContentRow
-  fields: NestedField[]
+  fields: LocalizedField[]
   values: EntryValues
+  linked: boolean
 }
 
 export interface NestedEntries {
   drafts: Record<string, NestedDraft>
-  create: (collection: string) => string
+  create: (collection: string, owner: string) => string
+  open: (collection: string, row: ContentRow) => void
+  copy: (id: string, owner: string) => string
   discard: (id: string) => void
   clear: () => void
   missing: () => string[]
@@ -33,59 +32,95 @@ export async function useNestedEntries(): Promise<NestedEntries> {
   const locales = schema.locales ?? []
 
   const drafts = reactive<Record<string, NestedDraft>>({})
+  const owners = new Map<string, string>()
+  const opened = new Map<string, string>()
 
-  function create(collection: string): string {
-    const row = newEntry(collection)
-    const fields = toFields(schema.collections[collection] ?? { fields: {} }, locales)
-      .map(field => ({ ...field, locale: fieldLocale(field, locales) }))
+  function add(collection: string, row: ContentRow, linked: boolean, values?: EntryValues): NestedDraft {
+    const fields = toLocalizedFields(schema.collections[collection] ?? { fields: {} }, locales)
 
     drafts[row.id] = {
       id: row.id,
       collection,
       row,
       fields,
-      values: toValues(fields, row, locales),
+      values: values ?? toValues(fields, row, locales),
+      linked,
     }
 
-    return row.id
+    return drafts[row.id]!
   }
 
-  function discard(id: string): void {
-    delete drafts[id]
+  function build(entry: NestedDraft, status: EntryStatus): ContentRow {
+    return toRow(entry.fields, entry.values, { ...entry.row, status })
   }
 
-  function draft(entry: NestedDraft, status: EntryStatus): ContentRow {
-    const next: ContentRow = { ...entry.row, status }
+  function pending(entry: NestedDraft): boolean {
+    return !entry.linked || JSON.stringify(build(entry, entry.row.status)) !== opened.get(entry.id)
+  }
 
-    for (const field of entry.fields) {
-      const value = fromValues(field, entry.values)
+  function statusOf(id: string | undefined, fallback: EntryStatus): EntryStatus {
+    if (id === undefined)
+      return fallback
 
-      if (value !== undefined)
-        next[field.key] = value
-    }
+    const entry = drafts[id]
 
-    return next
+    return entry?.linked ? entry.row.status : statusOf(owners.get(id), fallback)
   }
 
   return {
     drafts,
 
-    create,
-    discard,
+    create: (collection, owner) => {
+      const row = newEntry(collection)
+
+      add(collection, row, false)
+      owners.set(row.id, owner)
+
+      return row.id
+    },
+
+    open: (collection, row) => {
+      if (drafts[row.id])
+        return
+
+      opened.set(row.id, JSON.stringify(build(add(collection, row, true), row.status)))
+    },
+
+    copy: (id, owner) => {
+      const source = drafts[id]!
+      const row = newEntry(source.collection)
+
+      add(source.collection, row, false, plain(source.values))
+      owners.set(row.id, owner)
+
+      return row.id
+    },
+
+    discard: (id) => {
+      delete drafts[id]
+      opened.delete(id)
+    },
 
     clear: () => {
       for (const id of Object.keys(drafts))
         delete drafts[id]
+
+      owners.clear()
+      opened.clear()
     },
 
-    missing: () => Object.values(drafts).flatMap(entry =>
-      missingFields(entry.fields, entry.values).map(field => `${field.label} of the new ${entry.collection}`),
+    missing: () => Object.values(drafts).filter(pending).flatMap(entry =>
+      missingFields(entry.fields, entry.values).map(field => entry.linked
+        ? `${field.label} of ${entryLabel(entry.row, titleField(entry.fields), locales[0])}`
+        : `${field.label} of the new ${entry.collection}`),
     ),
 
-    rows: status => Object.values(drafts).reduce<Record<string, ContentRow[]>>((created, entry) => {
-      created[entry.collection] = [...created[entry.collection] ?? [], draft(entry, status)]
+    rows: status => Object.values(drafts).filter(pending).reduce<Record<string, ContentRow[]>>((written, entry) => {
+      const next = build(entry, entry.linked ? entry.row.status : statusOf(owners.get(entry.id), status))
 
-      return created
+      written[entry.collection] = [...written[entry.collection] ?? [], next]
+
+      return written
     }, {}),
   }
 }

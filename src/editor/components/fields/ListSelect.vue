@@ -1,19 +1,21 @@
 <script setup lang="ts">
+import type { StatusColor } from '../../utils/entry'
 import { computed, ref, watch } from 'vue'
 import { useDragOrder } from '../../composables/useDragOrder'
+import { moveItem } from '../../utils/order'
 import DragHandle from '../DragHandle.vue'
 
 interface Option {
   label: string
   value: string
-  chip?: { color: 'neutral' | 'success' | 'warning' }
+  chip?: { color: StatusColor }
 }
 
 const props = withDefaults(defineProps<{
   items: Option[]
   multiple?: boolean | undefined
   placeholder?: string | undefined
-  open?: ((value: string) => void) | undefined
+  link?: ((value: string) => string) | undefined
 }>(), { placeholder: 'Select' })
 
 const model = defineModel<string[]>({ required: true })
@@ -30,20 +32,9 @@ const picking = computed(() => available.value.length > 0 && (props.multiple || 
 
 const sortable = computed(() => props.multiple && model.value.length > 1)
 
-const order = useDragOrder(move)
-
-function move(value: string, offset: number): void {
-  const values = [...model.value]
-  const from = values.indexOf(value)
-  const to = from + offset
-
-  if (from < 0 || to < 0 || to >= values.length)
-    return
-
-  values.splice(to, 0, ...values.splice(from, 1))
-
-  model.value = values
-}
+const order = useDragOrder((value, offset) => {
+  model.value = moveItem(model.value, model.value.indexOf(value), offset)
+})
 
 function remove(value: string): void {
   model.value = model.value.filter(item => item !== value)
@@ -84,13 +75,14 @@ watch(picked, (value) => {
         <span class="flex-1 truncate text-sm text-highlighted">{{ item.label }}</span>
 
         <UButton
-          v-if="open"
+          v-if="link"
+          :to="link(item.value)"
+          target="_blank"
           icon="i-lucide-arrow-up-right"
           color="neutral"
           variant="ghost"
           size="xs"
-          :aria-label="`Open ${item.label}`"
-          @click="open(item.value)"
+          :aria-label="`Open ${item.label} in a new tab`"
         />
 
         <UButton

@@ -25,21 +25,3 @@ export function stage(overlay: Overlay, before: ContentRow | undefined, row: Con
   else
     overlay[row.id] = row
 }
-
-export function reconcile(overlay: Overlay, existing: readonly ContentRow[], rows: readonly ContentRow[]): void {
-  const before = new Map(existing.map(row => [row.id, row]))
-  const kept = new Set(rows.map(row => row.id))
-
-  for (const row of existing) {
-    if (!kept.has(row.id))
-      overlay[row.id] = null
-  }
-
-  for (const row of rows)
-    stage(overlay, before.get(row.id), row)
-}
-
-export function discardAll(overlay: Overlay, existing: readonly ContentRow[]): void {
-  for (const row of existing)
-    overlay[row.id] = null
-}

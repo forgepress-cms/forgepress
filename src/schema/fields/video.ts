@@ -1,3 +1,4 @@
+import type { MediaContent } from '../../media/types'
 import type { FieldOf, FieldTypeDefinition } from '../../types/field'
 
 const video = {
@@ -10,13 +11,6 @@ const video = {
 
 export type VideoField = FieldOf<typeof video>
 
-export interface VideoContent {
-  url: string
-  alt?: string
-  width?: number
-  height?: number
-}
-
-export type VideoFieldContent<TField extends VideoField> = TField['multiple'] extends true ? VideoContent[] : VideoContent
+export type VideoFieldContent<TField extends VideoField> = TField['multiple'] extends true ? MediaContent[] : MediaContent
 
 export default video

@@ -2,12 +2,11 @@ import type { Ref } from 'vue'
 import type { Forge, ForgeIdentity, OAuthTokens } from '../../forge/types'
 import type { ProviderConfig } from '../../types/config'
 import { computed, ref, shallowRef } from 'vue'
-import { describe } from '../../forge'
-import { createForgejoForge } from '../../forge/forgejo'
-import { createGitHubForge } from '../../forge/github'
-import { createGitLabForge } from '../../forge/gitlab'
+import { createForge } from '../../forge'
 import { authorizeUrl, createChallenge, createState, createVerifier, exchange, expired, renew } from '../../forge/oauth'
+import { describe } from '../../forge/providers'
 import { baked } from '../../store/bundle'
+import { errorMessage } from '../../utils/error'
 import { persist, repositoryCache } from '../storage'
 
 const PKCE = 'forgepress:pkce'
@@ -45,22 +44,8 @@ const redirects = computed(() => {
   return config !== undefined && config.clientId !== undefined && describe(config).oauth !== undefined
 })
 
-function message(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause)
-}
-
 function redirectUri(config: ProviderConfig): string {
   return config.redirectUri ?? `${window.location.origin}${window.location.pathname}`
-}
-
-function build(config: ProviderConfig): Forge {
-  if (config.type === 'gitlab')
-    return createGitLabForge(config, current)
-
-  if (config.type === 'forgejo')
-    return createForgejoForge(config, current)
-
-  return createGitHubForge(config, current)
 }
 
 async function current(): Promise<string> {
@@ -96,7 +81,7 @@ async function adopt(next: OAuthTokens): Promise<boolean> {
   tokens = next
 
   try {
-    const candidate = build(config)
+    const candidate = createForge(config, current)
     const access = await candidate.access()
 
     if (!access.writable) {
@@ -113,7 +98,7 @@ async function adopt(next: OAuthTokens): Promise<boolean> {
     return true
   }
   catch (cause) {
-    error.value = message(cause)
+    error.value = errorMessage(cause)
     tokens = previous
 
     return false
@@ -185,7 +170,7 @@ async function complete(): Promise<boolean> {
     return await adopt(await exchange(oauth, config.clientId, redirectUri(config), code, saved.verifier))
   }
   catch (cause) {
-    error.value = message(cause)
+    error.value = errorMessage(cause)
 
     return false
   }

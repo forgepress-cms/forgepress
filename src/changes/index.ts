@@ -1,14 +1,16 @@
+import type { HashSource } from '../forge/types'
 import type { BakedMedia, PendingUpload } from '../media/types'
 import type { ContentSource, KeyValueStore } from '../store/types'
-import type { ChangeHashes, Changes, ChangeService, ChangeSummary, EntryRef, HashSource } from './types'
-import { prefixer } from '../files/paths'
+import type { EntryRef } from '../types/entry'
+import type { ChangeHashes, Changes, ChangeService, ChangeSummary } from './types'
 import { createContentChanges } from './content'
 import { diffChanges } from './diff'
+import { changedEntries, toFiles } from './files'
 import { createMediaChanges } from './media'
 import { createPreviews } from './previews'
 
 function empty(): Changes {
-  return { entries: {}, dropped: [], uploads: {}, removed: [] }
+  return { entries: {}, uploads: {}, removed: [] }
 }
 
 function refs(changes: Changes, staged: boolean): EntryRef[] {
@@ -42,9 +44,6 @@ export function createChanges(base: ContentSource, baked: () => Promise<BakedMed
     const known = changes.hashes
     const next: ChangeHashes = { entries: {} }
 
-    if (changes.schema !== undefined)
-      next.schema = known?.schema !== undefined ? known.schema : await hashes.schema() ?? null
-
     for (const [collection, overlay] of Object.entries(changes.entries)) {
       const recorded: Record<string, string | null> = {}
 
@@ -74,50 +73,37 @@ export function createChanges(base: ContentSource, baked: () => Promise<BakedMed
     content: createContentChanges(base, ready, mutate),
     media: createMediaChanges(baked, previews, ready, mutate),
 
-    snapshot: ready,
-
     summary: async () => {
       const changes = await ready()
 
       return {
-        schema: changes.schema !== undefined,
         written: refs(changes, true),
         discarded: refs(changes, false),
-        dropped: [...changes.dropped],
         uploaded: Object.keys(changes.uploads),
         deleted: [...changes.removed],
       } satisfies ChangeSummary
     },
 
+    files: async target => toFiles(await ready(), target),
+
     diff: async target => diffChanges(await ready(), base, await baked(), previews, target),
 
     resolve: async (conflicts, target, keep) => {
-      const at = prefixer(target.base)
       const current = new Map(conflicts.map(conflict => [conflict.path, conflict.hash]))
 
       await mutate((changes) => {
         const recorded = changes.hashes ??= { entries: {} }
-        const schema = current.get(at(target.paths.schema))
 
-        if (changes.schema !== undefined && schema !== undefined) {
+        for (const { path, collection, id } of changedEntries(changes, target)) {
+          const hash = current.get(path)
+
+          if (hash === undefined)
+            continue
+
           if (keep === 'mine')
-            recorded.schema = schema
+            recorded.entries[collection] = { ...recorded.entries[collection], [id]: hash }
           else
-            delete changes.schema
-        }
-
-        for (const [collection, overlay] of Object.entries(changes.entries)) {
-          for (const id of Object.keys(overlay)) {
-            const hash = current.get(at(target.paths.entry(collection, id)))
-
-            if (hash === undefined)
-              continue
-
-            if (keep === 'mine')
-              recorded.entries[collection] = { ...recorded.entries[collection], [id]: hash }
-            else
-              delete overlay[id]
-          }
+            delete changes.entries[collection]![id]
         }
       })
     },

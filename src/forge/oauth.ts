@@ -1,21 +1,18 @@
 import type { OAuthEndpoints, OAuthTokens } from './types'
+import { toBase64 } from '../utils/encoding'
 
 const ENTROPY = 32
 const SKEW = 30_000
 
-function base64url(bytes: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(bytes)))
+function base64url(bytes: ArrayBuffer | Uint8Array): string {
+  return toBase64(bytes)
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '')
 }
 
 function random(): string {
-  const bytes = new Uint8Array(ENTROPY)
-
-  crypto.getRandomValues(bytes)
-
-  return base64url(bytes.buffer)
+  return base64url(crypto.getRandomValues(new Uint8Array(ENTROPY)))
 }
 
 export function createVerifier(): string {

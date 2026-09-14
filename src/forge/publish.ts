@@ -1,6 +1,6 @@
 import type { Conflict, FileChange, Forge, RepoTarget } from './types'
-import { base64ToBytes } from '.'
 import { prefixer } from '../files/paths'
+import { base64ToBytes, digest } from '../utils/encoding'
 
 export class ConflictError extends Error {
   readonly conflicts: readonly Conflict[]
@@ -21,9 +21,25 @@ export async function gitHash(data: Uint8Array, algorithm: 'SHA-1' | 'SHA-256'):
   object.set(header)
   object.set(data, header.byteLength)
 
-  const digest = await crypto.subtle.digest(algorithm, object)
+  return digest(algorithm, object)
+}
 
-  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')
+export function commitMessage(template: string | undefined, name: string): string {
+  const trimmed = name.trim()
+
+  if (!template)
+    return trimmed || 'Update content'
+
+  return template.includes('{name}')
+    ? template.replace('{name}', trimmed || 'update content')
+    : `${template} ${trimmed}`.trim()
+}
+
+export function publishable<TFile>(files: readonly TFile[]): readonly TFile[] {
+  if (files.length === 0)
+    throw new Error('[forgepress] there is nothing to publish')
+
+  return files
 }
 
 async function applied(file: FileChange, hash: string | null): Promise<boolean> {
