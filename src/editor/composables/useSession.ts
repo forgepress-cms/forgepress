@@ -91,6 +91,8 @@ async function adopt(next: OAuthTokens): Promise<boolean> {
       return false
     }
 
+    await store.write(tokens).catch(() => undefined)
+
     forge = candidate
     identity.value = access.identity
     branch.value = access.branch
@@ -218,12 +220,7 @@ export function useSession(): Session {
         return false
       }
 
-      if (!await adopt({ access: trimmed }))
-        return false
-
-      await store.write({ access: trimmed })
-
-      return true
+      return adopt({ access: trimmed })
     },
 
     signInWithForge: async () => {
