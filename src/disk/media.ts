@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { assetUrl, checkUpload, isAssetName, mediaType, resolveMedia, sortAssets, toAssetName } from '../media'
+import { assetUrl, checkUpload, isAssetName, isMediaFile, mediaType, resolveMedia, sortAssets, toAssetName } from '../media'
 
 export function createMediaStore(root: string, config?: MediaConfig): MediaStore {
   const media = resolveMedia(config)
@@ -27,7 +27,7 @@ export function createMediaStore(root: string, config?: MediaConfig): MediaStore
       if (!existsSync(dir))
         return []
 
-      const files = (await readdir(dir)).filter(file => isAssetName(file) && mediaType(file))
+      const files = (await readdir(dir)).filter(isMediaFile)
 
       return sortAssets(await Promise.all(files.map(describe)))
     },

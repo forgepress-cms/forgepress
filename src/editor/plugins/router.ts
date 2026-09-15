@@ -118,6 +118,13 @@ export function createRouter(routes: EditorRoutes): EditorRouter {
 
   window.addEventListener('hashchange', onChange)
 
+  const settled = window.setTimeout(() => {
+    const current = read()
+
+    if (current !== route.value.path)
+      route.value = matchRoute(routes, current)
+  }, 0)
+
   return {
     route,
 
@@ -147,6 +154,7 @@ export function createRouter(routes: EditorRoutes): EditorRouter {
 
     dispose: () => {
       guards.clear()
+      window.clearTimeout(settled)
       window.removeEventListener('hashchange', onChange)
     },
   }

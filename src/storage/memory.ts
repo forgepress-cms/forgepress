@@ -1,4 +1,4 @@
-import type { KeyValueStore } from '../../store/types'
+import type { KeyValueStore } from '../store/types'
 
 export function createMemoryStore<TValue>(): KeyValueStore<TValue> {
   let value: TValue | undefined

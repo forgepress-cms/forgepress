@@ -7,11 +7,14 @@ import PageHeader from '../components/layout/PageHeader.vue'
 import MediaDetails from '../components/media/MediaDetails.vue'
 import MediaGrid from '../components/media/MediaGrid.vue'
 import MediaUpload from '../components/media/MediaUpload.vue'
+import { useContent } from '../composables/useContent'
 import { useMedia } from '../composables/useMedia'
 
 const library = useMedia()
 
 await library.ensure()
+
+const local = await useContent().mode() === 'development'
 
 const selected = ref<string[]>([])
 const search = ref('')
@@ -88,7 +91,7 @@ async function remove(): Promise<void> {
     <ConfirmDialog
       :open="!!removing.length"
       :title="removing.length === 1 ? 'Delete asset' : 'Delete assets'"
-      :description="`${removing.length} ${removing.length === 1 ? 'file is' : 'files are'} deleted from disk. Content still pointing at ${removing.length === 1 ? 'it' : 'them'} will break.`"
+      :description="`${removing.length} ${removing.length === 1 ? 'file is' : 'files are'} ${local ? 'deleted from disk right away' : 'deleted from the repository when you publish'}. Content still pointing at ${removing.length === 1 ? 'it' : 'them'} will break.`"
       @update:open="removing = []"
       @confirm="remove()"
     />

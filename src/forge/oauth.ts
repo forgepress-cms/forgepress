@@ -1,5 +1,7 @@
+import type { ProviderConfig } from '../types/config'
 import type { OAuthEndpoints, OAuthTokens } from './types'
 import { toBase64 } from '../utils/encoding'
+import { describe } from './providers'
 
 const ENTROPY = 32
 const SKEW = 30_000
@@ -100,4 +102,20 @@ export function renew(endpoints: OAuthEndpoints, clientId: string, refresh: stri
     grant_type: 'refresh_token',
     refresh_token: refresh,
   })
+}
+
+export function storedTokens(value: OAuthTokens | string | undefined): OAuthTokens | undefined {
+  if (typeof value === 'string')
+    return value ? { access: value } : undefined
+
+  return value
+}
+
+export async function refreshed(tokens: OAuthTokens, config: ProviderConfig): Promise<OAuthTokens> {
+  const oauth = describe(config).oauth
+
+  if (!expired(tokens) || !tokens.refresh || !oauth || !config.clientId)
+    return tokens
+
+  return renew(oauth, config.clientId, tokens.refresh)
 }

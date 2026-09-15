@@ -6,7 +6,7 @@ import { ref, shallowRef } from 'vue'
 import { createBuildReader } from '../../forge/build'
 import { OUTPUT_INDEX } from '../../output/types'
 import { reader } from '../../query/fetch'
-import { persist } from '../storage'
+import { persist } from '../../storage'
 import { useSession } from './useSession'
 
 export const POLL = 15_000

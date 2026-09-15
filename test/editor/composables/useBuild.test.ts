@@ -8,7 +8,7 @@ let checks: BuildCheck[] = []
 let forge: Forge | undefined
 const asked: string[] = []
 
-vi.doMock('../../../src/editor/storage', () => ({
+vi.doMock('../../../src/storage', () => ({
   persist: () => ({
     read: async () => saved,
     write: async (value: unknown) => {

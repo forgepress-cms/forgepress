@@ -9,6 +9,7 @@ import { routes } from './routes'
 import styles from './styles.css?inline'
 
 const PROPERTIES_ID = 'forgepress-properties'
+const EDITOR_ATTRIBUTE = 'data-forgepress-editor'
 const PROPERTY_RULE = /@property\s+--[\w-]+\s*\{[^}]*\}/g
 
 function registerProperties(): (() => void) | undefined {
@@ -51,6 +52,7 @@ export const mountEditor: MountEditor = (target) => {
   const container = document.createElement('div')
   container.className = 'forgepress-root'
   root.replaceChildren(sheet, container)
+  host.setAttribute(EDITOR_ATTRIBUTE, '')
 
   const unregister = registerProperties()
 
@@ -69,5 +71,6 @@ export const mountEditor: MountEditor = (target) => {
     colorMode.dispose()
     unregister?.()
     root.replaceChildren()
+    host.removeAttribute(EDITOR_ATTRIBUTE)
   }
 }

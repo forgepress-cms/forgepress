@@ -7,7 +7,7 @@ export interface Changes {
   entries: Record<string, Record<string, Entry | null>>
   uploads: Record<string, PendingUpload>
   removed: string[]
-  publishedMedia?: Record<string, PendingUpload | null>
+  publishedMedia?: Record<string, PendingUpload>
   hashes?: ChangeHashes
 }
 

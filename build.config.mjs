@@ -6,6 +6,7 @@ export default defineBuildConfig({
       type: 'bundle',
       input: [
         './src/index.ts',
+        './src/preview/index.ts',
         './src/unplugin.ts',
         './src/disk/reader.ts',
         './src/query/fetch.ts',

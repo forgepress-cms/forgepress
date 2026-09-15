@@ -3,6 +3,7 @@ import type { ColorMode } from '../../plugins/color-mode'
 import { computed, onMounted, ref } from 'vue'
 
 import { useColorMode } from '../../composables/useColorMode'
+import { usePreview } from '../../composables/usePreview'
 import { usePublish } from '../../composables/usePublish'
 import { useRouter } from '../../composables/useRouter'
 import { useSession } from '../../composables/useSession'
@@ -19,6 +20,7 @@ const { route, href } = useRouter()
 const { mode, cycle } = useColorMode()
 const { identity, signOut } = useSession()
 const { count, refresh } = usePublish()
+const preview = usePreview()
 
 const showPublish = ref(false)
 
@@ -26,6 +28,14 @@ onMounted(refresh)
 
 const account = computed(() => [[
   { label: identity.value?.login ?? '', type: 'label' as const },
+], [
+  {
+    label: 'Preview on the site',
+    type: 'checkbox' as const,
+    checked: preview.enabled.value,
+    onUpdateChecked: (checked: boolean) => preview.set(checked),
+  },
+], [
   { label: 'Sign out', icon: 'i-lucide-log-out', onSelect: () => void signOut() },
 ]])
 

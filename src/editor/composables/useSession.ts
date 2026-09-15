@@ -3,11 +3,12 @@ import type { Forge, ForgeIdentity, OAuthTokens } from '../../forge/types'
 import type { ProviderConfig } from '../../types/config'
 import { computed, ref, shallowRef } from 'vue'
 import { createForge } from '../../forge'
-import { authorizeUrl, createChallenge, createState, createVerifier, exchange, expired, renew } from '../../forge/oauth'
+import { authorizeUrl, createChallenge, createState, createVerifier, exchange, refreshed, storedTokens } from '../../forge/oauth'
 import { describe } from '../../forge/providers'
+import { closePreview, openPreview } from '../../preview/state'
+import { persist, repositoryCache, TOKEN_KEY } from '../../storage'
 import { errorMessage } from '../../utils/error'
 import { baked } from '../settings'
-import { persist, repositoryCache } from '../storage'
 
 const PKCE = 'forgepress:pkce'
 
@@ -31,7 +32,7 @@ const branch = ref('')
 const pending = ref(false)
 const error = ref('')
 
-const store = persist<OAuthTokens | string>('token')
+const store = persist<OAuthTokens | string>(TOKEN_KEY)
 const cache = repositoryCache()
 
 let tokens: OAuthTokens | undefined
@@ -53,16 +54,15 @@ async function current(): Promise<string> {
     throw new Error('[forgepress] not signed in')
 
   const config = provider.value
-  const oauth = config ? describe(config).oauth : undefined
+  const next = config ? await refreshed(tokens, config) : tokens
 
-  if (!expired(tokens) || !tokens.refresh || !oauth || !config?.clientId)
-    return tokens.access
+  if (next !== tokens) {
+    tokens = next
 
-  tokens = await renew(oauth, config.clientId, tokens.refresh)
+    await store.write(next)
+  }
 
-  await store.write(tokens)
-
-  return tokens.access
+  return next.access
 }
 
 async function adopt(next: OAuthTokens): Promise<boolean> {
@@ -95,6 +95,14 @@ async function adopt(next: OAuthTokens): Promise<boolean> {
     identity.value = access.identity
     branch.value = access.branch
 
+    const settings = await baked()
+
+    openPreview({
+      provider: { ...config, repository: { ...config.repository, branch: access.branch } },
+      contentPath: settings.paths.dir,
+      mediaUrl: settings.media.url,
+    })
+
     return true
   }
   catch (cause) {
@@ -115,13 +123,6 @@ function settled<TValue>(work: Promise<TValue>): Promise<TValue | undefined> {
     work.catch(() => undefined),
     new Promise<undefined>(resolve => setTimeout(resolve, PATIENCE, undefined)),
   ])
-}
-
-function stored(value: OAuthTokens | string | undefined): OAuthTokens | undefined {
-  if (typeof value === 'string')
-    return value ? { access: value } : undefined
-
-  return value
 }
 
 function clean(): void {
@@ -185,10 +186,12 @@ async function load(): Promise<void> {
   if (await complete())
     return
 
-  const saved = stored(await settled(store.read()))
+  const saved = storedTokens(await settled(store.read()))
 
-  if (saved && !await adopt(saved))
+  if (saved && !await adopt(saved)) {
+    closePreview()
     await store.clear().catch(() => undefined)
+  }
 }
 
 export function useSession(): Session {
@@ -262,6 +265,8 @@ export function useSession(): Session {
       identity.value = undefined
       branch.value = ''
       error.value = ''
+
+      closePreview()
 
       await store.clear().catch(() => undefined)
       await cache?.clear().catch(() => undefined)

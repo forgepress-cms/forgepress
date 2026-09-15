@@ -209,6 +209,52 @@ describe('forge source', () => {
     expect(repo.calls.filter(call => call === 'head')).toHaveLength(2)
   })
 
+  it('lists the uploads directly in the media folder of the commit it reads', async () => {
+    const upload = '\u0089PNG'
+    const repo = repository({
+      c1: {
+        ...first,
+        'apps/site/public/uploads/team.1a2b3c4d.png': upload,
+        'apps/site/public/uploads/clip.5e6f7a8b.webm': upload,
+        'apps/site/public/uploads/notes.md': '# notes\n',
+        'apps/site/public/uploads/old/team.png': upload,
+        'apps/site/public/uploads-archive/logo.png': upload,
+      },
+      c2: {
+        ...first,
+        'apps/site/public/uploads/team.1a2b3c4d.png': upload,
+      },
+    })
+    const { cache, listings } = browserCache()
+    const source = createForgeSource(() => repo.forge, createPaths('.forgepress'), 'apps/site', cache, 'public/uploads')
+    const listed = (): string[] => repo.calls.filter(call => call.startsWith('files') && call.includes('public/uploads'))
+
+    expect((await source.media()).sort()).toEqual(['clip.5e6f7a8b.webm', 'team.1a2b3c4d.png'])
+    expect(await source.media()).toHaveLength(2)
+    expect(listed()).toEqual(['files c1 apps/site/public/uploads'])
+
+    await settle()
+
+    expect(listings.get('apps/site/public/uploads')?.commit).toBe('c1')
+
+    const reloaded = createForgeSource(() => repo.forge, createPaths('.forgepress'), 'apps/site', cache, 'public/uploads')
+
+    expect(await reloaded.media()).toHaveLength(2)
+    expect(listed()).toHaveLength(1)
+
+    reloaded.reset('c2')
+
+    expect(await reloaded.media()).toEqual(['team.1a2b3c4d.png'])
+    expect(listed()).toEqual(['files c1 apps/site/public/uploads', 'files c2 apps/site/public/uploads'])
+  })
+
+  it('lists no uploads without a media folder', async () => {
+    const repo = repository({ c1: first })
+
+    expect(await createForgeSource(() => repo.forge, defaultPaths).media()).toEqual([])
+    expect(repo.calls).toEqual([])
+  })
+
   it('hands out the hash of every file in the commit it reads', async () => {
     const changed = entry('author_1', 'published', '2024-01-01T00:00:00Z', 'Alice')
     const repo = repository({ c1: first, c2: { ...first, '.forgepress/content/author/author_1.ts': changed } })

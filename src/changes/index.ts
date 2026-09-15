@@ -1,12 +1,12 @@
 import type { HashSource } from '../forge/types'
-import type { BakedMedia, PendingUpload } from '../media/types'
+import type { MediaSource, PendingUpload } from '../media/types'
 import type { ContentSource, KeyValueStore } from '../store/types'
 import type { EntryRef } from '../types/entry'
 import type { ChangeHashes, Changes, ChangeService, ChangeSummary } from './types'
 import { createContentChanges } from './content'
 import { diffChanges } from './diff'
 import { changedEntries, toFiles } from './files'
-import { createMediaChanges } from './media'
+import { createMediaChanges, publishedUploads } from './media'
 import { createPreviews } from './previews'
 
 function empty(): Changes {
@@ -20,7 +20,7 @@ function refs(changes: Changes, staged: boolean): EntryRef[] {
       .map(([id]) => ({ collection, id })))
 }
 
-export function createChanges(base: ContentSource, baked: () => Promise<BakedMedia>, store: KeyValueStore<Changes>, hashes?: HashSource): ChangeService {
+export function createChanges(base: ContentSource, media: MediaSource, store: KeyValueStore<Changes>, hashes?: HashSource): ChangeService {
   const previews = createPreviews()
   const listeners = new Set<() => void>()
 
@@ -71,7 +71,7 @@ export function createChanges(base: ContentSource, baked: () => Promise<BakedMed
 
   return {
     content: createContentChanges(base, ready, mutate),
-    media: createMediaChanges(baked, previews, ready, mutate),
+    media: createMediaChanges(media, previews, ready, mutate),
 
     summary: async () => {
       const changes = await ready()
@@ -86,7 +86,7 @@ export function createChanges(base: ContentSource, baked: () => Promise<BakedMed
 
     files: async target => toFiles(await ready(), target),
 
-    diff: async target => diffChanges(await ready(), base, await baked(), previews, target),
+    diff: async target => diffChanges(await ready(), base, media, previews, target),
 
     resolve: async (conflicts, target, keep) => {
       const current = new Map(conflicts.map(conflict => [conflict.path, conflict.hash]))
@@ -110,23 +110,15 @@ export function createChanges(base: ContentSource, baked: () => Promise<BakedMed
 
     published: async () => {
       const changes = await ready()
-      const deployed = new Set((await baked()).assets.map(asset => asset.name))
-      const media: Record<string, PendingUpload | null> = {}
+      const removed = new Set(changes.removed)
+      const kept: Record<string, PendingUpload> = {}
 
-      for (const [name, upload] of Object.entries(changes.publishedMedia ?? {})) {
-        if (upload ? !deployed.has(name) : deployed.has(name))
-          media[name] = upload
-        else
-          previews.forget(name)
+      for (const upload of [...publishedUploads(changes), ...Object.values(changes.uploads)]) {
+        if (!removed.has(upload.name))
+          kept[upload.name] = upload
       }
 
-      for (const [name, upload] of Object.entries(changes.uploads))
-        media[name] = upload
-
-      for (const name of changes.removed)
-        media[name] = null
-
-      const next: Changes = { ...empty(), ...Object.keys(media).length > 0 ? { publishedMedia: media } : {} }
+      const next: Changes = { ...empty(), ...Object.keys(kept).length > 0 ? { publishedMedia: kept } : {} }
 
       loaded = Promise.resolve(next)
       notify()

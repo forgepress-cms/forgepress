@@ -19,6 +19,7 @@ export type ResolvedOutput = Required<OutputConfig>
 export interface OutputOptions {
   commit: string | null
   dev?: boolean
+  unpublished?: boolean
 }
 
 interface CollectionOutput {
@@ -71,7 +72,7 @@ export async function createOutput(schema: ForgePressSchema, content: ContentEnt
 
   for (const collection of Object.keys(schema.collections)) {
     const stored = Object.entries(content[collection] ?? {}).map(([id, entry]) => entry.id === id ? entry : { ...entry, id })
-    const entries = sortByCreation(stored.filter(entry => entry.status === 'published'))
+    const entries = sortByCreation(options.unpublished ? stored : stored.filter(entry => entry.status === 'published'))
 
     if (!isLocalized(schema, collection)) {
       const output = await collectionOutput(schema, collection, entries)

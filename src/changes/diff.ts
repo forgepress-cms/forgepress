@@ -1,9 +1,10 @@
 import type { RepoTarget } from '../forge/types'
-import type { BakedMedia } from '../media/types'
+import type { MediaSource } from '../media/types'
 import type { ContentSource } from '../store/types'
 import type { Previews } from './previews'
 import type { Changes, FileDiff } from './types'
 import { serializeEntry } from '../files/serialize'
+import { storedAsset } from '../media'
 import { changedEntries, changedMedia } from './files'
 import { diffLines } from './lines'
 
@@ -21,26 +22,35 @@ async function entryDiffs(changes: Changes, base: ContentSource, target: RepoTar
   return diffs.sort((left, right) => left.path.localeCompare(right.path))
 }
 
-function mediaDiffs(changes: Changes, baked: BakedMedia, previews: Previews, target: RepoTarget): FileDiff[] {
-  return changedMedia(changes, target).map(({ path, name, upload }): FileDiff => {
+async function mediaDiffs(changes: Changes, media: MediaSource, previews: Previews, target: RepoTarget): Promise<FileDiff[]> {
+  const changed = changedMedia(changes, target)
+
+  if (changed.length === 0)
+    return []
+
+  const { url } = await media.settings()
+  const stored = changed.some(file => !file.upload) ? new Set(await media.stored()) : new Set<string>()
+
+  return changed.map(({ path, name, upload }): FileDiff => {
     if (upload)
-      return { path, change: 'added', after: previews.asset(upload, baked.url) }
+      return { path, change: 'added', after: previews.asset(upload, url) }
 
-    const found = baked.assets.find(item => item.name === name)
+    const published = changes.publishedMedia?.[name]
+    const before = published ? previews.asset(published, url) : stored.has(name) ? storedAsset(name, url) : undefined
 
-    return { path, change: 'removed', ...found ? { before: found } : {} }
+    return { path, change: 'removed', ...before ? { before } : {} }
   })
 }
 
 export async function diffChanges(
   changes: Changes,
   base: ContentSource,
-  baked: BakedMedia,
+  media: MediaSource,
   previews: Previews,
   target: RepoTarget,
 ): Promise<FileDiff[]> {
   return [
     ...await entryDiffs(changes, base, target),
-    ...mediaDiffs(changes, baked, previews, target),
+    ...await mediaDiffs(changes, media, previews, target),
   ]
 }

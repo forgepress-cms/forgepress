@@ -1,4 +1,4 @@
-import type { KeyValueStore, RepositoryCache } from '../../store/types'
+import type { KeyValueStore, RepositoryCache } from '../store/types'
 
 const DATABASE = 'forgepress'
 const STORE = 'changes'

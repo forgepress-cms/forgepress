@@ -69,7 +69,7 @@ export function checkUpload(name: string, size: number, maxSize: number): string
 }
 
 export function sortAssets(assets: readonly MediaAsset[]): MediaAsset[] {
-  return [...assets].sort((left, right) => right.modifiedAt.localeCompare(left.modifiedAt) || left.name.localeCompare(right.name))
+  return [...assets].sort((left, right) => (right.modifiedAt ?? '').localeCompare(left.modifiedAt ?? '') || left.name.localeCompare(right.name))
 }
 
 export function slugify(value: string): string {
@@ -87,6 +87,25 @@ export function isAssetName(name: string): boolean {
   return NAME.test(name) && !name.includes('..')
 }
 
+export function isMediaFile(name: string): boolean {
+  return isAssetName(name) && mediaType(name) !== ''
+}
+
 export function assetUrl(prefix: string, name: string): string {
   return `${prefix.replace(/\/+$/, '')}/${name}`
+}
+
+export function storedAsset(name: string, prefix: string): MediaAsset {
+  return { name, url: assetUrl(prefix, name), type: mediaType(name) }
+}
+
+export async function isServed(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url, { method: 'HEAD', cache: 'no-store' })
+
+    return response.ok && !response.headers.get('content-type')?.includes('text/html')
+  }
+  catch {
+    return false
+  }
 }

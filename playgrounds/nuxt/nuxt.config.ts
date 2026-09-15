@@ -6,6 +6,8 @@ const forgepressSrc = fileURLToPath(new URL('../../src', import.meta.url))
 
 const forgepressEditor = fileURLToPath(new URL('../../dist/editor/index.mjs', import.meta.url))
 
+const forgepressPreview = fileURLToPath(new URL('../../src/preview/index.ts', import.meta.url))
+
 const forgepressReader = fileURLToPath(new URL('../../src/query/fetch.ts', import.meta.url))
 
 export default defineNuxtConfig({
@@ -15,6 +17,7 @@ export default defineNuxtConfig({
 
   alias: {
     'forgepress/editor': forgepressEditor,
+    'forgepress/preview': forgepressPreview,
     'forgepress': forgepressSrc,
   },
 
@@ -22,8 +25,9 @@ export default defineNuxtConfig({
     tsConfig: {
       compilerOptions: {
         paths: {
-          'forgepress': [forgepressSrc],
           '#content-reader': [forgepressReader],
+          'forgepress': [forgepressSrc],
+          'forgepress/preview': [forgepressPreview],
           'forgepress/editor': [fileURLToPath(new URL('../../dist/editor/index.d.mts', import.meta.url))],
         },
       },

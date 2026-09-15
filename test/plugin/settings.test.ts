@@ -40,7 +40,7 @@ describe('editor settings module', () => {
       'export const provider = null',
       'export const format = null',
       'export const contentPath = ".forgepress"',
-      'export const media = {"dir":"public/uploads","url":"/uploads","maxSize":8388608,"assets":[]}',
+      'export const media = {"dir":"public/uploads","url":"/uploads","maxSize":8388608}',
       '',
     ].join('\n'))
   })

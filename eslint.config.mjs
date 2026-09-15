@@ -4,6 +4,7 @@ export default antfu({
   vue: true,
   stylistic: true,
   gitignore: { recursive: true },
+  ignores: originals => originals.filter(pattern => pattern !== '**/output'),
 }, {
   files: ['pnpm-workspace.yaml'],
   rules: {

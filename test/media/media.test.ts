@@ -1,6 +1,6 @@
 import type { MediaConfig } from '../../src/types/config'
-import { describe, expect, it } from 'vitest'
-import { assetUrl, checkUpload, isAssetName, MEDIA_DEFAULTS, mediaAccept, mediaKind, mediaType, resolveMedia, slugify, sortAssets, toAssetName } from '../../src/media'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { assetUrl, checkUpload, isAssetName, isMediaFile, isServed, MEDIA_DEFAULTS, mediaAccept, mediaKind, mediaType, resolveMedia, slugify, sortAssets, storedAsset, toAssetName } from '../../src/media'
 
 const HASH = 'a3f19c2b7d4e5f60'
 
@@ -44,6 +44,50 @@ describe('sortAssets', () => {
 
     expect(sortAssets([asset('b.png', '2024-01-01'), asset('c.png', '2024-02-01'), asset('a.png', '2024-01-01')]).map(item => item.name))
       .toEqual(['c.png', 'a.png', 'b.png'])
+  })
+
+  it('lists files without a date after the dated ones, by name', () => {
+    expect(sortAssets([storedAsset('b.png', '/uploads'), { ...storedAsset('z.png', '/uploads'), modifiedAt: '2024-01-01' }, storedAsset('a.png', '/uploads')]).map(item => item.name))
+      .toEqual(['z.png', 'a.png', 'b.png'])
+  })
+})
+
+describe('files in the repository', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('counts only media files with a valid name', () => {
+    expect(isMediaFile('team.1a2b3c4d.png')).toBe(true)
+    expect(isMediaFile('notes.md')).toBe(false)
+    expect(isMediaFile('nested/team.png')).toBe(false)
+    expect(isMediaFile('.hidden.png')).toBe(false)
+  })
+
+  it('describes a stored file by its name', () => {
+    expect(storedAsset('clip.1a2b3c4d.webm', 'https://cdn.example.com/media/')).toEqual({ name: 'clip.1a2b3c4d.webm', url: 'https://cdn.example.com/media/clip.1a2b3c4d.webm', type: 'video/webm' })
+  })
+
+  it('knows the site serves a file once it answers with something other than a page', async () => {
+    const responses: Record<string, Response> = {
+      '/uploads/live.png': new Response(null, { headers: { 'content-type': 'image/png' } }),
+      '/uploads/fallback.png': new Response(null, { headers: { 'content-type': 'text/html; charset=utf-8' } }),
+      '/uploads/missing.png': new Response(null, { status: 404 }),
+    }
+
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      if (url === '/uploads/offline.png')
+        throw new TypeError('Failed to fetch')
+
+      expect(init).toEqual({ method: 'HEAD', cache: 'no-store' })
+
+      return responses[url]
+    })
+
+    expect(await isServed('/uploads/live.png')).toBe(true)
+    expect(await isServed('/uploads/fallback.png')).toBe(false)
+    expect(await isServed('/uploads/missing.png')).toBe(false)
+    expect(await isServed('/uploads/offline.png')).toBe(false)
   })
 })
 

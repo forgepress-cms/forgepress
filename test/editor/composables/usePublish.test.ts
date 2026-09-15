@@ -8,11 +8,12 @@ import type { ForgePressSchema } from '../../../src/types/schema'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, onMounted, ref } from 'vue'
 import { createChanges } from '../../../src/changes'
-import { createMemoryStore } from '../../../src/editor/storage/memory'
 import { defaultPaths } from '../../../src/files/paths'
 import { serializeEntry, serializeSchema } from '../../../src/files/serialize'
+import { createMemoryStore } from '../../../src/storage/memory'
 
-const media = { dir: 'public/uploads', url: '/uploads', maxSize: 1024, assets: [] }
+const media = { dir: 'public/uploads', url: '/uploads', maxSize: 1024 }
+const uploads = { settings: async () => media, stored: async () => [], served: async () => false }
 
 let changes: ChangeService | undefined
 let forge: Forge | undefined
@@ -110,7 +111,7 @@ function site() {
     schema: async () => schema,
     list: async collection => Object.values(content[collection] ?? {}),
     entry: async (collection, id) => content[collection]?.[id],
-  }, async () => media, createMemoryStore(), {
+  }, uploads, createMemoryStore(), {
     entry: async (collection, id) => listing.get(defaultPaths.entry(collection, id)),
   })
 
@@ -127,7 +128,7 @@ afterEach(() => {
 
 describe('publish count', () => {
   it('follows changes saved anywhere in the editor', async () => {
-    const service = createChanges(base, async () => media, createMemoryStore())
+    const service = createChanges(base, uploads, createMemoryStore())
     const container = document.createElement('div')
 
     changes = service

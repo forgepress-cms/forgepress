@@ -39,7 +39,7 @@ function settle(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, 0))
 }
 
-function mount() {
+function mount(asset: MediaAsset = photo) {
   const container = document.createElement('div')
   const open = ref(true)
   const removed: string[] = []
@@ -50,7 +50,7 @@ function mount() {
       'onUpdate:open': (value: boolean) => {
         open.value = value
       },
-      'asset': photo,
+      'asset': asset,
       'onRemove': (asset: MediaAsset) => removed.push(asset.name),
     }),
   }))
@@ -91,6 +91,18 @@ describe('media details', () => {
     button('Delete').click()
 
     expect(removed).toEqual(['team.1a2b3c4d.png'])
+  })
+
+  it('leaves out the file size and date the repository doesn\'t know', async () => {
+    measured.mockResolvedValue({ width: 64, height: 48 })
+
+    const { row } = mount({ name: 'team.1a2b3c4d.png', url: '/uploads/team.1a2b3c4d.png', type: 'image/png' })
+
+    await settle()
+
+    expect(row('Width')).toBe('64 px')
+    expect(row('File size')).toBeUndefined()
+    expect(row('Modified')).toBeUndefined()
   })
 
   it('says when the dimensions cannot be read', async () => {

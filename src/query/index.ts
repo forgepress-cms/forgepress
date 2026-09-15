@@ -4,6 +4,7 @@ import { reader } from '#content-reader'
 import { Builder } from './builder'
 import { createLoader } from './client'
 import { fetchReader } from './fetch'
+import { overlaid } from './overlay'
 
 export interface ClientOptions {
   url?: string
@@ -14,7 +15,7 @@ export interface Client<TSchema extends ForgePressSchema = RegisteredSchema> {
 }
 
 export function createClient<TSchema extends ForgePressSchema = RegisteredSchema>(options: ClientOptions = {}): Client<TSchema> {
-  const loader = createLoader(options.url === undefined ? reader : fetchReader(options.url))
+  const loader = createLoader(overlaid(options.url === undefined ? reader : fetchReader(options.url)))
   const query = (collection: string): Builder => new Builder(loader, collection)
 
   return { query: query as unknown as Query<TSchema> }

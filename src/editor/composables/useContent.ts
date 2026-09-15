@@ -5,10 +5,12 @@ import type { MediaClient } from '../../media/types'
 import type { ContentStore, SchemaWriter } from '../../store/types'
 import { createChanges } from '../../changes'
 import { createForgeSource } from '../../forge/source'
+import { isServed } from '../../media'
+import { announcing } from '../../preview/state'
+import { CHANGES_KEY, persist, repositoryCache } from '../../storage'
 import { lazyMedia, lazyStore } from '../../store/lazy'
 import { media, reader, writer } from '../endpoint'
 import { baked } from '../settings'
-import { persist, repositoryCache } from '../storage'
 import { useSession } from './useSession'
 
 export type EditorMode = 'development' | 'static'
@@ -42,8 +44,9 @@ async function build(): Promise<Resolved> {
     return { store: { ...reader, ...writer }, media, schemaWriter: writer }
 
   const session = useSession()
-  const source = createForgeSource(() => session.forge(), settings.paths, settings.provider?.base, repositoryCache())
-  const changes = createChanges(source, async () => (await baked()).media, persist<Changes>('changes'), source.hashes)
+  const source = createForgeSource(() => session.forge(), settings.paths, settings.provider?.base, repositoryCache(), settings.media.dir)
+  const uploads = { settings: async () => settings.media, stored: () => source.media(), served: isServed }
+  const changes = createChanges(source, uploads, announcing(persist<Changes>(CHANGES_KEY)), source.hashes)
 
   return { store: changes.content, media: changes.media, changes, source }
 }

@@ -43,7 +43,7 @@ function content(): Record<string, Record<string, Record<string, unknown>>> {
   }
 }
 
-async function output(entries = content(), options: { commit: string | null, dev?: boolean } = { commit: 'b03db8f3643a31d7dfaf48ccf77777a33e5e42ae' }): Promise<Map<string, string>> {
+async function output(entries = content(), options: { commit: string | null, dev?: boolean, unpublished?: boolean } = { commit: 'b03db8f3643a31d7dfaf48ccf77777a33e5e42ae' }): Promise<Map<string, string>> {
   const files = await createOutput(schema, entries as ContentEntries, options)
 
   return new Map(files.map((file: OutputFile) => [file.path, file.text]))
@@ -128,6 +128,18 @@ describe('createOutput', () => {
       entries: [{ id: 'author_1', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', name: 'Alice' }],
       files: { author_1: expect.stringMatching(/^author\/author_1\.[\da-f]{8}\.json$/) },
     })
+  })
+
+  it('includes unpublished entries only when asked to, for a preview', async () => {
+    const names = async (unpublished: boolean) => {
+      const files = await output(content(), { commit: null, unpublished })
+      const authors = read<OutputManifest>(files, (read<OutputIndex>(files, 'index.json').collections.author as { manifest: string }).manifest)
+
+      return authors.entries.map(entry => entry.name)
+    }
+
+    expect(await names(false)).toEqual(['Alice'])
+    expect(await names(true)).toEqual(['Alice', 'Bob'])
   })
 
   it('writes entries resolved for their locale', async () => {

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { authorizeUrl, createChallenge, createVerifier, expired, toTokens } from '../../src/forge/oauth'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { authorizeUrl, createChallenge, createVerifier, expired, refreshed, storedTokens, toTokens } from '../../src/forge/oauth'
 
 describe('pkce', () => {
   it('matches the RFC 7636 challenge vector', async () => {
@@ -63,5 +63,44 @@ describe('tokens', () => {
   it('expires a token early enough to beat clock skew', () => {
     expect(expired({ access: 'a', expires: 100_000 }, 60_000)).toBe(false)
     expect(expired({ access: 'a', expires: 100_000 }, 80_000)).toBe(true)
+  })
+})
+
+describe('stored tokens', () => {
+  const gitlab = { type: 'gitlab' as const, repository: { owner: 'acme', name: 'site' }, clientId: 'abc' }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('reads tokens saved as plain strings by earlier versions', () => {
+    expect(storedTokens('a')).toEqual({ access: 'a' })
+    expect(storedTokens('')).toBeUndefined()
+    expect(storedTokens(undefined)).toBeUndefined()
+    expect(storedTokens({ access: 'a', refresh: 'r' })).toEqual({ access: 'a', refresh: 'r' })
+  })
+
+  it('keeps tokens that are still good or can\'t be renewed', async () => {
+    const good = { access: 'a', refresh: 'r', expires: Date.now() + 3_600_000 }
+    const stale = { access: 'a', expires: Date.now() - 1000 }
+
+    expect(await refreshed(good, gitlab)).toBe(good)
+    expect(await refreshed(stale, gitlab)).toBe(stale)
+    expect(await refreshed({ ...stale, refresh: 'r' }, { ...gitlab, type: 'github' })).toEqual({ ...stale, refresh: 'r' })
+  })
+
+  it('renews expired tokens with the refresh token', async () => {
+    const requests: string[] = []
+
+    vi.stubGlobal('fetch', async (input: string, init: RequestInit) => {
+      requests.push(`${input} ${String(init.body)}`)
+
+      return Response.json({ access_token: 'b', refresh_token: 's', expires_in: 7200 })
+    })
+
+    const renewed = await refreshed({ access: 'a', refresh: 'r', expires: Date.now() - 1000 }, gitlab)
+
+    expect(renewed).toMatchObject({ access: 'b', refresh: 's' })
+    expect(requests).toEqual(['https://gitlab.com/oauth/token client_id=abc&grant_type=refresh_token&refresh_token=r'])
   })
 })

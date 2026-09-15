@@ -50,7 +50,7 @@ function activate(asset: MediaAsset): void {
         <span class="grid gap-0.5 px-2 py-1.5">
           <span class="truncate text-xs font-medium text-highlighted">{{ asset.name }}</span>
 
-          <span class="text-xs text-muted">{{ formatSize(asset.size) }}</span>
+          <span v-if="asset.size !== undefined" class="text-xs text-muted">{{ formatSize(asset.size) }}</span>
         </span>
       </button>
 

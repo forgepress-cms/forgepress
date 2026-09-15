@@ -23,6 +23,10 @@
     "./editor": {
       "types": "./dist/editor/index.d.mts",
       "default": "./dist/editor/index.mjs"
+    },
+    "./preview": {
+      "types": "./dist/preview/index.d.mts",
+      "default": "./dist/preview/index.mjs"
     }
   },
   "types": "./dist/index.d.mts",

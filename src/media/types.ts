@@ -9,8 +9,8 @@ export interface MediaAsset {
   name: string
   url: string
   type: string
-  size: number
-  modifiedAt: string
+  size?: number
+  modifiedAt?: string
   preview?: string
 }
 
@@ -22,11 +22,16 @@ export interface PendingUpload {
   data: ArrayBuffer
 }
 
-export interface BakedMedia {
+export interface MediaSettings {
   dir: string
   url: string
   maxSize: number
-  assets: MediaAsset[]
+}
+
+export interface MediaSource {
+  settings: () => Promise<MediaSettings>
+  stored: () => Promise<string[]>
+  served: (url: string) => Promise<boolean>
 }
 
 export interface MediaUpload {

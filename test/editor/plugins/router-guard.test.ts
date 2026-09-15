@@ -26,6 +26,20 @@ afterEach(() => {
 })
 
 describe('navigation', () => {
+  it('starts on the page in the address once a framework has finished rewriting it', async () => {
+    router.dispose()
+    window.history.replaceState(null, '', '#/content')
+    window.history.replaceState(null, '', window.location.pathname)
+    router = createRouter(routes)
+    window.history.replaceState(null, '', '#/content')
+
+    expect(router.route.value.path).toBe('')
+
+    await settle()
+
+    expect(router.route.value.path).toBe('content')
+  })
+
   it('follows a link', async () => {
     await follow('content')
 

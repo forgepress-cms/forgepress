@@ -5,13 +5,21 @@ import type { Forge, HashSource } from './types'
 import { sortByCreation } from '../entries/order'
 import { parseEntry, parseSchema } from '../files/parse'
 import { isEntryFile, isEntryId, prefixer } from '../files/paths'
+import { isMediaFile } from '../media'
 
 const CONCURRENCY = 8
 
 export interface ForgeSource extends ContentSource {
   hashes: HashSource
+  media: () => Promise<string[]>
   read: (sha: string) => Promise<string>
   reset: (commit?: string) => void
+}
+
+interface Snapshot {
+  commit: string
+  files: ReadonlyMap<string, string>
+  media?: Promise<string[]>
 }
 
 type Task<TResult> = () => Promise<TResult>
@@ -40,12 +48,12 @@ function limit(size: number): <TResult>(task: Task<TResult>) => Promise<TResult>
   }
 }
 
-export function createForgeSource(forge: () => Forge | undefined, paths: ContentPaths, base?: string, cache?: RepositoryCache): ForgeSource {
+export function createForgeSource(forge: () => Forge | undefined, paths: ContentPaths, base?: string, cache?: RepositoryCache, mediaDir?: string): ForgeSource {
   const at = prefixer(base)
   const queue = limit(CONCURRENCY)
   const texts = new Map<string, Promise<string>>()
 
-  let snapshot: Promise<ReadonlyMap<string, string>> | undefined
+  let snapshot: Promise<Snapshot> | undefined
   let pinned: string | undefined
 
   function client(): Forge {
@@ -66,8 +74,7 @@ export function createForgeSource(forge: () => Forge | undefined, paths: Content
     }
   }
 
-  async function listing(commit: string): Promise<ReadonlyMap<string, string>> {
-    const directory = at(paths.dir)
+  async function listing(commit: string, directory: string): Promise<ReadonlyMap<string, string>> {
     const stored = await cache?.readListing(commit, directory).catch(() => undefined)
 
     if (stored)
@@ -81,16 +88,16 @@ export function createForgeSource(forge: () => Forge | undefined, paths: Content
     return listed
   }
 
-  async function load(): Promise<ReadonlyMap<string, string>> {
+  async function load(): Promise<Snapshot> {
     const commit = pinned ?? await client().head()
-    const listed = await listing(commit)
+    const listed = await listing(commit, at(paths.dir))
 
     await restore(new Set(listed.values()))
 
-    return listed
+    return { commit, files: listed }
   }
 
-  function files(): Promise<ReadonlyMap<string, string>> {
+  function current(): Promise<Snapshot> {
     if (!snapshot) {
       const loading = load()
 
@@ -116,8 +123,34 @@ export function createForgeSource(forge: () => Forge | undefined, paths: Content
     return pending
   }
 
+  async function files(): Promise<ReadonlyMap<string, string>> {
+    return (await current()).files
+  }
+
   async function hash(path: string): Promise<string | undefined> {
     return (await files()).get(path)
+  }
+
+  async function media(): Promise<string[]> {
+    if (mediaDir === undefined)
+      return []
+
+    const found = await current()
+    const directory = `${at(mediaDir)}/`
+
+    if (!found.media) {
+      const loading = listing(found.commit, at(mediaDir)).then(listed => [...listed.keys()]
+        .map(path => path.slice(directory.length))
+        .filter(isMediaFile))
+
+      found.media = loading
+      loading.catch(() => {
+        if (found.media === loading)
+          delete found.media
+      })
+    }
+
+    return found.media
   }
 
   async function list(collection: string): Promise<Entry[]> {
@@ -153,6 +186,8 @@ export function createForgeSource(forge: () => Forge | undefined, paths: Content
     hashes: {
       entry: async (collection, id) => isEntryId(id) ? hash(at(paths.entry(collection, id))) : undefined,
     },
+
+    media,
 
     read: text,
 

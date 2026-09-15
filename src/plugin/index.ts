@@ -135,11 +135,6 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
         }
 
         function reload(): void {
-          const settings = server.moduleGraph.getModuleById(resolved(SETTINGS_ID))
-
-          if (settings)
-            server.moduleGraph.invalidateModule(settings)
-
           server.ws.send({ type: 'full-reload' })
         }
 
@@ -232,7 +227,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
 
     async load(id) {
       if (id === resolved(SETTINGS_ID))
-        return generateSettings(root, local, await resolve())
+        return generateSettings(local, await resolve())
     },
   }
 }

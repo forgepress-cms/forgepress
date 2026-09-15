@@ -60,13 +60,13 @@ function pixels(value: number | undefined): string {
         <div class="grid gap-x-8 gap-y-2 sm:grid-cols-2">
           <MetaItem label="Name" :value="asset.name" mono />
 
-          <MetaItem label="File size" :value="formatSize(asset.size)" />
+          <MetaItem v-if="asset.size !== undefined" label="File size" :value="formatSize(asset.size)" />
 
           <MetaItem label="Width" :value="pixels(size?.width)" />
 
           <MetaItem label="Height" :value="pixels(size?.height)" />
 
-          <MetaItem label="Modified" :value="new Date(asset.modifiedAt).toLocaleString()" />
+          <MetaItem v-if="asset.modifiedAt" label="Modified" :value="new Date(asset.modifiedAt).toLocaleString()" />
 
           <MetaItem label="URL" :value="asset.url" mono />
         </div>
