@@ -20,7 +20,7 @@ const { route, href } = useRouter()
 const { mode, cycle } = useColorMode()
 const { identity, signOut } = useSession()
 const { count, refresh } = usePublish()
-const preview = usePreview()
+const { enabled: previewing, set: setPreview } = usePreview()
 
 const showPublish = ref(false)
 
@@ -28,13 +28,6 @@ onMounted(refresh)
 
 const account = computed(() => [[
   { label: identity.value?.login ?? '', type: 'label' as const },
-], [
-  {
-    label: 'Preview on the site',
-    type: 'checkbox' as const,
-    checked: preview.enabled.value,
-    onUpdateChecked: (checked: boolean) => preview.set(checked),
-  },
 ], [
   { label: 'Sign out', icon: 'i-lucide-log-out', onSelect: () => void signOut() },
 ]])
@@ -81,6 +74,17 @@ const icons: Record<ColorMode, string> = {
       <UDropdownMenu v-if="identity" :items="account">
         <UButton :label="identity.login" icon="i-lucide-user" color="neutral" variant="ghost" />
       </UDropdownMenu>
+
+      <UButton
+        v-if="identity"
+        :icon="previewing ? 'i-lucide-eye' : 'i-lucide-eye-off'"
+        color="neutral"
+        variant="ghost"
+        :aria-pressed="previewing"
+        :aria-label="`Site preview: ${previewing ? 'on' : 'off'}`"
+        :title="`Site preview: ${previewing ? 'on' : 'off'}`"
+        @click="setPreview(!previewing)"
+      />
 
       <UButton
         :icon="icons[mode]"

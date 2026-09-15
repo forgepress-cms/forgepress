@@ -5,6 +5,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import { colorModeKey, createColorMode } from './plugins/color-mode'
 import { createRouter, routerKey } from './plugins/router'
+import { createTitle, titleKey } from './plugins/title'
 import { routes } from './routes'
 import styles from './styles.css?inline'
 
@@ -59,16 +60,19 @@ export const mountEditor: MountEditor = (target) => {
   const app = createApp(App, { container })
   const router = createRouter(routes)
   const colorMode = createColorMode(container)
+  const title = createTitle()
 
   app.use(ui)
   app.provide(routerKey, router)
   app.provide(colorModeKey, colorMode)
+  app.provide(titleKey, title)
   app.mount(container)
 
   return () => {
     app.unmount()
     router.dispose()
     colorMode.dispose()
+    title.dispose()
     unregister?.()
     root.replaceChildren()
     host.removeAttribute(EDITOR_ATTRIBUTE)

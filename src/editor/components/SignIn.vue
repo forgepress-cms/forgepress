@@ -2,9 +2,12 @@
 import { computed, ref } from 'vue'
 import { describe } from '../../forge/providers'
 import { useSession } from '../composables/useSession'
+import { useTitle } from '../composables/useTitle'
 import ErrorAlert from './ErrorAlert.vue'
 
 const { provider, pending, error, redirects, signIn, signInWithForge } = useSession()
+
+useTitle('Sign in to edit')
 
 const token = ref('')
 

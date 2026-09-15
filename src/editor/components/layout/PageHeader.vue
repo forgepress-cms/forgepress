@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { BreadcrumbItem } from '@nuxt/ui'
+import { useTitle } from '../../composables/useTitle'
 
-defineProps<{
+const props = defineProps<{
   title: string
   breadcrumb?: BreadcrumbItem[]
   description?: string | undefined
@@ -11,6 +12,8 @@ defineSlots<{
   description?: () => unknown
   actions?: () => unknown
 }>()
+
+useTitle(() => props.title)
 </script>
 
 <template>
