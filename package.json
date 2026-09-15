@@ -9,7 +9,10 @@
     "type": "git",
     "url": "git+https://github.com/forgepress-cms/forgepress.git"
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/next/preview.mjs",
+    "./dist/next/reload.mjs"
+  ],
   "imports": {
     "#content-reader": {
       "node": "./dist/disk/reader.mjs",
@@ -25,6 +28,26 @@
       "types": "./dist/unplugin.d.mts",
       "default": "./dist/unplugin.mjs"
     },
+    "./nuxt": {
+      "types": "./dist/plugin/nuxt.d.mts",
+      "default": "./dist/plugin/nuxt.mjs"
+    },
+    "./next": {
+      "types": "./dist/plugin/next.d.mts",
+      "default": "./dist/plugin/next.mjs"
+    },
+    "./next/preview": {
+      "types": "./dist/next/preview.d.mts",
+      "default": "./dist/next/preview.mjs"
+    },
+    "./next/reload": {
+      "types": "./dist/next/reload.d.mts",
+      "default": "./dist/next/reload.mjs"
+    },
+    "./next/settings": {
+      "types": "./dist/next/settings.d.mts",
+      "default": "./dist/next/settings.mjs"
+    },
     "./editor": {
       "types": "./dist/editor/index.d.mts",
       "default": "./dist/editor/index.mjs"
@@ -32,6 +55,10 @@
     "./preview": {
       "types": "./dist/preview/index.d.mts",
       "default": "./dist/preview/index.mjs"
+    },
+    "./react": {
+      "types": "./dist/preview/react.d.mts",
+      "default": "./dist/preview/react.mjs"
     }
   },
   "types": "./dist/index.d.mts",
@@ -43,21 +70,27 @@
   ],
   "scripts": {
     "lint": "eslint .",
-    "typecheck": "vue-tsc --noEmit && pnpm --filter=playground-nuxt run typecheck && pnpm --filter=docs run typecheck",
+    "typecheck": "vue-tsc --noEmit && pnpm --filter=playground-nuxt run typecheck && pnpm --filter=playground-next run typecheck && pnpm --filter=docs run typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "obuild && pnpm run build:editor",
     "build:editor": "vite build --config vite.editor.config.mjs",
+    "dev": "node --watch-path=src --watch-preserve-output scripts/build.mjs",
     "dev:editor": "vite build --config vite.editor.config.mjs --watch",
     "dev:nuxt": "pnpm --filter=playground-nuxt run dev",
+    "dev:next": "pnpm --filter=playground-next run dev",
     "dev:docs": "pnpm --filter=docs run dev",
     "check:package": "publint --strict && attw --pack . --profile esm-only",
     "prepack": "pnpm run build"
   },
   "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
     "vue": "^3.5.0"
   },
   "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
     "vue": {
       "optional": true
     }
@@ -72,11 +105,15 @@
     "@nuxt/ui": "^4.11.1",
     "@tanstack/vue-table": "^8.21.3",
     "@types/node": "^24.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-vue": "^6.0.8",
     "eslint": "^10.10.0",
     "happy-dom": "^20.14.3",
     "obuild": "^0.4.39",
     "publint": "^0.3.24",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "vite": "^8.3.0",

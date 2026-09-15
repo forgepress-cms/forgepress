@@ -106,7 +106,7 @@ beforeEach(async () => {
   for (const [name, component] of Object.entries(stubs))
     app.component(name, component)
 
-  app.provide(routerKey, { reload, href: (path: string) => `#/${path}` } as never)
+  app.provide(routerKey, { reload, href: (path: string) => `/admin?path=/${path}` } as never)
   app.mount(container)
 
   await settle()
@@ -173,7 +173,7 @@ describe('publish dialog', () => {
     expect(container.textContent).toContain('Field "author" references author/author_3, which doesn\'t exist')
     expect(container.textContent).toContain('.forgepress/schema.ts')
     expect(links.map(link => [link.textContent, link.getAttribute('href')])).toEqual([
-      ['.forgepress/content/blog-post/post_1.ts', '#/content/blogPost/post_1'],
+      ['.forgepress/content/blog-post/post_1.ts', '/admin?path=/content/blogPost/post_1'],
     ])
 
     links[0]!.click()

@@ -1,8 +1,9 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished } from 'vitest'
 import { run, USAGE } from '../../src/cli'
 
 const scratch = fileURLToPath(new URL('../../node_modules/.forgepress-cli-test', import.meta.url))
@@ -91,13 +92,15 @@ describe('forgepress', () => {
   })
 
   it('checks and builds a project that has no schema yet', async () => {
-    rmSync(scratch, { recursive: true, force: true })
-    mkdirSync(join(scratch, 'src'), { recursive: true })
-    writeFileSync(join(scratch, 'package.json'), '{}\n')
+    const empty = mkdtempSync(join(tmpdir(), 'forgepress-cli-empty-'))
 
-    expect(await command(['check'], join(scratch, 'src'))).toEqual({ code: 0, log: 'No problems found', error: '' })
-    expect((await command(['build'], join(scratch, 'src'))).log).toMatch(/^Wrote the content output to public\/content \(1 file, /)
-    expect(existsSync(join(scratch, 'public/content/index.json'))).toBe(true)
+    onTestFinished(() => rmSync(empty, { recursive: true, force: true }))
+    mkdirSync(join(empty, 'src'))
+    writeFileSync(join(empty, 'package.json'), '{}\n')
+
+    expect(await command(['check'], join(empty, 'src'))).toEqual({ code: 0, log: 'No problems found', error: '' })
+    expect((await command(['build'], join(empty, 'src'))).log).toMatch(/^Wrote the content output to public\/content \(1 file, /)
+    expect(existsSync(join(empty, 'public/content/index.json'))).toBe(true)
   })
 
   it('reports other failures without a stack', async () => {

@@ -2,11 +2,12 @@ import type { Buffer } from 'node:buffer'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { UnpluginContextMeta } from 'unplugin'
 import type { OutputIndex } from '../../src/output/types'
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished } from 'vitest'
 import { ContentError } from '../../src/files/issues'
 import { unpluginFactory } from '../../src/unplugin'
 
@@ -222,14 +223,17 @@ describe('build', () => {
   })
 
   it('finds the project above the Vite root, like app/ in a Nuxt project', async () => {
-    rmSync(scratch, { recursive: true, force: true })
-    write('package.json', '{}\n')
-    write('app/app.vue', '<template />\n')
-    await create('build', {}, join(scratch, 'app')).buildStart()
+    const site = mkdtempSync(join(tmpdir(), 'forgepress-vite-root-'))
 
-    expect(index()).toMatchObject({ collections: {} })
-    expect(existsSync(join(scratch, 'app/.forgepress'))).toBe(false)
-    expect(existsSync(join(scratch, 'app/public'))).toBe(false)
+    onTestFinished(() => rmSync(site, { recursive: true, force: true }))
+    mkdirSync(join(site, 'app'))
+    writeFileSync(join(site, 'package.json'), '{}\n')
+    writeFileSync(join(site, 'app/app.vue'), '<template />\n')
+    await create('build', {}, join(site, 'app')).buildStart()
+
+    expect(JSON.parse(readFileSync(join(site, 'public/content/index.json'), 'utf8'))).toMatchObject({ collections: {} })
+    expect(existsSync(join(site, 'app/.forgepress'))).toBe(false)
+    expect(existsSync(join(site, 'app/public'))).toBe(false)
   })
 
   it('fails and writes nothing while content has problems', async () => {

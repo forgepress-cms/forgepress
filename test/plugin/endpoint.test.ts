@@ -1,13 +1,14 @@
 import type { IncomingMessage, Server, ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import type { UnpluginContextMeta } from 'unplugin'
+import type { Endpoint } from '../../src/editor/endpoint'
 import { Buffer } from 'node:buffer'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer, request as send } from 'node:http'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { reader, writer } from '../../src/editor/endpoint'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { createEndpoint } from '../../src/editor/endpoint'
 import { unpluginFactory } from '../../src/unplugin'
 
 type Middleware = (request: IncomingMessage, response: ServerResponse, next: () => void) => void
@@ -27,6 +28,8 @@ const files: Record<string, string> = {
 const reloads: unknown[] = []
 let server: Server
 let base = ''
+let reader: Endpoint['reader']
+let writer: Endpoint['writer']
 
 interface Answer {
   status: number
@@ -92,9 +95,7 @@ beforeAll(async () => {
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
 
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
-  const fetch = globalThis.fetch
-
-  vi.stubGlobal('fetch', (path: string, init?: RequestInit) => fetch(`${base}${path}`, init))
+  ;({ reader, writer } = createEndpoint(base))
 })
 
 beforeEach(() => {
@@ -102,7 +103,6 @@ beforeEach(() => {
 })
 
 afterAll(async () => {
-  vi.unstubAllGlobals()
   await new Promise(resolve => server.close(resolve))
   rmSync(scratch, { recursive: true, force: true })
 })

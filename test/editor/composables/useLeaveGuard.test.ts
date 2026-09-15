@@ -16,6 +16,17 @@ function settle(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, 0))
 }
 
+async function follow(path: string): Promise<void> {
+  const link = document.createElement('a')
+
+  link.href = router.href(path)
+  link.addEventListener('click', router.follow)
+  document.body.append(link)
+  link.click()
+  link.remove()
+  await settle()
+}
+
 function edit() {
   const form = reactive({ label: 'Name' })
   const back: string[] = []
@@ -34,7 +45,7 @@ function edit() {
 }
 
 beforeEach(() => {
-  window.location.hash = ''
+  window.history.replaceState(null, '', '/admin')
   router = createRouter(routes)
 })
 
@@ -47,8 +58,7 @@ describe('useLeaveGuard', () => {
   it('lets a clean draft leave', async () => {
     const { draft } = edit()
 
-    window.location.hash = '#/schema'
-    await settle()
+    await follow('schema')
 
     expect(draft.leaving.value).toBe(false)
     expect(router.route.value.path).toBe('schema')
@@ -59,8 +69,7 @@ describe('useLeaveGuard', () => {
 
     form.label = 'Title'
 
-    window.location.hash = '#/schema'
-    await settle()
+    await follow('schema')
 
     expect(draft.leaving.value).toBe(true)
     expect(router.route.value.path).toBe('')
@@ -71,8 +80,7 @@ describe('useLeaveGuard', () => {
 
     form.label = 'Title'
 
-    window.location.hash = '#/schema'
-    await settle()
+    await follow('schema')
 
     draft.discard()
     await settle()
@@ -100,8 +108,7 @@ describe('useLeaveGuard', () => {
 
     form.label = 'Title'
 
-    window.location.hash = '#/schema'
-    await settle()
+    await follow('schema')
 
     draft.leaving.value = false
     await nextTick()
@@ -119,8 +126,7 @@ describe('useLeaveGuard', () => {
 
     form.label = 'Title'
 
-    window.location.hash = '#/schema'
-    await settle()
+    await follow('schema')
 
     expect(draft.leaving.value).toBe(true)
 
@@ -153,8 +159,7 @@ describe('useLeaveGuard', () => {
 
     app.unmount()
 
-    window.location.hash = '#/schema'
-    await settle()
+    await follow('schema')
 
     expect(router.route.value.path).toBe('schema')
   })

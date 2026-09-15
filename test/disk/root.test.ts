@@ -56,6 +56,13 @@ describe('findRoot', () => {
     expect(findRoot(join(root, 'app'))).toBe(root)
   })
 
+  it('stops at the nearest package, even below a folder with a config file or a schema', () => {
+    const root = project(['package.json', 'forgepress.config.mjs', '.forgepress/schema.ts', 'playgrounds/site/package.json', 'playgrounds/site/app/app.vue'])
+
+    expect(findRoot(join(root, 'playgrounds/site/app'))).toBe(join(root, 'playgrounds/site'))
+    expect(findRoot(join(root, 'playgrounds'))).toBe(root)
+  })
+
   it('falls back to where it started outside any package', () => {
     const root = project(['app/app.vue'])
 

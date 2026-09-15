@@ -1,4 +1,6 @@
 export default {
+  path: '../.forgepress',
+
   provider: {
     type: 'github',
 

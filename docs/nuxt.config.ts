@@ -1,9 +1,9 @@
-import { vitePlugin as forgepress } from 'forgepress/unplugin'
-
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
 
   devtools: { enabled: true },
+
+  modules: ['forgepress/nuxt'],
 
   app: {
     head: {
@@ -15,16 +15,5 @@ export default defineNuxtConfig({
     prerender: {
       routes: ['/', '/admin'],
     },
-  },
-
-  hooks: {
-    'prepare:types': ({ tsConfig }) => {
-      tsConfig.include ??= []
-      tsConfig.include.push('../.forgepress/**/*.ts')
-    },
-  },
-
-  vite: {
-    plugins: [forgepress()],
   },
 })

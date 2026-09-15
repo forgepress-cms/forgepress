@@ -7,10 +7,10 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
+    "forgepress": "workspace:*",
     "nuxt": "^4.4.7",
     "vue": "^3.5.35",
     "vue-router": "^5.1.0",

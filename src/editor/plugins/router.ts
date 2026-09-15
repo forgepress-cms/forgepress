@@ -1,6 +1,7 @@
 import type { Component, InjectionKey, Ref } from 'vue'
 
 import { shallowRef } from 'vue'
+import { updateAddress } from '../utils/address'
 
 export type EditorRoutes = Record<string, Component>
 
@@ -17,11 +18,23 @@ export interface EditorRouter {
   navigate: (path?: string) => void
   reload: () => void
   href: (path?: string) => string
+  follow: (event: MouseEvent) => void
   block: (guard: NavigationGuard) => () => void
   dispose: () => void
 }
 
 export const routerKey: InjectionKey<EditorRouter> = Symbol('forgepress:editor:router')
+
+const PATH_PARAMETER = 'path'
+const LEADING_SLASHES = /^\/+/
+
+function pathOf(url: URL | Location): string {
+  return (new URLSearchParams(url.search).get(PATH_PARAMETER) ?? '').replace(LEADING_SLASHES, '')
+}
+
+function addressOf(path: string): string {
+  return path ? `${window.location.pathname}?${PATH_PARAMETER}=/${path.split('/').map(encodeURIComponent).join('/')}` : window.location.pathname
+}
 
 function segments(path: string): string[] {
   return path.split('/').filter(Boolean).map(decodeURIComponent)
@@ -64,87 +77,80 @@ export function createRouter(routes: EditorRoutes): EditorRouter {
   if (!routes[''])
     throw new Error('[forgepress] the editor router needs a route for \'\'')
 
-  const read = (): string => window.location.hash.replace(/^#\/?/, '')
+  const read = (): string => pathOf(window.location)
   const route = shallowRef<EditorRoute>(matchRoute(routes, read()))
 
   const guards = new Set<NavigationGuard>()
 
-  let bypass = false
-  let reverting = false
-
-  function go(path: string): void {
-    if (read() === path)
-      route.value = matchRoute(routes, path)
-    else
-      window.location.hash = `#/${path}`
+  function show(path: string): void {
+    route.value = matchRoute(routes, path)
   }
 
-  function allowed(path: string): boolean {
-    if (bypass) {
-      bypass = false
+  function go(path: string): void {
+    show(path)
 
-      return true
-    }
+    if (read() !== path)
+      updateAddress(addressOf(path), true)
+  }
 
-    const resume = (): void => {
-      bypass = true
-      go(path)
-    }
-
+  function allowed(resume: () => void): boolean {
     return ![...guards].some(guard => guard(resume))
   }
 
+  function navigate(path = ''): void {
+    if (path !== route.value.path && allowed(() => go(path)))
+      go(path)
+  }
+
   const onChange = (): void => {
-    if (reverting) {
-      reverting = false
-
-      return
-    }
-
     const next = read()
 
     if (next === route.value.path)
       return
 
-    if (!allowed(next)) {
-      reverting = true
-      window.location.hash = `#/${route.value.path}`
-
-      return
-    }
-
-    route.value = matchRoute(routes, next)
+    if (allowed(() => go(next)))
+      show(next)
+    else
+      updateAddress(addressOf(route.value.path), true)
   }
 
-  window.addEventListener('hashchange', onChange)
+  window.addEventListener('popstate', onChange)
 
   const settled = window.setTimeout(() => {
     const current = read()
 
     if (current !== route.value.path)
-      route.value = matchRoute(routes, current)
+      show(current)
   }, 0)
 
   return {
     route,
 
-    navigate: (path) => {
-      const next = path ?? ''
-
-      if (next !== route.value.path && allowed(next))
-        go(next)
-    },
+    navigate,
 
     reload: () => {
-      const again = (): void => {
-        route.value = matchRoute(routes, route.value.path)
-      }
+      const again = (): void => show(route.value.path)
 
       if (![...guards].some(guard => guard(again)))
         again()
     },
 
-    href: path => `#/${path ?? ''}`,
+    href: path => addressOf(path ?? ''),
+
+    follow: (event) => {
+      const link = event.composedPath().find(node => node instanceof HTMLAnchorElement)
+
+      if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || (link.target && link.target !== '_self') || link.hasAttribute('download'))
+        return
+
+      const url = new URL(link.href)
+
+      if (url.origin !== window.location.origin || url.pathname !== window.location.pathname || url.hash || [...url.searchParams.keys()].some(key => key !== PATH_PARAMETER))
+        return
+
+      event.preventDefault()
+      navigate(pathOf(url))
+    },
 
     block: (guard) => {
       guards.add(guard)
@@ -155,7 +161,7 @@ export function createRouter(routes: EditorRoutes): EditorRouter {
     dispose: () => {
       guards.clear()
       window.clearTimeout(settled)
-      window.removeEventListener('hashchange', onChange)
+      window.removeEventListener('popstate', onChange)
     },
   }
 }

@@ -3,34 +3,19 @@ import { query } from 'forgepress'
 
 const { data: home } = await useAsyncData('home', () =>
   query('page')
-    .locale('en')
     .where('slug', '/')
-    .with('content')
     .first()
     .then(page => page ?? null))
 
-const { data: posts } = await useAsyncData('blog-posts', () =>
-  query('blogPost')
-    .locale('en')
-    .with('author')
-    .sort('createdAt', 'desc'))
+const { data: pages } = await useAsyncData('pages', () =>
+  query('page')
+    .sort('slug', 'asc')
+    .pick('id', 'title', 'slug'))
 
-const { data: authors } = await useAsyncData('blog-authors', () =>
-  query('author')
-    .locale('en')
-    .sort('name', 'asc')
-    .pick('id', 'name'))
-
-const testQuery = () => query('hero').locale('en').first()
+const testQuery = () => query('page').sort('updatedAt', 'desc').first()
 const test = ref<Awaited<ReturnType<typeof testQuery>>>()
 async function getInBrowser() {
   test.value = await testQuery()
-}
-
-const testQuery2 = () => query('author').locale('en').first()
-const test2 = ref<Awaited<ReturnType<typeof testQuery2>>>()
-async function getInBrowser2() {
-  test2.value = await testQuery2()
 }
 </script>
 
@@ -38,52 +23,25 @@ async function getInBrowser2() {
   <main>
     <section v-if="home">
       <h1>{{ home.title }}</h1>
-
-      <template v-for="block in home.content" :key="block.id">
-        <div v-if="block.collection === 'hero'">
-          <h2>{{ block.entry.headline }}</h2>
-          <p>{{ block.entry.subheadline }}</p>
-        </div>
-
-        <p v-else>
-          {{ block.entry.content }}
-        </p>
-      </template>
+      <p>{{ home.content }}</p>
     </section>
 
-    <h1>Blog</h1>
-
-    <article v-for="post in posts" :key="post.id">
-      <h2>{{ post.title }}</h2>
-      <p>by {{ post.author?.name }} · {{ new Date(post.createdAt).toLocaleDateString() }}</p>
-      <p>{{ post.content }}</p>
-    </article>
-
     <div>
-      <h2>Authors</h2>
+      <h2>Pages</h2>
       <ul>
-        <li v-for="author in authors" :key="author.id">
-          {{ author.name }}
+        <li v-for="page in pages" :key="page.id">
+          {{ page.title }} · {{ page.slug }}
         </li>
       </ul>
     </div>
 
     <button @click="getInBrowser">
-      Get Hero in Browser
+      Get Latest Page in Browser
     </button>
 
     <div v-if="test">
-      <h2>Hero</h2>
-      <p>{{ test.headline }}</p>
-    </div>
-
-    <button @click="getInBrowser2">
-      Get Author in Browser
-    </button>
-
-    <div v-if="test2">
-      <h2>Author</h2>
-      <p>{{ test2.name }}</p>
+      <h2>Latest Page</h2>
+      <p>{{ test.title }}</p>
     </div>
   </main>
 </template>

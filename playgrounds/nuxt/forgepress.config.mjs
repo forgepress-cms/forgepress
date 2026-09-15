@@ -1,6 +1,6 @@
 /** @type {import('forgepress').ForgePressConfig} */
 export default {
-  path: '.forgepress',
+  path: '../../.forgepress',
 
   provider: {
     type: 'github',

@@ -2,6 +2,7 @@ import type { EntryRef } from '../types/entry'
 
 export const DEFAULT_CONTENT_PATH = '.forgepress'
 export const ENDPOINT = '/__forgepress'
+export const EVENTS = `${ENDPOINT}/events`
 
 const ENTRY_FILE = /\.ts$/
 const ENTRY_ID = /^[\w-]+$/
@@ -57,10 +58,26 @@ export function toEntryRef(content: string, path: string): EntryRef | undefined 
     : undefined
 }
 
-export function prefixer(base?: string): (path: string) => string {
-  const prefix = base?.replace(EDGE_SLASHES, '') ?? ''
+export function repositoryPath(path: string): string {
+  const segments: string[] = []
 
-  return path => prefix ? `${prefix}/${path}` : path
+  for (const segment of path.replace(/\\/g, '/').split('/')) {
+    if (segment === '' || segment === '.')
+      continue
+
+    if (segment !== '..')
+      segments.push(segment)
+    else if (segments.pop() === undefined)
+      throw new Error(`[forgepress] ${JSON.stringify(path)} points outside the repository`)
+  }
+
+  return segments.join('/')
+}
+
+export function prefixer(base?: string): (path: string) => string {
+  const prefix = base?.replace(/\\/g, '/').replace(EDGE_SLASHES, '') ?? ''
+
+  return path => repositoryPath(prefix ? `${prefix}/${path}` : path)
 }
 
 export function createPaths(path?: string): ContentPaths {

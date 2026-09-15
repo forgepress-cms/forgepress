@@ -16,8 +16,7 @@ function ancestor(start: string, found: (dir: string) => boolean): string | unde
 }
 
 export function findRoot(start: string = process.cwd(), contentPath: string = DEFAULT_CONTENT_PATH): string {
-  const schema = createPaths(contentPath).schema
-  const marked = (dir: string): boolean => CONFIG_FILES.some(file => existsSync(join(dir, file))) || existsSync(join(dir, schema))
+  const marks = [...CONFIG_FILES, createPaths(contentPath).schema, 'package.json']
 
-  return ancestor(start, marked) ?? ancestor(start, dir => existsSync(join(dir, 'package.json'))) ?? start
+  return ancestor(start, dir => marks.some(file => existsSync(join(dir, file)))) ?? start
 }

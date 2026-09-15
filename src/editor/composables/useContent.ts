@@ -9,7 +9,7 @@ import { isServed } from '../../media'
 import { announcing } from '../../preview/state'
 import { CHANGES_KEY, persist, repositoryCache } from '../../storage'
 import { lazyMedia, lazyStore } from '../../store/lazy'
-import { media, reader, writer } from '../endpoint'
+import { createEndpoint } from '../endpoint'
 import { baked } from '../settings'
 import { useSession } from './useSession'
 
@@ -40,8 +40,11 @@ let resolved: Promise<Resolved> | undefined
 async function build(): Promise<Resolved> {
   const settings = await baked()
 
-  if (settings.local)
+  if (settings.local) {
+    const { reader, writer, media } = createEndpoint(settings.devServer)
+
     return { store: { ...reader, ...writer }, media, schemaWriter: writer }
+  }
 
   const session = useSession()
   const source = createForgeSource(() => session.forge(), settings.paths, settings.provider?.base, repositoryCache(), settings.media.dir)

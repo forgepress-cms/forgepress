@@ -9,6 +9,7 @@ import { closePreview, openPreview } from '../../preview/state'
 import { persist, repositoryCache, TOKEN_KEY } from '../../storage'
 import { errorMessage } from '../../utils/error'
 import { baked } from '../settings'
+import { updateAddress } from '../utils/address'
 
 const PKCE = 'forgepress:pkce'
 
@@ -133,7 +134,7 @@ function clean(): void {
   url.searchParams.delete('code')
   url.searchParams.delete('state')
 
-  window.history.replaceState({}, '', url.toString())
+  updateAddress(url.toString())
 }
 
 async function complete(): Promise<boolean> {

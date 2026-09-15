@@ -21,6 +21,11 @@ export class EndpointError extends Error {
   }
 }
 
+export interface OriginPolicy {
+  accepts: (request: IncomingMessage) => boolean
+  refusal: string
+}
+
 function sameOrigin(request: IncomingMessage): boolean {
   const site = request.headers['sec-fetch-site']
 
@@ -38,6 +43,11 @@ function sameOrigin(request: IncomingMessage): boolean {
   catch {
     return false
   }
+}
+
+export const SAME_ORIGIN: OriginPolicy = {
+  accepts: sameOrigin,
+  refusal: 'the dev endpoint only accepts requests from pages on its own origin',
 }
 
 function missing(path: string): EndpointError {
@@ -217,9 +227,9 @@ async function write(config: ResolvedConfig, root: string, path: string, request
   done(response)
 }
 
-export async function handle(config: ResolvedConfig, root: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
-  if (!sameOrigin(request))
-    throw new EndpointError(403, 'the dev endpoint only accepts requests from pages on its own origin')
+export async function handle(config: ResolvedConfig, root: string, request: IncomingMessage, response: ServerResponse, origins: OriginPolicy = SAME_ORIGIN): Promise<void> {
+  if (!origins.accepts(request))
+    throw new EndpointError(403, origins.refusal)
 
   const path = (request.url ?? '').slice(ENDPOINT.length)
 

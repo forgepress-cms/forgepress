@@ -37,6 +37,7 @@ describe('editor settings module', () => {
 
     expect(code).toBe([
       'export const local = false',
+      'export const devServer = ""',
       'export const provider = null',
       'export const format = null',
       'export const contentPath = ".forgepress"',

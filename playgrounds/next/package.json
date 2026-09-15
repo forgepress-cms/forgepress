@@ -1,0 +1,23 @@
+{
+  "name": "playground-next",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "typecheck": "next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "forgepress": "workspace:*",
+    "next": "^16.3.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "vue": "^3.5.42"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^6.0.3"
+  }
+}

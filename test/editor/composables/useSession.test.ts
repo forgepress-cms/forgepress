@@ -84,7 +84,7 @@ describe('session', () => {
     })
 
     sessionStorage.setItem('forgepress:pkce', JSON.stringify({ verifier: 'verifier', state: 'state' }))
-    window.history.replaceState(null, '', '/admin?code=code&state=state#/content')
+    window.history.replaceState(null, '', '/admin?code=code&state=state')
 
     const signedIn = await load()
     const kept: unknown[] = []
@@ -94,7 +94,7 @@ describe('session', () => {
 
     expect(signedIn.session.identity.value).toEqual({ login: 'fred' })
     expect(kept).toEqual([{ access: 'granted', refresh: 'renewal', expires: expect.any(Number) }])
-    expect(window.location.pathname + window.location.search + window.location.hash).toBe('/admin#/content')
+    expect(window.location.pathname + window.location.search + window.location.hash).toBe('/admin')
 
     const reloaded = await load()
 

@@ -6,6 +6,7 @@ import { createPaths } from '../files/paths'
 
 export interface BakedSettings {
   local: boolean
+  devServer: string
   media: MediaSettings
   provider: ProviderConfig | undefined
   format: ContentConfig | undefined
@@ -17,6 +18,7 @@ let settings: Promise<BakedSettings> | undefined
 export function baked(): Promise<BakedSettings> {
   settings ??= import('virtual:forgepress/settings').then(module => ({
     local: module.local === true,
+    devServer: module.devServer,
     media: module.media,
     provider: module.provider ?? undefined,
     format: module.format ?? undefined,

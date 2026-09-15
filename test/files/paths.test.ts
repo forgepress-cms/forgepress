@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createPaths, defaultPaths, normalizeDir, toCollectionDir, toCollectionName, toEntryRef } from '../../src/files/paths'
+import { createPaths, defaultPaths, normalizeDir, prefixer, repositoryPath, toCollectionDir, toCollectionName, toEntryRef } from '../../src/files/paths'
 
 describe('createPaths', () => {
   it('defaults to the .forgepress directory', () => {
@@ -21,6 +21,34 @@ describe('createPaths', () => {
     expect(normalizeDir('/content/')).toBe('content')
     expect(normalizeDir('')).toBe('.forgepress')
     expect(normalizeDir(undefined)).toBe('.forgepress')
+  })
+})
+
+describe('repository paths', () => {
+  it('puts paths below the folder of the project in the repository', () => {
+    expect(prefixer('playgrounds/nuxt')('.forgepress/schema.ts')).toBe('playgrounds/nuxt/.forgepress/schema.ts')
+    expect(prefixer('/docs/')('public/uploads')).toBe('docs/public/uploads')
+    expect(prefixer()('.forgepress/content')).toBe('.forgepress/content')
+    expect(prefixer('')('.forgepress/content')).toBe('.forgepress/content')
+  })
+
+  it('resolves a content folder next to the project, like one shared by several playgrounds', () => {
+    const at = prefixer('playgrounds/nuxt')
+    const paths = createPaths('../.forgepress')
+
+    expect(at(paths.dir)).toBe('playgrounds/.forgepress')
+    expect(at(paths.entry('blogPost', 'post_1'))).toBe('playgrounds/.forgepress/content/blog-post/post_1.ts')
+    expect(toEntryRef(at(paths.content), 'playgrounds/.forgepress/content/blog-post/post_1.ts')).toEqual({ collection: 'blogPost', id: 'post_1' })
+  })
+
+  it('reads the same path however it is written', () => {
+    expect(repositoryPath('./docs//.forgepress/./content/')).toBe('docs/.forgepress/content')
+    expect(repositoryPath('apps\\site\\..\\docs\\.forgepress')).toBe('apps/docs/.forgepress')
+  })
+
+  it('refuses paths that leave the repository', () => {
+    expect(() => prefixer('docs')('../../.forgepress')).toThrow('"docs/../../.forgepress" points outside the repository')
+    expect(() => prefixer()('../.forgepress')).toThrow('points outside the repository')
   })
 })
 

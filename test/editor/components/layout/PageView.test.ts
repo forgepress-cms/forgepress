@@ -40,7 +40,7 @@ function settle(): Promise<void> {
 }
 
 async function open(path: string) {
-  window.location.hash = `#/${path}`
+  window.history.replaceState(null, '', `/admin?path=/${path}`)
   router = createRouter(routes)
 
   const container = document.createElement('div')

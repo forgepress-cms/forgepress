@@ -67,8 +67,10 @@ export const mountEditor: MountEditor = (target) => {
   app.provide(colorModeKey, colorMode)
   app.provide(titleKey, title)
   app.mount(container)
+  container.addEventListener('click', router.follow)
 
   return () => {
+    container.removeEventListener('click', router.follow)
     app.unmount()
     router.dispose()
     colorMode.dispose()

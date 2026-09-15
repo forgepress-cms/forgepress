@@ -111,7 +111,7 @@ async function mount(blocks: DynamicBlock[], trail: EntryRef[] = [{ collection: 
     }),
   })
 
-  app.provide(routerKey, { href: (path?: string) => `#/${path ?? ''}` } as unknown as EditorRouter)
+  app.provide(routerKey, { href: (path?: string) => `/admin?path=/${path ?? ''}` } as unknown as EditorRouter)
 
   for (const [name, component] of Object.entries(stubs))
     app.component(name, component)
@@ -151,7 +151,7 @@ describe('dynamic blocks', () => {
     expect(chain().textContent).toBe('2')
     expect(chain().getAttribute('title')).toBe('Linked to Welcome, also used in 2 other entries')
     expect(arrow().tagName).toBe('A')
-    expect(arrow().getAttribute('href')).toBe('#/content/hero/hero_1')
+    expect(arrow().getAttribute('href')).toBe('/admin?path=/content/hero/hero_1')
     expect(arrow().getAttribute('target')).toBe('_blank')
   })
 
@@ -246,7 +246,7 @@ describe('relation fields', () => {
     const container = document.createElement('div')
 
     app = createApp({ render: () => h(RelationInput, { modelValue: 'hero_1', collection: 'hero', entries }) })
-    app.provide(routerKey, { href: (path?: string) => `#/${path ?? ''}` } as unknown as EditorRouter)
+    app.provide(routerKey, { href: (path?: string) => `/admin?path=/${path ?? ''}` } as unknown as EditorRouter)
 
     for (const [name, component] of Object.entries(stubs))
       app.component(name, component)
@@ -255,7 +255,7 @@ describe('relation fields', () => {
 
     const arrow = container.querySelector<HTMLElement>('[data-icon="i-lucide-arrow-up-right"]')!
 
-    expect(arrow.getAttribute('href')).toBe('#/content/hero/hero_1')
+    expect(arrow.getAttribute('href')).toBe('/admin?path=/content/hero/hero_1')
     expect(arrow.getAttribute('target')).toBe('_blank')
   })
 })

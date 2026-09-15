@@ -1,4 +1,5 @@
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -96,10 +97,11 @@ describe('content that is not plain data', () => {
 })
 
 describe('a project without a schema', () => {
-  const scratch = fileURLToPath(new URL('../../node_modules/.forgepress-empty-reader-test', import.meta.url))
+  let scratch = ''
 
   beforeAll(() => {
-    mkdirSync(join(scratch, 'app'), { recursive: true })
+    scratch = mkdtempSync(join(tmpdir(), 'forgepress-empty-reader-'))
+    mkdirSync(join(scratch, 'app'))
     writeFileSync(join(scratch, 'package.json'), '{}\n')
   })
 
