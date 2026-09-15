@@ -1,20 +1,23 @@
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import process from 'node:process'
-import { DEFAULT_CONTENT_PATH } from '../files/paths'
+import { createPaths, DEFAULT_CONTENT_PATH } from '../files/paths'
 
 export const CONFIG_FILES = ['forgepress.config.mjs', 'forgepress.config.js'] as const
 
-function marks(dir: string, contentPath: string): boolean {
-  return CONFIG_FILES.some(file => existsSync(join(dir, file))) || existsSync(join(dir, contentPath))
-}
-
-export function findRoot(start: string = process.cwd(), contentPath: string = DEFAULT_CONTENT_PATH): string {
+function ancestor(start: string, found: (dir: string) => boolean): string | undefined {
   for (let dir = start; ; dir = dirname(dir)) {
-    if (marks(dir, contentPath))
+    if (found(dir))
       return dir
 
     if (dir === dirname(dir))
-      return start
+      return undefined
   }
+}
+
+export function findRoot(start: string = process.cwd(), contentPath: string = DEFAULT_CONTENT_PATH): string {
+  const schema = createPaths(contentPath).schema
+  const marked = (dir: string): boolean => CONFIG_FILES.some(file => existsSync(join(dir, file))) || existsSync(join(dir, schema))
+
+  return ancestor(start, marked) ?? ancestor(start, dir => existsSync(join(dir, 'package.json'))) ?? start
 }

@@ -118,6 +118,13 @@ describe('parseContent', () => {
     })
   })
 
+  it('uses a schema without collections when there is no schema file', () => {
+    const parsed = parseContent(undefined, [entry('author', 'author_1', [...meta('author_1'), 'name: \'Alice\','])])
+
+    expect(parsed.schema).toEqual({ collections: {} })
+    expect(parsed.issues.map(formatIssue)).toEqual(['.forgepress/content/author/author_1.ts:3:16 Collection "author" is not in the schema'])
+  })
+
   it('has no schema when the schema has problems', () => {
     const parsed = parseContent({ ...schema, text: schema.text.replace('collection: \'author\'', 'collection: \'autor\'') }, [])
 

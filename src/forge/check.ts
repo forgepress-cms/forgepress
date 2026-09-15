@@ -21,10 +21,6 @@ export async function checkResult(listing: ReadonlyMap<string, string>, files: r
   }
 
   const schemaText = result.get(schema)
-
-  if (!schemaText)
-    throw new Error(`[forgepress] ${schema} does not exist in the repository`)
-
   const entries = await Promise.all([...result]
     .sort(([left], [right]) => left < right ? -1 : 1)
     .flatMap(([path, text]): Promise<EntryFile>[] => {
@@ -33,5 +29,5 @@ export async function checkResult(listing: ReadonlyMap<string, string>, files: r
       return entry ? [text().then(value => ({ ...entry, path, text: value }))] : []
     }))
 
-  return checkFiles({ path: schema, text: await schemaText() }, entries)
+  return checkFiles(schemaText ? { path: schema, text: await schemaText() } : undefined, entries)
 }

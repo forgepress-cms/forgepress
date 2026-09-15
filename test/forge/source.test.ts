@@ -411,10 +411,13 @@ describe('forge source', () => {
     await expect(source.list('author')).rejects.toThrow('[forgepress] apps/site/.forgepress/content/author/author_1.ts:1:22 `someId` is not a literal value')
   })
 
-  it('explains a missing schema and a missing sign-in', async () => {
-    const repo = repository({ c1: { '.forgepress/content/author/author_1.ts': first['.forgepress/content/author/author_1.ts']! } })
+  it('reads a repository without a schema as one without collections', async () => {
+    const repo = repository({ c1: { 'src/pages/index.vue': '<template />\n' } })
 
-    await expect(createForgeSource(() => repo.forge, defaultPaths).schema()).rejects.toThrow('[forgepress] .forgepress/schema.ts does not exist in the repository')
+    expect(await createForgeSource(() => repo.forge, defaultPaths).schema()).toEqual({ collections: {} })
+  })
+
+  it('explains a missing sign-in', async () => {
     await expect(createForgeSource(() => undefined, defaultPaths).list('author')).rejects.toThrow('[forgepress] sign in to read the content from the repository')
   })
 })

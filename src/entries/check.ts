@@ -47,18 +47,29 @@ function byPosition(left: ContentIssue, right: ContentIssue): number {
   return left.line - right.line || left.column - right.column
 }
 
-export function parseContent(schemaFile: ContentFile, entryFiles: readonly EntryFile[]): ParsedContent {
-  const schemaModule = parse(schemaFile)
+function parseSchemaFile(file: ContentFile | undefined): { schema: ForgePressSchema } | { issues: ContentIssue[] } {
+  if (!file)
+    return { schema: { collections: {} } }
 
-  if (!('value' in schemaModule))
-    return { issues: [...schemaModule], schema: undefined, content: {} }
+  const parsed = parse(file)
 
-  const schemaIssues = validateSchema(schemaModule.value)
+  if (!('value' in parsed))
+    return { issues: [...parsed] }
 
-  if (schemaIssues.length > 0)
-    return { issues: schemaIssues.map(issue => located(schemaFile.path, schemaModule, issue)), schema: undefined, content: {} }
+  const issues = validateSchema(parsed.value)
 
-  const schema = schemaModule.value as ForgePressSchema
+  return issues.length > 0
+    ? { issues: issues.map(issue => located(file.path, parsed, issue)) }
+    : { schema: parsed.value as ForgePressSchema }
+}
+
+export function parseContent(schemaFile: ContentFile | undefined, entryFiles: readonly EntryFile[]): ParsedContent {
+  const parsedSchema = parseSchemaFile(schemaFile)
+
+  if ('issues' in parsedSchema)
+    return { issues: parsedSchema.issues, schema: undefined, content: {} }
+
+  const { schema } = parsedSchema
   const issues = new Map(entryFiles.map(file => [file.path, [] as ContentIssue[]]))
   const sources = new Map<string, { path: string, parsed: ParsedModule }>()
   const content: Record<string, Record<string, Entry>> = {}
@@ -95,6 +106,6 @@ export function parseContent(schemaFile: ContentFile, entryFiles: readonly Entry
   return { issues: [...issues.values()].flatMap(found => found.sort(byPosition)), schema, content }
 }
 
-export function checkFiles(schemaFile: ContentFile, entryFiles: readonly EntryFile[]): ContentIssue[] {
+export function checkFiles(schemaFile: ContentFile | undefined, entryFiles: readonly EntryFile[]): ContentIssue[] {
   return parseContent(schemaFile, entryFiles).issues
 }

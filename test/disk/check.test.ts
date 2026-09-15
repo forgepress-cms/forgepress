@@ -87,6 +87,13 @@ describe('checkContent', () => {
     ])
   })
 
+  it('checks a project without a schema as one without collections', async () => {
+    expect(await problems({})).toEqual([])
+    expect(await problems({ '.forgepress/content/author/author_1.ts': alice })).toEqual([
+      '.forgepress/content/author/author_1.ts:3:16 Collection "author" is not in the schema',
+    ])
+  })
+
   it('reads the schema from the content folder', async () => {
     expect(await problems({ '.forgepress/schema.ts': 'export default defineSchema({})\n' })).toEqual([
       '.forgepress/schema.ts:1:16 `defineSchema` is not a literal value; variables, calls and expressions are not allowed',

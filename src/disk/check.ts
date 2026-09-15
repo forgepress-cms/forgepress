@@ -1,6 +1,7 @@
 import type { ParsedContent } from '../entries/check'
 import type { ContentPaths } from '../files/paths'
 import type { ContentIssue } from '../types/issues'
+import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseContent } from '../entries/check'
@@ -16,7 +17,9 @@ export async function loadContent(root: string, paths: ContentPaths = defaultPat
     return { collection: directory.collection, id, path, text: await read(path) }
   })))
 
-  return parseContent({ path: paths.schema, text: await read(paths.schema) }, entries)
+  const schema = existsSync(join(root, paths.schema)) ? { path: paths.schema, text: await read(paths.schema) } : undefined
+
+  return parseContent(schema, entries)
 }
 
 export async function checkContent(root: string, paths: ContentPaths = defaultPaths): Promise<ContentIssue[]> {

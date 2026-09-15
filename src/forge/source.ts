@@ -168,10 +168,7 @@ export function createForgeSource(forge: () => Forge | undefined, paths: Content
       const path = at(paths.schema)
       const sha = await hash(path)
 
-      if (sha === undefined)
-        throw new Error(`[forgepress] ${path} does not exist in the repository`)
-
-      return parseSchema(await text(sha), path)
+      return sha === undefined ? { collections: {} } : parseSchema(await text(sha), path)
     },
 
     list,

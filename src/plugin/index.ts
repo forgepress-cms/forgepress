@@ -3,7 +3,7 @@ import type { UnpluginFactory } from 'unplugin'
 import type { ResolvedConfig } from '../config/resolve'
 import type { MediaConfig } from '../types/config'
 import type { ContentIssue } from '../types/issues'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve as resolvePath, sep } from 'node:path'
 import process from 'node:process'
@@ -37,11 +37,16 @@ declare module 'forgepress' {
 export {}
 `
 
-function writeTypes(root: string, config: ResolvedConfig): void {
+function syncTypes(root: string, config: ResolvedConfig): void {
   const path = join(root, config.paths.types)
-  const current = existsSync(path) ? readFileSync(path, 'utf8') : undefined
 
-  if (current === TYPES)
+  if (!existsSync(join(root, config.paths.schema))) {
+    rmSync(path, { force: true })
+
+    return
+  }
+
+  if (existsSync(path) && readFileSync(path, 'utf8') === TYPES)
     return
 
   mkdirSync(dirname(path), { recursive: true })
@@ -123,6 +128,8 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
         }
 
         async function refresh(): Promise<void> {
+          syncTypes(root, current)
+
           try {
             report((await buildOutput(root, current, { dev: true })).issues)
           }
@@ -211,7 +218,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
     async buildStart() {
       const current = await resolve()
 
-      writeTypes(root, current)
+      syncTypes(root, current)
 
       if (serving)
         return

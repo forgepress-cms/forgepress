@@ -39,7 +39,7 @@ async function check(root: string, terminal: Terminal): Promise<number> {
 async function build(root: string, terminal: Terminal): Promise<number> {
   const result = await buildOutput(root, resolveConfig(await loadConfig(root)))
 
-  terminal.log(`Wrote the content output to ${result.dir} (${result.files} files, ${result.commit ? `commit ${result.commit.slice(0, 7)}` : 'no commit found'})`)
+  terminal.log(`Wrote the content output to ${result.dir} (${result.files} ${result.files === 1 ? 'file' : 'files'}, ${result.commit ? `commit ${result.commit.slice(0, 7)}` : 'no commit found'})`)
 
   return 0
 }

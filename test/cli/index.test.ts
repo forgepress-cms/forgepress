@@ -90,13 +90,24 @@ describe('forgepress', () => {
     expect(existsSync(join(scratch, 'public/content/index.json'))).toBe(true)
   })
 
+  it('checks and builds a project that has no schema yet', async () => {
+    rmSync(scratch, { recursive: true, force: true })
+    mkdirSync(join(scratch, 'src'), { recursive: true })
+    writeFileSync(join(scratch, 'package.json'), '{}\n')
+
+    expect(await command(['check'], join(scratch, 'src'))).toEqual({ code: 0, log: 'No problems found', error: '' })
+    expect((await command(['build'], join(scratch, 'src'))).log).toMatch(/^Wrote the content output to public\/content \(1 file, /)
+    expect(existsSync(join(scratch, 'public/content/index.json'))).toBe(true)
+  })
+
   it('reports other failures without a stack', async () => {
     project()
-    rmSync(join(scratch, '.forgepress/schema.ts'))
+    writeFileSync(join(scratch, 'forgepress.config.mjs'), 'export default {\n')
 
     const result = await command(['check'])
 
     expect(result.code).toBe(1)
-    expect(result.error).toContain('schema.ts')
+    expect(result.error).toContain('[forgepress] could not load forgepress.config.mjs')
+    expect(result.error).not.toContain('    at ')
   })
 })

@@ -54,15 +54,15 @@ async function until(label: string, check: () => boolean): Promise<void> {
   throw new Error(`timed out waiting for ${label}`)
 }
 
-function create(command: 'serve' | 'build') {
-  const created = unpluginFactory({ root: scratch }, { framework: 'vite' } as UnpluginContextMeta)
+function create(command: 'serve' | 'build', options: Parameters<typeof unpluginFactory>[0] = { root: scratch }, root = scratch) {
+  const created = unpluginFactory(options, { framework: 'vite' } as UnpluginContextMeta)
   const plugin = Array.isArray(created) ? created[0]! : created
   const vite = plugin.vite as {
     configResolved: (config: { command: string, root: string, publicDir: string }) => void
     configureServer: (server: unknown) => Promise<void>
   }
 
-  vite.configResolved({ command, root: scratch, publicDir: join(scratch, 'public') })
+  vite.configResolved({ command, root, publicDir: join(scratch, 'public') })
 
   return { vite, buildStart: plugin.buildStart as unknown as () => Promise<void> }
 }
@@ -154,6 +154,31 @@ describe('dev server', () => {
     expect(server.warnings.join('\n')).toContain('has unknown type "colour"')
   })
 
+  it('starts without a schema, and keeps the types in step with it', async () => {
+    rmSync(scratch, { recursive: true, force: true })
+    write('package.json', '{}\n')
+    const server = await serve()
+
+    expect(index()).toMatchObject({ collections: {} })
+    expect(server.warnings).toEqual([])
+    expect(existsSync(join(scratch, '.forgepress'))).toBe(false)
+
+    write('.forgepress/schema.ts', schema)
+    write('.forgepress/content/author/alice.ts', author('alice'))
+    server.watchers.get('add')!(join(scratch, '.forgepress/schema.ts'))
+    await until('the reload', () => server.messages.length > 0)
+
+    expect(manifestIds()).toEqual(['alice'])
+    expect(existsSync(join(scratch, '.forgepress/forgepress.d.ts'))).toBe(true)
+
+    server.messages.length = 0
+    rmSync(join(scratch, '.forgepress/schema.ts'))
+    server.watchers.get('unlink')!(join(scratch, '.forgepress/schema.ts'))
+    await until('the second reload', () => server.messages.length > 0)
+
+    expect(existsSync(join(scratch, '.forgepress/forgepress.d.ts'))).toBe(false)
+  })
+
   it('serves the output files itself, so a new file is there right after writing it', async () => {
     project()
     const { get } = await serve()
@@ -185,6 +210,26 @@ describe('build', () => {
     expect(index().dev).toBeUndefined()
     expect(existsSync(join(scratch, '.forgepress/forgepress.d.ts'))).toBe(true)
     expect(process.env.FORGEPRESS_OUTPUT).toBe(join(scratch, 'public/content'))
+  })
+
+  it('builds a project without a schema, and writes no types for it', async () => {
+    rmSync(scratch, { recursive: true, force: true })
+    write('package.json', '{}\n')
+    await create('build').buildStart()
+
+    expect(index()).toMatchObject({ version: 1, collections: {} })
+    expect(existsSync(join(scratch, '.forgepress'))).toBe(false)
+  })
+
+  it('finds the project above the Vite root, like app/ in a Nuxt project', async () => {
+    rmSync(scratch, { recursive: true, force: true })
+    write('package.json', '{}\n')
+    write('app/app.vue', '<template />\n')
+    await create('build', {}, join(scratch, 'app')).buildStart()
+
+    expect(index()).toMatchObject({ collections: {} })
+    expect(existsSync(join(scratch, 'app/.forgepress'))).toBe(false)
+    expect(existsSync(join(scratch, 'app/public'))).toBe(false)
   })
 
   it('fails and writes nothing while content has problems', async () => {

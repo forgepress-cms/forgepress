@@ -94,3 +94,22 @@ describe('content that is not plain data', () => {
       .toThrow('[forgepress] .forgepress/schema.ts:1:79 Field "post.author" references unknown collection "autor"')
   })
 })
+
+describe('a project without a schema', () => {
+  const scratch = fileURLToPath(new URL('../../node_modules/.forgepress-empty-reader-test', import.meta.url))
+
+  beforeAll(() => {
+    mkdirSync(join(scratch, 'app'), { recursive: true })
+    writeFileSync(join(scratch, 'package.json'), '{}\n')
+  })
+
+  afterAll(() => rmSync(scratch, { recursive: true, force: true }))
+
+  it('has no collections yet', async () => {
+    const source = createSource(join(scratch, 'app'))
+
+    expect(await source.schema()).toEqual({ collections: {} })
+    expect(await source.list('author')).toEqual([])
+    expect(await source.entry('author', 'author_1')).toBeUndefined()
+  })
+})

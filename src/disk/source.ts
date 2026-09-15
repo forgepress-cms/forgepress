@@ -29,6 +29,12 @@ export function createSource(start?: string, paths: ContentPaths = defaultPaths,
     return parseEntry(await readFile(join(resolve(), file), 'utf8'), file)
   }
 
+  async function readSchema(): Promise<ForgePressSchema> {
+    const file = join(resolve(), paths.schema)
+
+    return existsSync(file) ? parseSchema(await readFile(file, 'utf8'), paths.schema) : { collections: {} }
+  }
+
   async function load(collection: string): Promise<Entry[]> {
     const ids = readEntryIds(join(resolve(), paths.collection(collection)))
 
@@ -47,7 +53,7 @@ export function createSource(start?: string, paths: ContentPaths = defaultPaths,
   }
 
   return {
-    schema: () => (schema ??= readFile(join(resolve(), paths.schema), 'utf8').then(text => parseSchema(text, paths.schema))),
+    schema: () => (schema ??= readSchema()),
 
     list: all,
 

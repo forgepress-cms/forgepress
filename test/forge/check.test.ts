@@ -103,7 +103,10 @@ describe('checking the result of publishing', () => {
     ])
   })
 
-  it('explains a repository without a schema', async () => {
-    await expect(problems({}, [])).rejects.toThrow('[forgepress] .forgepress/schema.ts does not exist in the repository')
+  it('checks a repository without a schema as one without collections', async () => {
+    expect(await problems({}, [{ path: 'public/uploads/photo.png', data: btoa('png'), encoding: 'base64' }])).toEqual([])
+    expect(await problems({}, [{ path: '.forgepress/content/author/author_1.ts', data: author('author_1'), encoding: 'utf-8' }])).toEqual([
+      '.forgepress/content/author/author_1.ts:1:16 Collection "author" is not in the schema',
+    ])
   })
 })
