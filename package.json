@@ -1,9 +1,14 @@
 {
   "name": "forgepress",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.0.0",
+  "packageManager": "pnpm@11.5.3",
   "description": "Fully static, git based CMS.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/freb97/forgepress.git"
+  },
   "sideEffects": false,
   "imports": {
     "#content-reader": {
@@ -44,7 +49,9 @@
     "build": "obuild && pnpm run build:editor",
     "build:editor": "vite build --config vite.editor.config.mjs",
     "dev:editor": "vite build --config vite.editor.config.mjs --watch",
-    "dev:nuxt": "pnpm --filter=playground-nuxt run dev"
+    "dev:nuxt": "pnpm --filter=playground-nuxt run dev",
+    "check:package": "publint --strict && attw --pack . --profile esm-only",
+    "prepack": "pnpm run build"
   },
   "peerDependencies": {
     "vue": "^3.5.0"
@@ -59,6 +66,7 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^9.5.1",
+    "@arethetypeswrong/cli": "^0.18.5",
     "@iconify-json/lucide": "^1.2.131",
     "@nuxt/ui": "^4.11.1",
     "@tanstack/vue-table": "^8.21.3",
@@ -67,6 +75,7 @@
     "eslint": "^10.10.0",
     "happy-dom": "^20.14.3",
     "obuild": "^0.4.39",
+    "publint": "^0.3.24",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "vite": "^8.3.0",
