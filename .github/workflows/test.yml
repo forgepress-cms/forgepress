@@ -46,7 +46,7 @@ jobs:
       - name: Build package
         run: pnpm run build
 
-      - name: Typecheck package and playground
+      - name: Typecheck package, playground and docs
         run: pnpm run typecheck
 
   test:

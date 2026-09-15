@@ -6,7 +6,7 @@ export default {
     type: 'github',
 
     repository: {
-      owner: 'forgepressjs',
+      owner: 'forgepress-cms',
       name: 'forgepress',
     },
 

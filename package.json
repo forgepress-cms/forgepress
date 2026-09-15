@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/freb97/forgepress.git"
+    "url": "git+https://github.com/forgepress-cms/forgepress.git"
   },
   "sideEffects": false,
   "imports": {
@@ -43,13 +43,14 @@
   ],
   "scripts": {
     "lint": "eslint .",
-    "typecheck": "vue-tsc --noEmit && pnpm --filter=playground-nuxt run typecheck",
+    "typecheck": "vue-tsc --noEmit && pnpm --filter=playground-nuxt run typecheck && pnpm --filter=docs run typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "obuild && pnpm run build:editor",
     "build:editor": "vite build --config vite.editor.config.mjs",
     "dev:editor": "vite build --config vite.editor.config.mjs --watch",
     "dev:nuxt": "pnpm --filter=playground-nuxt run dev",
+    "dev:docs": "pnpm --filter=docs run dev",
     "check:package": "publint --strict && attw --pack . --profile esm-only",
     "prepack": "pnpm run build"
   },

@@ -1,6 +1,7 @@
 packages:
   - .
   - 'playgrounds/*'
+  - docs
 
 allowBuilds:
   esbuild: true

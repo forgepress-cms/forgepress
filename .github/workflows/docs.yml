@@ -1,0 +1,61 @@
+name: Docs
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: docs
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.0.10
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.20.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build package
+        run: pnpm run build
+
+      - name: Generate docs
+        run: pnpm --filter=docs run generate
+
+      - name: Install Bunny CLI
+        run: npm install -g @bunny.net/cli@0.17.0
+
+      - name: Upload to Bunny Storage over S3
+        env:
+          BUNNYNET_API_KEY: ${{ secrets.BUNNY_ACCESS_KEY }}
+          BUNNY_STORAGE_ZONE_NAME: ${{ vars.BUNNY_STORAGE_ZONE_NAME }}
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_supported
+        run: |
+          set -euo pipefail
+          credentials="$(bunny storage zones credentials "$BUNNY_STORAGE_ZONE_NAME" --connection s3 --format env)"
+          set -a
+          eval "$credentials"
+          set +a
+          aws s3 sync docs/.output/public "s3://$BUNNY_STORAGE_ZONE_NAME" --delete --no-progress
+
+      - name: Purge pull zone
+        env:
+          BUNNYNET_API_KEY: ${{ secrets.BUNNY_ACCESS_KEY }}
+          BUNNY_PULL_ZONE_ID: ${{ vars.BUNNY_PULL_ZONE_ID }}
+        run: bunny api POST "/pullzone/$BUNNY_PULL_ZONE_ID/purgeCache"
