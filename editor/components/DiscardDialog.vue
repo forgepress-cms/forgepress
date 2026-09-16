@@ -18,7 +18,7 @@ const open = defineModel<boolean>('open', { required: true })
       <UButton
         v-if="saveable"
         label="Save and leave"
-        icon="i-lucide-save"
+        icon="i-hugeicons-floppy-disk"
         :loading="loading"
         @click="emit('save')"
       />

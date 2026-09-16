@@ -31,6 +31,12 @@ describe('findRoot', () => {
     expect(findRoot(join(root, 'site/src/pages'))).toBe(join(root, 'site'))
   })
 
+  it('walks up to the folder with a TypeScript config file', () => {
+    const root = project(['package.json', 'site/forgepress.config.ts', 'site/src/pages/index.vue'])
+
+    expect(findRoot(join(root, 'site/src/pages'))).toBe(join(root, 'site'))
+  })
+
   it('walks up to the folder with the schema', () => {
     const root = project(['.forgepress/schema.ts', '.forgepress/content/author/author_1.ts'])
 

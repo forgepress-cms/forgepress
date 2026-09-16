@@ -23,7 +23,7 @@ const description = computed(() => {
     <template #body>
       <ul class="flex flex-col gap-2">
         <li v-for="entry in entries" :key="entry.key" class="flex min-w-0 items-center gap-2 text-sm">
-          <UBadge :label="entry.collection" color="neutral" variant="subtle" size="sm" class="shrink-0" />
+          <UBadge :label="entry.collection" color="neutral" variant="soft" size="sm" class="shrink-0" />
 
           <span class="truncate text-highlighted">{{ entry.label }}</span>
         </li>

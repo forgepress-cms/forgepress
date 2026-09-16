@@ -13,28 +13,28 @@ const target = shallowRef<Editor>()
 
 const items: EditorToolbarItem[][] = [
   [
-    { 'kind': 'heading', 'level': 2, 'icon': 'i-lucide-heading-2', 'aria-label': 'Heading' },
-    { 'kind': 'heading', 'level': 3, 'icon': 'i-lucide-heading-3', 'aria-label': 'Subheading' },
+    { 'kind': 'heading', 'level': 2, 'icon': 'i-hugeicons-heading-02', 'aria-label': 'Heading' },
+    { 'kind': 'heading', 'level': 3, 'icon': 'i-hugeicons-heading-03', 'aria-label': 'Subheading' },
   ],
   [
-    { 'kind': 'mark', 'mark': 'bold', 'icon': 'i-lucide-bold', 'aria-label': 'Bold' },
-    { 'kind': 'mark', 'mark': 'italic', 'icon': 'i-lucide-italic', 'aria-label': 'Italic' },
-    { 'kind': 'mark', 'mark': 'strike', 'icon': 'i-lucide-strikethrough', 'aria-label': 'Strikethrough' },
-    { 'kind': 'link', 'icon': 'i-lucide-link', 'aria-label': 'Link' },
+    { 'kind': 'mark', 'mark': 'bold', 'icon': 'i-hugeicons-text-bold', 'aria-label': 'Bold' },
+    { 'kind': 'mark', 'mark': 'italic', 'icon': 'i-hugeicons-text-italic', 'aria-label': 'Italic' },
+    { 'kind': 'mark', 'mark': 'strike', 'icon': 'i-hugeicons-text-strikethrough', 'aria-label': 'Strikethrough' },
+    { 'kind': 'link', 'icon': 'i-hugeicons-link-01', 'aria-label': 'Link' },
   ],
   [
-    { 'kind': 'bulletList', 'icon': 'i-lucide-list', 'aria-label': 'Bullet list' },
-    { 'kind': 'orderedList', 'icon': 'i-lucide-list-ordered', 'aria-label': 'Numbered list' },
-    { 'kind': 'blockquote', 'icon': 'i-lucide-text-quote', 'aria-label': 'Quote' },
-    { 'kind': 'codeBlock', 'icon': 'i-lucide-code', 'aria-label': 'Code block' },
+    { 'kind': 'bulletList', 'icon': 'i-hugeicons-left-to-right-list-bullet', 'aria-label': 'Bullet list' },
+    { 'kind': 'orderedList', 'icon': 'i-hugeicons-left-to-right-list-number', 'aria-label': 'Numbered list' },
+    { 'kind': 'blockquote', 'icon': 'i-hugeicons-quote-down', 'aria-label': 'Quote' },
+    { 'kind': 'codeBlock', 'icon': 'i-hugeicons-source-code', 'aria-label': 'Code block' },
   ],
   [
-    { 'kind': 'image', 'icon': 'i-lucide-image', 'aria-label': 'Image' },
-    { 'kind': 'horizontalRule', 'icon': 'i-lucide-minus', 'aria-label': 'Divider' },
+    { 'kind': 'image', 'icon': 'i-hugeicons-image-01', 'aria-label': 'Image' },
+    { 'kind': 'horizontalRule', 'icon': 'i-hugeicons-minus-sign', 'aria-label': 'Divider' },
   ],
   [
-    { 'kind': 'undo', 'icon': 'i-lucide-undo-2', 'aria-label': 'Undo' },
-    { 'kind': 'redo', 'icon': 'i-lucide-redo-2', 'aria-label': 'Redo' },
+    { 'kind': 'undo', 'icon': 'i-hugeicons-undo-03', 'aria-label': 'Undo' },
+    { 'kind': 'redo', 'icon': 'i-hugeicons-redo-03', 'aria-label': 'Redo' },
   ],
 ]
 
@@ -83,6 +83,7 @@ function insert(assets: MediaAsset[]): void {
           :items="items"
           size="xs"
           class="border-b border-default bg-elevated/50"
+          :ui="{ base: 'flex-wrap' }"
         />
       </template>
     </UEditor>

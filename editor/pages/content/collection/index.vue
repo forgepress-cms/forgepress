@@ -56,7 +56,7 @@ const columns: Column<Entry>[] = [
     cell: ({ row }) => h(UBadge, {
       label: statusLabel(row.original.status),
       color: statusColor(row.original.status),
-      variant: 'subtle',
+      variant: 'soft',
     }),
   },
   ...fields.map(field => ({
@@ -102,7 +102,7 @@ async function remove(): Promise<void> {
 </script>
 
 <template>
-  <div class="grid gap-6">
+  <div class="grid gap-8">
     <PageHeader
       :title="collection.label ?? name"
       :description="collection.description"
@@ -110,10 +110,10 @@ async function remove(): Promise<void> {
     >
       <template #actions>
         <UDropdownMenu :items="items" :content="{ align: 'end' }">
-          <UButton label="Columns" icon="i-lucide-columns-3" color="neutral" variant="outline" />
+          <UButton label="Columns" icon="i-hugeicons-layout-3-column" color="neutral" variant="outline" />
         </UDropdownMenu>
 
-        <UButton label="New entry" icon="i-lucide-plus" @click="navigate(`content/${name}/new`)" />
+        <UButton label="New entry" icon="i-hugeicons-plus-sign" @click="navigate(`content/${name}/new`)" />
       </template>
     </PageHeader>
 
@@ -143,7 +143,7 @@ async function remove(): Promise<void> {
       <template #actions-cell="{ row }">
         <div class="flex items-center justify-end">
           <UButton
-            icon="i-lucide-pencil"
+            icon="i-hugeicons-pencil-edit-02"
             color="neutral"
             variant="ghost"
             :aria-label="`Edit ${label(row.original)}`"
@@ -151,7 +151,7 @@ async function remove(): Promise<void> {
           />
 
           <UButton
-            icon="i-lucide-trash-2"
+            icon="i-hugeicons-delete-02"
             color="error"
             variant="ghost"
             class="text-default hover:text-error focus-visible:text-error"

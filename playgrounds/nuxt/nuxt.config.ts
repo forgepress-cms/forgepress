@@ -7,13 +7,6 @@ export default defineNuxtConfig({
 
   modules: ['forgepress/nuxt'],
 
-  hooks: {
-    'prepare:types': ({ tsConfig }) => {
-      tsConfig.include ??= []
-      tsConfig.include.push('../forgepress.config.mjs')
-    },
-  },
-
   vite: {
     plugins: [tailwind()],
   },

@@ -1,5 +1,6 @@
 import type { Ref } from 'vue'
-import { computed, ref } from 'vue'
+import { useEventListener } from '@vueuse/core'
+import { computed, ref, shallowRef } from 'vue'
 
 export interface DragOrder {
   dragging: Ref<string>
@@ -12,24 +13,45 @@ export function useDragOrder(move: (key: string, offset: number) => unknown): Dr
   const from = ref(0)
   const to = ref(0)
   const total = ref(0)
+  const handle = shallowRef<HTMLElement>()
+
+  let others: DOMRect[] = []
 
   const highlighted = computed(() => {
     if (!dragging.value || to.value === from.value)
       return -1
 
-    const others = total.value - 1
+    const last = total.value - 1
 
-    if (to.value >= others)
+    if (to.value >= last)
       return total.value - 1
 
     return to.value < from.value ? to.value : to.value + 1
   })
 
+  useEventListener(handle, 'pointermove', (pointer) => {
+    const above = others.findIndex(rect => pointer.clientY < rect.top + rect.height / 2)
+
+    to.value = above < 0 ? others.length : above
+  })
+
+  useEventListener(handle, ['pointerup', 'pointercancel'], () => {
+    const key = dragging.value
+    const offset = to.value - from.value
+
+    handle.value = undefined
+    dragging.value = ''
+
+    if (offset)
+      move(key, offset)
+  })
+
   function start(key: string, index: number, event: PointerEvent): void {
-    const handle = event.currentTarget as HTMLElement
-    const container = handle.closest('[data-drag]')
+    const target = event.currentTarget as HTMLElement
+    const container = target.closest('[data-drag]')
     const rows = [...container?.querySelectorAll<HTMLElement>(':scope > *') ?? []]
-    const others = rows.filter((_, position) => position !== index).map(row => row.getBoundingClientRect())
+
+    others = rows.filter((_, position) => position !== index).map(row => row.getBoundingClientRect())
 
     if (!others.length)
       return
@@ -39,30 +61,8 @@ export function useDragOrder(move: (key: string, offset: number) => unknown): Dr
     to.value = index
     total.value = rows.length
 
-    handle.setPointerCapture(event.pointerId)
-
-    function onMove(pointer: PointerEvent): void {
-      const above = others.findIndex(rect => pointer.clientY < rect.top + rect.height / 2)
-
-      to.value = above < 0 ? others.length : above
-    }
-
-    function onEnd(): void {
-      handle.removeEventListener('pointermove', onMove)
-      handle.removeEventListener('pointerup', onEnd)
-      handle.removeEventListener('pointercancel', onEnd)
-
-      const offset = to.value - from.value
-
-      dragging.value = ''
-
-      if (offset)
-        move(key, offset)
-    }
-
-    handle.addEventListener('pointermove', onMove)
-    handle.addEventListener('pointerup', onEnd)
-    handle.addEventListener('pointercancel', onEnd)
+    target.setPointerCapture(event.pointerId)
+    handle.value = target
   }
 
   function rowClass(index: number, key: string): string {

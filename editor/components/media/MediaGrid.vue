@@ -33,7 +33,7 @@ function activate(asset: MediaAsset): void {
     <div
       v-for="asset in assets"
       :key="asset.name"
-      class="group relative overflow-hidden rounded-lg border bg-default transition"
+      class="group relative overflow-hidden rounded-lg border bg-sheet transition"
       :class="selected.includes(asset.name) ? 'border-primary ring-2 ring-primary/30' : 'border-default hover:border-accented'"
     >
       <button
@@ -65,11 +65,11 @@ function activate(asset: MediaAsset): void {
 
       <UButton
         v-if="onRemove"
-        icon="i-lucide-trash-2"
+        icon="i-hugeicons-delete-02"
         color="error"
         variant="solid"
         size="xs"
-        class="absolute right-1.5 top-1.5 bg-default text-default opacity-0 shadow-sm transition group-hover:opacity-100 hover:bg-error hover:text-inverted focus-visible:bg-error focus-visible:text-inverted focus-visible:opacity-100"
+        class="absolute right-1.5 top-1.5 bg-default text-default opacity-0 shadow-sm transition group-hover:opacity-100 pointer-coarse:opacity-100 hover:bg-error hover:text-inverted focus-visible:bg-error focus-visible:text-inverted focus-visible:opacity-100"
         :aria-label="`Delete ${asset.name}`"
         @click="onRemove?.(asset)"
       />

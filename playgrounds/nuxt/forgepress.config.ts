@@ -1,3 +1,5 @@
+import type { ForgePressConfig } from 'forgepress'
+
 export default {
   path: '../../.forgepress',
 
@@ -9,8 +11,8 @@ export default {
       name: 'forgepress',
     },
 
-    base: 'playgrounds/next',
+    base: 'playgrounds/nuxt',
 
     commitMessage: 'content: {name}',
   },
-}
+} satisfies ForgePressConfig

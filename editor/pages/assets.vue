@@ -49,13 +49,13 @@ async function remove(): Promise<void> {
 </script>
 
 <template>
-  <div class="grid gap-6">
+  <div class="grid gap-8">
     <PageHeader title="Assets" description="Images and videos uploaded from the editor.">
       <template #actions>
         <UButton
           v-if="selected.length"
           :label="`Delete ${selected.length}`"
-          icon="i-lucide-trash-2"
+          icon="i-hugeicons-delete-02"
           color="error"
           variant="subtle"
           @click="removing = [...selected]"
@@ -70,7 +70,7 @@ async function remove(): Promise<void> {
     <UInput
       v-model="search"
       placeholder="Search"
-      icon="i-lucide-search"
+      icon="i-hugeicons-search-01"
       class="max-w-xs"
     />
 
@@ -82,7 +82,7 @@ async function remove(): Promise<void> {
       @remove="removing = [$event.name]"
     />
 
-    <p v-if="!items.length" class="rounded-lg border border-dashed border-default py-10 text-center text-sm text-muted">
+    <p v-if="!items.length" class="rounded-lg border border-dashed border-accented py-10 text-center text-sm text-muted">
       {{ library.assets.value.length ? 'No assets match the search.' : 'Nothing uploaded yet.' }}
     </p>
 

@@ -66,8 +66,8 @@ async function link(): Promise<void> {
 </script>
 
 <template>
-  <div class="grid gap-2">
-    <div v-if="items.length" data-drag class="grid gap-2">
+  <div class="grid grid-cols-1 gap-2">
+    <div v-if="items.length" data-drag class="grid grid-cols-1 gap-2">
       <div
         v-for="(item, index) in items"
         :key="index"
@@ -76,23 +76,25 @@ async function link(): Promise<void> {
       >
         <DragHandle v-if="sortable" class="self-center" @pointerdown="order.start(String(index), index, $event)" />
 
-        <div class="h-16 w-24 shrink-0 overflow-hidden rounded-md bg-elevated">
+        <div class="h-12 w-16 shrink-0 overflow-hidden rounded-md bg-elevated sm:h-16 sm:w-24">
           <MediaPreview :url="resolve(item.url)" :kind="kind" :alt="item.alt" />
         </div>
 
-        <div class="grid min-w-0 flex-1 content-start gap-1.5">
+        <div class="grid min-w-0 flex-1 grid-cols-1 content-start gap-1.5">
           <div class="flex items-center gap-2">
-            <span class="truncate text-sm font-medium text-highlighted">{{ fileName(item.url) }}</span>
+            <div class="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-2">
+              <span class="truncate text-sm font-medium text-highlighted">{{ fileName(item.url) }}</span>
 
-            <span v-if="item.width && item.height" class="shrink-0 text-xs text-muted">
-              {{ item.width }} × {{ item.height }}
-            </span>
+              <span v-if="item.width && item.height" class="shrink-0 text-xs text-muted">
+                {{ item.width }} × {{ item.height }}
+              </span>
+            </div>
 
-            <div class="ml-auto flex shrink-0 items-center">
+            <div class="flex shrink-0 items-center">
               <UButton
                 :to="item.url"
                 target="_blank"
-                icon="i-lucide-external-link"
+                icon="i-hugeicons-link-square-02"
                 color="neutral"
                 variant="ghost"
                 size="xs"
@@ -100,7 +102,7 @@ async function link(): Promise<void> {
               />
 
               <UButton
-                icon="i-lucide-x"
+                icon="i-hugeicons-cancel-01"
                 color="neutral"
                 variant="ghost"
                 size="xs"
@@ -114,6 +116,7 @@ async function link(): Promise<void> {
             :model-value="item.alt ?? ''"
             placeholder="Alt text"
             size="xs"
+            :ui="{ base: 'max-sm:text-base/4' }"
             @update:model-value="setAlt(index, String($event))"
           />
         </div>
@@ -131,7 +134,7 @@ async function link(): Promise<void> {
 
       <UButton
         label="Media library"
-        icon="i-lucide-images"
+        icon="i-hugeicons-album-02"
         color="neutral"
         variant="ghost"
         @click="picking = true"
@@ -139,7 +142,7 @@ async function link(): Promise<void> {
 
       <UButton
         label="Use a URL"
-        icon="i-lucide-link"
+        icon="i-hugeicons-link-01"
         color="neutral"
         variant="ghost"
         @click="linking = !linking"

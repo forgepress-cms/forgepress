@@ -124,7 +124,7 @@ function groups(block: DynamicBlock, index: number) {
     }))
 
   const actions = linked(block) && props.nested.drafts[block.id]
-    ? [{ id: 'actions', items: [{ label: 'Unlink and keep a copy', icon: 'i-lucide-unlink', onSelect: () => unlink(index) }] }]
+    ? [{ id: 'actions', items: [{ label: 'Unlink and keep a copy', icon: 'i-hugeicons-unlink-01', onSelect: () => unlink(index) }] }]
     : []
 
   return [{ id: 'entries', items }, ...actions]
@@ -132,8 +132,8 @@ function groups(block: DynamicBlock, index: number) {
 </script>
 
 <template>
-  <div class="grid gap-3">
-    <div v-if="model.length" data-drag class="grid gap-3">
+  <div class="grid grid-cols-1 gap-3">
+    <div v-if="model.length" data-drag class="grid grid-cols-1 gap-3">
       <div
         v-for="(block, index) in model"
         :key="index"
@@ -150,7 +150,7 @@ function groups(block: DynamicBlock, index: number) {
           <UPopover :open="linking === index" @update:open="linking = $event ? index : undefined">
             <UButton
               v-bind="others(block) ? { label: String(others(block)) } : {}"
-              icon="i-lucide-link"
+              icon="i-hugeicons-link-01"
               :color="linked(block) ? 'primary' : 'neutral'"
               variant="ghost"
               size="xs"
@@ -162,7 +162,7 @@ function groups(block: DynamicBlock, index: number) {
               <UCommandPalette
                 :groups="groups(block, index)"
                 placeholder="Search entries"
-                class="max-h-80 w-80"
+                class="max-h-80 w-80 max-w-[calc(100vw-2rem)]"
               />
             </template>
           </UPopover>
@@ -170,7 +170,7 @@ function groups(block: DynamicBlock, index: number) {
           <UButton
             v-bind="linked(block) ? { to: href(`content/${block.collection}/${block.id}`), target: '_blank' } : {}"
             :disabled="!linked(block)"
-            icon="i-lucide-arrow-up-right"
+            icon="i-hugeicons-arrow-up-right-01"
             color="neutral"
             variant="ghost"
             size="xs"
@@ -178,7 +178,7 @@ function groups(block: DynamicBlock, index: number) {
           />
 
           <UButton
-            icon="i-lucide-trash-2"
+            icon="i-hugeicons-delete-02"
             color="error"
             variant="ghost"
             size="xs"
@@ -188,7 +188,7 @@ function groups(block: DynamicBlock, index: number) {
           />
         </div>
 
-        <div class="grid gap-4 p-3">
+        <div class="grid grid-cols-1 gap-4 p-3">
           <p v-if="linked(block) && repeated(block)" class="text-sm text-muted">
             {{ entries.label(block.collection, block.id) }} is already open above, so it is not shown here again.
           </p>
@@ -211,7 +211,7 @@ function groups(block: DynamicBlock, index: number) {
 
             <UButton
               label="New content"
-              icon="i-lucide-plus"
+              icon="i-hugeicons-plus-sign"
               color="neutral"
               variant="outline"
               size="xs"
@@ -224,7 +224,7 @@ function groups(block: DynamicBlock, index: number) {
 
     <UButton
       label="Add a block"
-      icon="i-lucide-circle-plus"
+      icon="i-hugeicons-add-circle"
       color="neutral"
       variant="outline"
       block
@@ -246,8 +246,8 @@ function groups(block: DynamicBlock, index: number) {
           class="flex h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-default bg-elevated/50 px-2 hover:bg-elevated"
           @click="add(collection)"
         >
-          <span class="flex size-10 items-center justify-center rounded-full bg-primary/15 text-primary">
-            <UIcon name="i-lucide-box" class="size-5" />
+          <span class="flex size-10 items-center justify-center rounded-md bg-primary/15 text-primary">
+            <UIcon name="i-hugeicons-package" class="size-5" />
           </span>
 
           <span class="w-full truncate text-sm font-medium text-highlighted">

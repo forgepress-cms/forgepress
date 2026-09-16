@@ -25,7 +25,8 @@ const repository = computed(() => {
 <template>
   <div class="flex min-h-dvh items-center justify-center p-6">
     <UPageCard
-      class="w-full max-w-md"
+      variant="ghost"
+      class="sheet w-full max-w-md"
       title="Sign in to edit"
       :description="repository ? `Publishing to ${repository}` : 'No repository is configured.'"
     >
@@ -35,7 +36,7 @@ const repository = computed(() => {
         <UButton
           :label="`Sign in with ${name}`"
           :loading="pending"
-          trailing-icon="i-lucide-arrow-right"
+          trailing-icon="i-hugeicons-arrow-right-02"
           block
           @click="signInWithForge()"
         />
@@ -66,7 +67,7 @@ const repository = computed(() => {
           :label="`Create a token on ${name}`"
           color="neutral"
           variant="link"
-          trailing-icon="i-lucide-external-link"
+          trailing-icon="i-hugeicons-link-square-02"
           block
         />
       </form>

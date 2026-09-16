@@ -1,17 +1,19 @@
+import type { FormattingOptions, ParseError } from 'jsonc-parser'
+import type { NextConfig } from 'next'
 import type { IncomingMessage, Server, ServerResponse } from 'node:http'
 import type { AddressInfo, Socket } from 'node:net'
 import type { ResolvedConfig } from '../config/resolve'
 import type { DevLogger } from './dev'
 import type { OriginPolicy } from './endpoint'
 import type { Options, Project } from './project'
-import { Buffer } from 'node:buffer'
-import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { isMainThread, Worker } from 'node:worker_threads'
+import { applyEdits, modify, parse } from 'jsonc-parser'
+import { WebSocketServer } from 'ws'
 import { editorSettings } from '../config/settings'
 import { buildOutput } from '../disk/output'
 import { toPosix } from '../disk/paths'
@@ -27,33 +29,12 @@ export interface NextOptions extends Options {
   preview?: boolean
 }
 
-export interface NextWebpackConfig {
+export type NextConfigFunction = (phase: string, context: { defaultConfig: NextConfig }) => NextConfig | Promise<NextConfig>
+
+interface WebpackConfig {
   plugins?: unknown[]
   ignoreWarnings?: unknown[]
 }
-
-export interface NextWebpackContext {
-  webpack: {
-    NormalModuleReplacementPlugin: new (pattern: RegExp, request: string) => unknown
-  }
-}
-
-export interface NextConfig {
-  compiler?: {
-    define?: Record<string, string | number | boolean>
-    runAfterProductionCompile?: (metadata: { projectDir: string, distDir: string }) => Promise<void>
-  }
-  turbopack?: {
-    resolveAlias?: Record<string, unknown>
-  }
-  webpack?: ((config: any, context: any) => any) | null
-  instrumentationClientInject?: string[]
-  typescript?: {
-    tsconfigPath?: string
-  }
-}
-
-export type NextConfigFunction<TConfig> = (phase: string, context: { defaultConfig: TConfig }) => TConfig | Promise<TConfig>
 
 interface NextProject extends Project {
   local: boolean
@@ -74,11 +55,6 @@ const VUE_FLAGS = {
   __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
 }
 
-const WEBSOCKET_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
-const RELOAD_FRAME = Buffer.concat([Buffer.from([0x81, 6]), Buffer.from('reload')])
-const CLOSE_FRAME = Buffer.from([0x88, 0])
-const CLOSE_OPCODE = 0x08
-
 const SERVERS: unique symbol = Symbol.for('forgepress:next:servers')
 
 const LOCAL_ORIGIN = /^https?:\/\/(?:(?:[^/:]+\.)?localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/
@@ -89,8 +65,7 @@ const PREFLIGHT = {
   'access-control-max-age': '600',
 }
 
-const INCLUDE = /("include"\s*:\s*\[)([^\]]*)\]/g
-const LAST_LINE_INDENT = /\n([ \t]*)\S[^\n]*$/
+const INDENT = /^[ \t]+(?=\S)/m
 
 const DIST = `${dirname(dirname(fileURLToPath(import.meta.url)))}${sep}`
 const WATCHER = new URL(`./watcher${extname(fileURLToPath(import.meta.url))}`, import.meta.url)
@@ -135,29 +110,14 @@ function servers(): Servers {
   return scope[SERVERS]
 }
 
-function parse(text: string): unknown {
-  try {
-    return JSON.parse(text)
+function formatting(text: string): FormattingOptions {
+  const indent = INDENT.exec(text)?.[0] ?? '  '
+
+  return {
+    insertSpaces: !indent.startsWith('\t'),
+    tabSize: indent.length,
+    eol: text.includes('\r\n') ? '\r\n' : '\n',
   }
-  catch {
-    return undefined
-  }
-}
-
-function addInclude(text: string, include: unknown[], pattern: string): string | undefined {
-  const matches = [...text.matchAll(INCLUDE)]
-  const [match] = matches
-  const [whole = '', opening = '', inner = ''] = match ?? []
-
-  if (!match || matches.length !== 1 || JSON.stringify(parse(`[${inner}]`)) !== JSON.stringify(include))
-    return undefined
-
-  const items = inner.trimEnd()
-  const indent = LAST_LINE_INDENT.exec(items)?.[1]
-  const entry = JSON.stringify(pattern)
-  const added = !items.trim() ? entry : indent === undefined ? `${items}, ${entry}` : `${items},\n${indent}${entry}`
-
-  return `${text.slice(0, match.index)}${opening}${added}${inner.slice(items.length)}]${text.slice(match.index + whole.length)}`
 }
 
 function includeContent(root: string, config: ResolvedConfig, tsconfig: string): void {
@@ -173,20 +133,19 @@ function includeContent(root: string, config: ResolvedConfig, tsconfig: string):
     return
 
   const text = readFileSync(file, 'utf8')
+  const errors: ParseError[] = []
+  const parsed: unknown = parse(text, errors, { allowTrailingComma: true })
 
-  if (text.includes(JSON.stringify(pattern)))
-    return
-
-  const parsed = parse(text)
-  const updated = isRecord(parsed) && Array.isArray(parsed.include) ? addInclude(text, parsed.include, pattern) : undefined
-
-  if (updated === undefined) {
+  if (errors.length > 0 || !isRecord(parsed) || !Array.isArray(parsed.include)) {
     logger.warn(`[forgepress] add ${JSON.stringify(pattern)} to "include" in ${basename(file)}, so TypeScript knows the schema`)
 
     return
   }
 
-  writeFileSync(file, updated)
+  if (parsed.include.includes(pattern))
+    return
+
+  writeFileSync(file, applyEdits(text, modify(text, ['include', parsed.include.length], pattern, { isArrayInsertion: true, formattingOptions: formatting(text) })))
   logger.info(`[forgepress] added ${JSON.stringify(pattern)} to "include" in ${basename(file)}, so TypeScript knows the schema`)
 }
 
@@ -194,14 +153,13 @@ function watchContent(dir: string, schema: string, changed: (file: string) => vo
   const watcher = new Worker(WATCHER, { workerData: { dir, schema } })
   let watching = false
 
-  watcher.unref()
-
   return new Promise((ready, fail) => {
     watcher.on('message', (file: string | null) => {
       if (file !== null)
         return changed(file)
 
       watching = true
+      watcher.unref()
       ready()
     })
 
@@ -222,11 +180,11 @@ function listen(server: Server): Promise<string> {
 }
 
 async function startDevServer(root: string, config: ResolvedConfig, write: boolean): Promise<string> {
-  const sockets = new Set<Socket>()
+  const pages = new WebSocketServer({ noServer: true })
 
   const dev = createDevContent(root, config, logger, () => {
-    for (const socket of sockets)
-      socket.write(RELOAD_FRAME)
+    for (const page of pages.clients)
+      page.send('reload')
   }, LOCAL_PAGES)
 
   await watchContent(join(root, config.paths.dir), join(root, config.paths.schema), dev.changed)
@@ -262,28 +220,15 @@ async function startDevServer(root: string, config: ResolvedConfig, write: boole
     dev.endpoint(request, response, () => end(response, 404))
   })
 
-  server.on('upgrade', (request, socket: Socket) => {
-    const key = request.headers['sec-websocket-key']
-
-    if (request.headers.host !== host || request.url !== EVENTS || typeof key !== 'string' || !LOCAL_PAGES.accepts(request)) {
+  server.on('upgrade', (request, socket: Socket, head) => {
+    if (request.headers.host !== host || request.url !== EVENTS || !LOCAL_PAGES.accepts(request)) {
       socket.destroy()
 
       return
     }
 
-    const accept = createHash('sha1').update(`${key}${WEBSOCKET_GUID}`).digest('base64')
-
-    socket.write(`HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${accept}\r\n\r\n`)
-    sockets.add(socket)
-
-    socket.on('data', (data: Buffer) => {
-      if (((data[0] ?? 0) & 0x0F) === CLOSE_OPCODE)
-        socket.end(CLOSE_FRAME)
-    })
-
-    socket.on('close', () => sockets.delete(socket))
-    socket.on('error', () => sockets.delete(socket))
     socket.unref()
+    pages.handleUpgrade(request, socket, head, page => page.on('error', () => page.terminate()))
   })
 
   server.unref()
@@ -312,9 +257,7 @@ async function prepare(phase: string, next: NextConfig, options: NextOptions): P
   }
 }
 
-function extend<TConfig extends object>(found: TConfig, project: NextProject, options: NextOptions): TConfig {
-  const next: NextConfig = found
-
+function extend(next: NextConfig, project: NextProject, options: NextOptions): NextConfig {
   const extended: NextConfig = {
     compiler: {
       ...next.compiler,
@@ -334,8 +277,8 @@ function extend<TConfig extends object>(found: TConfig, project: NextProject, op
       resolveAlias: { ...next.turbopack?.resolveAlias, [SETTINGS_ID]: SETTINGS_MODULE },
     },
 
-    webpack: (config: NextWebpackConfig, context: NextWebpackContext): NextWebpackConfig => {
-      const result: NextWebpackConfig = next.webpack ? next.webpack(config, context) : config
+    webpack: (config: WebpackConfig, context): WebpackConfig => {
+      const result: WebpackConfig = next.webpack ? next.webpack(config, context) : config
 
       result.plugins = [...result.plugins ?? [], new context.webpack.NormalModuleReplacementPlugin(/^virtual:forgepress\/settings$/, SETTINGS_MODULE)]
       result.ignoreWarnings = [...result.ignoreWarnings ?? [], dynamicConfigImport]
@@ -350,12 +293,12 @@ function extend<TConfig extends object>(found: TConfig, project: NextProject, op
     ],
   }
 
-  return { ...found, ...extended }
+  return { ...next, ...extended }
 }
 
-export function withForgePress<TConfig extends object>(nextConfig: TConfig | NextConfigFunction<TConfig>, options: NextOptions = {}): (phase: string, context: { defaultConfig: TConfig }) => Promise<TConfig> {
+export function withForgePress(nextConfig: NextConfig | NextConfigFunction, options: NextOptions = {}): (phase: string, context: { defaultConfig: NextConfig }) => Promise<NextConfig> {
   return async (phase, context) => {
-    const found = typeof nextConfig === 'function' ? await (nextConfig as NextConfigFunction<TConfig>)(phase, context) : nextConfig
+    const found = typeof nextConfig === 'function' ? await nextConfig(phase, context) : nextConfig
 
     return extend(found, await prepare(phase, found, options), options)
   }

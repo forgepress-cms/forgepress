@@ -50,18 +50,18 @@ watch(picked, (value) => {
 </script>
 
 <template>
-  <div class="grid gap-2">
+  <div class="grid grid-cols-1 gap-2">
     <USelectMenu
       v-if="picking"
       v-model="picked"
       :items="available"
       value-key="value"
       :placeholder="placeholder"
-      icon="i-lucide-search"
+      icon="i-hugeicons-search-01"
       class="w-full"
     />
 
-    <div v-if="selected.length" data-drag class="grid gap-1.5">
+    <div v-if="selected.length" data-drag class="grid grid-cols-1 gap-1.5">
       <div
         v-for="(item, index) in selected"
         :key="item.value"
@@ -78,7 +78,7 @@ watch(picked, (value) => {
           v-if="link"
           :to="link(item.value)"
           target="_blank"
-          icon="i-lucide-arrow-up-right"
+          icon="i-hugeicons-arrow-up-right-01"
           color="neutral"
           variant="ghost"
           size="xs"
@@ -86,7 +86,7 @@ watch(picked, (value) => {
         />
 
         <UButton
-          icon="i-lucide-x"
+          icon="i-hugeicons-cancel-01"
           color="neutral"
           variant="ghost"
           size="xs"

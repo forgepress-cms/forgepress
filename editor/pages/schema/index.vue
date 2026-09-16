@@ -101,10 +101,10 @@ function move(key: string, offset: number): Promise<boolean> {
 </script>
 
 <template>
-  <div class="grid gap-6">
+  <div class="grid gap-8">
     <PageHeader title="Schema" description="The collections that make up your content, and the fields they hold.">
       <template #actions>
-        <UButton label="New collection" icon="i-lucide-plus" :loading="saving" @click="creating = true" />
+        <UButton label="New collection" icon="i-hugeicons-plus-sign" :loading="saving" @click="creating = true" />
       </template>
     </PageHeader>
 
@@ -125,7 +125,7 @@ function move(key: string, offset: number): Promise<boolean> {
       <template #actions-cell="{ row }">
         <div class="flex items-center justify-end">
           <UButton
-            icon="i-lucide-trash-2"
+            icon="i-hugeicons-delete-02"
             color="error"
             variant="ghost"
             class="text-default hover:text-error focus-visible:text-error"

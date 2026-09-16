@@ -1,4 +1,5 @@
 import type { Draft } from './useDraft'
+import { useEventListener } from '@vueuse/core'
 import { onScopeDispose, watch } from 'vue'
 import { useRouter } from './useRouter'
 
@@ -18,22 +19,17 @@ export function useLeaveGuard(draft: Draft): Draft {
     return true
   })
 
-  function onUnload(event: BeforeUnloadEvent): void {
+  useEventListener(window, 'beforeunload', (event) => {
     if (!allowed && draft.dirty.value)
       event.preventDefault()
-  }
-
-  window.addEventListener('beforeunload', onUnload)
+  })
 
   watch(draft.leaving, (asking) => {
     if (!asking)
       resume = undefined
   })
 
-  onScopeDispose(() => {
-    release()
-    window.removeEventListener('beforeunload', onUnload)
-  })
+  onScopeDispose(release)
 
   function go(): void {
     const pending = resume

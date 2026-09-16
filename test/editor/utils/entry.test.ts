@@ -14,7 +14,7 @@ function field(key: string, translated: boolean, extra: Partial<FormField> = {})
     description: '',
     type,
     typeLabel: type,
-    icon: 'i-lucide-type',
+    icon: 'i-hugeicons-text',
     config: { type } as Field,
     translated,
     optional: false,

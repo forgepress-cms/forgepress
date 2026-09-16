@@ -1,4 +1,4 @@
-import type { NextConfig, NextWebpackConfig } from '../../src/plugin/next'
+import type { NextConfig } from 'next'
 import { Buffer } from 'node:buffer'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { request } from 'node:http'
@@ -51,7 +51,10 @@ async function until(label: string, check: () => boolean, timeout = 10000): Prom
   }
 }
 
-type LoadedConfig = NextConfig & { output?: string, rewrites?: () => Promise<unknown> }
+interface WebpackConfig {
+  plugins?: unknown[]
+  ignoreWarnings?: unknown[]
+}
 
 interface Answer {
   status: number
@@ -59,8 +62,8 @@ interface Answer {
   text: string
 }
 
-async function load(phase: string, config: LoadedConfig | (() => Promise<LoadedConfig>), options: { root: string, write?: boolean, preview?: boolean }): Promise<LoadedConfig> {
-  const project = async (): Promise<LoadedConfig> => {
+async function load(phase: string, config: NextConfig | (() => Promise<NextConfig>), options: { root: string, write?: boolean, preview?: boolean }): Promise<NextConfig> {
+  const project = async (): Promise<NextConfig> => {
     const found = typeof config === 'function' ? await config() : config
 
     return { ...found, typescript: { tsconfigPath: join(options.root, 'tsconfig.json'), ...found.typescript } }
@@ -175,7 +178,7 @@ describe('next build', () => {
 
   it('keeps what the project configured itself', async () => {
     const root = project()
-    const own = vi.fn((config: NextWebpackConfig) => ({ ...config, plugins: ['own'] }))
+    const own = vi.fn((config: WebpackConfig) => ({ ...config, plugins: ['own'] }))
     const config = await load('phase-production-build', async () => ({
       compiler: { define: { __VUE_OPTIONS_API__: false, RELEASE: 'v1' } },
       turbopack: { resolveAlias: { lodash: 'lodash-es' } },
@@ -187,7 +190,7 @@ describe('next build', () => {
     expect(config.turbopack?.resolveAlias).toEqual({ 'lodash': 'lodash-es', 'virtual:forgepress/settings': 'forgepress/next/settings' })
     expect(config.instrumentationClientInject).toEqual(['./analytics.ts'])
 
-    const webpack = config.webpack?.({ plugins: [] }, { webpack: { NormalModuleReplacementPlugin: ReplacementPlugin } }) as Required<NextWebpackConfig>
+    const webpack = config.webpack?.({ plugins: [] }, { webpack: { NormalModuleReplacementPlugin: ReplacementPlugin } } as never) as Required<WebpackConfig>
     const [ignored] = webpack.ignoreWarnings as ((warning: { message: string, module: { resource: string } }) => boolean)[]
     const message = 'Critical dependency: the request of a dependency is an expression'
 
@@ -198,36 +201,38 @@ describe('next build', () => {
     expect(ignored?.({ message: 'Module not found', module: { resource: join(source, 'disk/config.ts') } })).toBe(false)
   })
 
-  it('adds the content folder to the TypeScript project when the default globs skip it, keeping the formatting', async () => {
+  it('adds the content folder to the TypeScript project when the default globs skip it, keeping comments and indentation', async () => {
     const root = project({ 'forgepress.config.mjs': 'export default { path: \'../.forgepress\' }\n', 'tsconfig.json': '{\n  "compilerOptions": { "strict": true },\n  "include": [\n    "next-env.d.ts",\n    "**/*.ts"\n  ],\n  "exclude": ["node_modules"]\n}\n' })
+    const commented = project({ 'tsconfig.json': '{\n\t// Next.js\n\t"include": [\n\t\t"next-env.d.ts",\n\t\t"**/*.ts",\n\t],\n}\n' })
     const inline = project({ 'tsconfig.json': '{ "include": [ "**/*.ts" ] }\n' })
     const tsconfig = join(root, 'tsconfig.json')
     const log = vi.spyOn(process.stdout, 'write').mockReturnValue(true)
 
     await load('phase-production-build', { typescript: { tsconfigPath: tsconfig } }, { root })
     await load('phase-development-server', { typescript: { tsconfigPath: tsconfig } }, { root, write: false })
+    await load('phase-production-build', {}, { root: commented })
     await withForgePress({}, { root: inline })('phase-production-build', { defaultConfig: {} })
 
     expect(readFileSync(tsconfig, 'utf8')).toBe('{\n  "compilerOptions": { "strict": true },\n  "include": [\n    "next-env.d.ts",\n    "**/*.ts",\n    "../.forgepress/**/*.ts"\n  ],\n  "exclude": ["node_modules"]\n}\n')
-    expect(readFileSync(join(inline, 'tsconfig.json'), 'utf8')).toBe('{ "include": [ "**/*.ts", ".forgepress/**/*.ts" ] }\n')
+    expect(readFileSync(join(commented, 'tsconfig.json'), 'utf8')).toBe('{\n\t// Next.js\n\t"include": [\n\t\t"next-env.d.ts",\n\t\t"**/*.ts",\n\t\t".forgepress/**/*.ts",\n\t],\n}\n')
+    expect(readFileSync(join(inline, 'tsconfig.json'), 'utf8')).toBe('{\n  "include": [\n    "**/*.ts",\n    ".forgepress/**/*.ts"\n  ]\n}\n')
     expect(log).toHaveBeenCalledWith('[forgepress] added "../.forgepress/**/*.ts" to "include" in tsconfig.json, so TypeScript knows the schema\n')
-    expect(log).toHaveBeenCalledTimes(2)
+    expect(log).toHaveBeenCalledTimes(3)
   })
 
-  it('asks for the include instead of editing a tsconfig it cannot edit safely, and leaves visible folders alone', async () => {
-    const commented = project({ 'tsconfig.json': '{\n  // Next.js\n  "include": ["**/*.ts"]\n}\n' })
-    const bracket = project({ 'tsconfig.json': '{ "include": ["[a]/**/*.ts"] }\n' })
+  it('asks for the include instead of editing a tsconfig it cannot read or that has no include, and leaves visible folders alone', async () => {
+    const broken = project({ 'tsconfig.json': '{ "include": [ "**/*.ts" \n' })
+    const inherited = project({ 'tsconfig.json': '{ "extends": "./base.json" }\n' })
     const visible = project({ 'forgepress.config.mjs': 'export default { path: \'content\' }\n', 'tsconfig.json': '{ "include": ["**/*.ts"] }\n' })
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    await load('phase-production-build', { typescript: { tsconfigPath: join(commented, 'tsconfig.json') } }, { root: commented })
-    await load('phase-production-build', { typescript: { tsconfigPath: join(bracket, 'tsconfig.json') } }, { root: bracket })
-    await load('phase-production-build', { typescript: { tsconfigPath: join(visible, 'tsconfig.json') } }, { root: visible })
+    for (const root of [broken, inherited, visible])
+      await load('phase-production-build', {}, { root })
 
     expect(warn).toHaveBeenCalledWith('[forgepress] add ".forgepress/**/*.ts" to "include" in tsconfig.json, so TypeScript knows the schema')
     expect(warn).toHaveBeenCalledTimes(2)
-    expect(readFileSync(join(commented, 'tsconfig.json'), 'utf8')).toContain('// Next.js')
-    expect(readFileSync(join(bracket, 'tsconfig.json'), 'utf8')).toBe('{ "include": ["[a]/**/*.ts"] }\n')
+    expect(readFileSync(join(broken, 'tsconfig.json'), 'utf8')).toBe('{ "include": [ "**/*.ts" \n')
+    expect(readFileSync(join(inherited, 'tsconfig.json'), 'utf8')).toBe('{ "extends": "./base.json" }\n')
     expect(readFileSync(join(visible, 'tsconfig.json'), 'utf8')).toBe('{ "include": ["**/*.ts"] }\n')
   })
 })
@@ -249,6 +254,15 @@ describe('next dev', { timeout: 15000 }, () => {
 
     expect(await response.json()).toMatchObject([{ id: 'alice' }])
     expect(await send(`${server}/__forgepress/schema`, { host: 'evil.test' })).toEqual({ status: 403, allowed: undefined, text: '' })
+  })
+
+  it('lets a process exit that only loads the configuration, like the telemetry flush Next.js starts after next dev', async () => {
+    const holding = (): number => process.getActiveResourcesInfo().filter(resource => resource === 'MessagePort' || resource === 'Worker').length
+    const before = holding()
+
+    devServer(await load('phase-development-server', {}, { root: project() }))
+
+    expect(holding()).toBe(before)
   })
 
   it('answers pages opened on localhost, and only them', async () => {
@@ -307,6 +321,22 @@ describe('next dev', { timeout: 15000 }, () => {
     expect(await upgrade(`${server}/__forgepress/events`, 'http://localhost:3000')).toBe(101)
     expect(await upgrade(`${server}/__forgepress/events`, 'https://attacker.example')).toBe(0)
     expect(await upgrade(`${server}/__forgepress/other`, 'http://localhost:3000')).toBe(0)
+  })
+
+  it('drops a page that breaks the reload protocol and keeps serving', async () => {
+    const root = project()
+    const server = devServer(await load('phase-development-server', {}, { root }))
+    const headers = { 'connection': 'Upgrade', 'upgrade': 'websocket', 'sec-websocket-key': 'dGhlIHNhbXBsZSBub25jZQ==', 'sec-websocket-version': '13', 'origin': 'http://localhost:3000' }
+
+    await new Promise<void>((resolve) => {
+      request(`${server}/__forgepress/events`, { headers }).on('upgrade', (_, socket) => {
+        socket.on('close', () => resolve())
+        socket.resume()
+        socket.write(Buffer.concat([Buffer.from([0x81, 6]), Buffer.from('reload')]))
+      }).end()
+    })
+
+    expect((await fetch(`${server}/__forgepress/schema`)).status).toBe(200)
   })
 
   it('picks up a content folder created while dev runs', async () => {

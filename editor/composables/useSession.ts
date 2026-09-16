@@ -13,6 +13,7 @@ import { baked } from '../settings'
 import { updateAddress } from '../utils/address'
 
 const PKCE = 'forgepress:pkce'
+const CALLBACK = ['code', 'state', 'iss', 'error', 'error_description', 'error_uri']
 
 export interface Session {
   identity: Ref<ForgeIdentity | undefined>
@@ -74,7 +75,7 @@ async function adopt(next: OAuthTokens): Promise<boolean> {
   const config = provider.value
 
   if (!config) {
-    error.value = 'No provider is configured in forgepress.config.mjs.'
+    error.value = 'No provider is configured in the ForgePress config.'
 
     return false
   }
@@ -135,18 +136,17 @@ function settled<TValue>(work: Promise<TValue>): Promise<TValue | undefined> {
 function clean(): void {
   const url = new URL(window.location.href)
 
-  url.searchParams.delete('code')
-  url.searchParams.delete('state')
+  for (const name of CALLBACK)
+    url.searchParams.delete(name)
 
   updateAddress(url.toString())
 }
 
 async function complete(): Promise<boolean> {
   const params = new URLSearchParams(window.location.search)
-  const code = params.get('code')
   const state = params.get('state')
 
-  if (!code || !state)
+  if (!state || !(params.has('code') || params.has('error')))
     return false
 
   let saved: { verifier?: string, state?: string } = {}
@@ -175,7 +175,7 @@ async function complete(): Promise<boolean> {
   pending.value = true
 
   try {
-    return await adopt(await exchange(oauth, config.clientId, redirectUri(config), code, saved.verifier))
+    return await adopt(await exchange(oauth, config.clientId, redirectUri(config), params, state, saved.verifier))
   }
   catch (cause) {
     error.value = errorMessage(cause)

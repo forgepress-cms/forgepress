@@ -1,7 +1,7 @@
 import type { ComputedRef, Ref } from 'vue'
 import type { FormField } from '../utils/schema'
-import { computed, ref, watch } from 'vue'
-import { readLocalJson, writeLocal } from '../../src/store/local'
+import { noop, useStorage } from '@vueuse/core'
+import { computed } from 'vue'
 
 const PREVIEW_COLUMNS = 3
 
@@ -19,25 +19,17 @@ export interface ColumnVisibility {
 }
 
 export function useColumnVisibility(key: string, fields: FormField[], hidden: string[] = []): ColumnVisibility {
-  const storageKey = `forgepress:columns:${key}`
+  const shown = fields
+    .filter(field => !hidden.includes(field.key))
+    .slice(0, PREVIEW_COLUMNS)
+    .map(field => field.key)
 
-  const visibility = ref<Record<string, boolean>>(restore())
-
-  function restore(): Record<string, boolean> {
-    const stored = readLocalJson<Record<string, boolean>>(storageKey)
-
-    if (stored)
-      return stored
-
-    const shown = fields
-      .filter(field => !hidden.includes(field.key))
-      .slice(0, PREVIEW_COLUMNS)
-      .map(field => field.key)
-
-    return Object.fromEntries(fields.map(field => [field.key, shown.includes(field.key)]))
-  }
-
-  watch(visibility, current => writeLocal(storageKey, JSON.stringify(current)), { deep: true })
+  const visibility = useStorage<Record<string, boolean>>(
+    `forgepress:columns:${key}`,
+    Object.fromEntries(fields.map(field => [field.key, shown.includes(field.key)])),
+    undefined,
+    { writeDefaults: false, onError: noop },
+  )
 
   const items = computed<ColumnItem[]>(() => fields.map(field => ({
     type: 'checkbox',

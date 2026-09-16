@@ -1,9 +1,12 @@
-import type { Nuxt } from '../../src/plugin/nuxt'
+import type { ModuleOptions } from '../../src/plugin/nuxt'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { runWithNuxtContext } from '@nuxt/kit'
 import { afterEach, describe, expect, it } from 'vitest'
 import forgepress from '../../src/plugin/nuxt'
+
+type Nuxt = Parameters<typeof forgepress>[1]
 
 const scratch = fileURLToPath(new URL('../../node_modules/.forgepress-nuxt-test', import.meta.url))
 
@@ -12,26 +15,31 @@ function write(path: string, text: string): void {
   writeFileSync(join(scratch, path), text)
 }
 
-function nuxt(options: Partial<Nuxt['options']> = {}) {
-  const hooks = new Map<string, (context: never) => void>()
-  const instance: Nuxt = {
+function nuxt(options: { forgepress?: ModuleOptions } = {}) {
+  const hooks = new Map<string, (context: never) => unknown>()
+  const instance = {
     options: {
       rootDir: join(scratch, 'site'),
       buildDir: join(scratch, 'site/.nuxt'),
+      alias: {},
       plugins: [],
       build: { templates: [] },
       ...options,
     },
-    hook: (name, handler) => hooks.set(name, handler as (context: never) => void),
+    hook: (name: string, handler: (context: never) => unknown) => hooks.set(name, handler),
+  } as unknown as Nuxt
+
+  async function install(inline: ModuleOptions = {}): Promise<void> {
+    await runWithNuxtContext(instance, () => forgepress(inline, instance))
   }
 
-  function call<TContext>(name: string, context: TContext): TContext {
-    hooks.get(name)!(context as never)
+  async function call<TContext>(name: string, context: TContext): Promise<TContext> {
+    await hooks.get(name)!(context as never)
 
     return context
   }
 
-  return { instance, call }
+  return { instance, install, call }
 }
 
 afterEach(() => {
@@ -41,22 +49,25 @@ afterEach(() => {
 describe('nuxt module', () => {
   it('adds the Vite plugin once for the whole app', async () => {
     write('site/package.json', '{}\n')
-    const { instance, call } = nuxt()
+    const { install, call } = nuxt()
 
-    await forgepress({}, instance)
+    await install()
 
-    const { config } = call('vite:extend', { config: {} as { plugins?: { name: string }[] } })
+    const { config } = await call('vite:extend', { config: {} as { plugins?: { name: string }[] } })
 
     expect(config.plugins?.map(plugin => plugin.name)).toEqual(['unplugin-forgepress'])
   })
 
-  it('lets TypeScript see the schema and the entries, wherever the content folder is', async () => {
-    write('site/forgepress.config.mjs', 'export default { path: \'../.forgepress\' }\n')
-    const { instance, call } = nuxt()
+  it('lets TypeScript see the schema and the entries, wherever the content folder is, and the config next to nuxt.config', async () => {
+    write('site/forgepress.config.ts', 'export default { path: \'../.forgepress\' }\n')
+    const { install, call } = nuxt()
 
-    await forgepress({}, instance)
+    await install()
 
-    expect(call('prepare:types', { tsConfig: { include: ['./nuxt.d.ts'] } }).tsConfig.include).toEqual(['./nuxt.d.ts', '../../.forgepress/**/*.ts'])
+    const types = await call('prepare:types', { tsConfig: { include: ['./nuxt.d.ts'] }, nodeTsConfig: { include: ['../nuxt.config.*'] } })
+
+    expect(types.tsConfig.include).toEqual(['./nuxt.d.ts', '../../.forgepress/**/*.ts'])
+    expect(types.nodeTsConfig.include).toEqual(['../nuxt.config.*', '../forgepress.config.ts'])
   })
 
   it('runs the preview plugin in the browser unless it is switched off', async () => {
@@ -64,29 +75,32 @@ describe('nuxt module', () => {
     const on = nuxt()
     const off = nuxt({ forgepress: { preview: false } })
 
-    await forgepress({}, on.instance)
-    await forgepress({}, off.instance)
+    await on.install()
+    await off.install()
 
     const [template] = on.instance.options.build.templates as { filename: string, getContents: () => string }[]
 
     expect(template?.filename).toBe('forgepress/preview.client.mjs')
     expect(template?.getContents()).toContain('usePreviewMode({ shouldEnable: previewing })')
-    expect(on.instance.options.plugins).toEqual([{ src: join(scratch, 'site/.nuxt/forgepress/preview.client.mjs'), mode: 'client' }])
+    expect(on.instance.options.plugins).toMatchObject([{ src: join(scratch, 'site/.nuxt/forgepress/preview.client.mjs'), mode: 'client' }])
     expect(off.instance.options.build.templates).toEqual([])
     expect(off.instance.options.plugins).toEqual([])
   })
 
   it('takes options inline over the forgepress key and resolves the root from the Nuxt root', async () => {
     write('content/forgepress.config.mjs', 'export default {}\n')
-    const { instance, call } = nuxt({ forgepress: { preview: false, root: 'elsewhere' } })
+    const { instance, install, call } = nuxt({ forgepress: { preview: false, root: 'elsewhere' } })
 
-    await forgepress({ root: '../content' }, instance)
+    await install({ root: '../content' })
 
-    expect(call('prepare:types', { tsConfig: {} as { include?: string[] } }).tsConfig.include).toEqual(['../../content/.forgepress/**/*.ts'])
+    const types = await call('prepare:types', { tsConfig: {} as { include?: string[] }, nodeTsConfig: {} as { include?: string[] } })
+
+    expect(types.tsConfig.include).toEqual(['../../content/.forgepress/**/*.ts'])
+    expect(types.nodeTsConfig.include).toEqual(['../../content/forgepress.config.mjs'])
     expect(instance.options.plugins).toEqual([])
   })
 
   it('names its configuration key', async () => {
-    expect(await forgepress.getMeta()).toEqual({ name: 'forgepress', configKey: 'forgepress' })
+    expect(await forgepress.getMeta?.()).toEqual({ name: 'forgepress', configKey: 'forgepress' })
   })
 })

@@ -1,5 +1,5 @@
 import type { ServerResponse } from 'node:http'
-import type { UnpluginFactory } from 'unplugin'
+import type { UnpluginFactory, UnpluginInstance } from 'unplugin'
 import type { Options } from './project'
 import { readFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
@@ -114,14 +114,16 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options) =
   }
 }
 
-export const unplugin = /* #__PURE__ */ createUnplugin(unpluginFactory)
+type Instance = UnpluginInstance<Options | undefined, boolean>
+
+export const unplugin: Instance = /* #__PURE__ */ createUnplugin(unpluginFactory)
 
 export default unplugin
 
-export const vitePlugin = unplugin.vite
-export const rollupPlugin = unplugin.rollup
-export const rolldownPlugin = unplugin.rolldown
-export const webpackPlugin = unplugin.webpack
-export const rspackPlugin = unplugin.rspack
-export const farmPlugin = unplugin.farm
-export const bunPlugin = unplugin.bun
+export const vitePlugin: Instance['vite'] = unplugin.vite
+export const rollupPlugin: Instance['rollup'] = unplugin.rollup
+export const rolldownPlugin: Instance['rolldown'] = unplugin.rolldown
+export const webpackPlugin: Instance['webpack'] = unplugin.webpack
+export const rspackPlugin: Instance['rspack'] = unplugin.rspack
+export const farmPlugin: Instance['farm'] = unplugin.farm
+export const bunPlugin: Instance['bun'] = unplugin.bun

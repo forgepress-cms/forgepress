@@ -149,6 +149,29 @@ describe('useLeaveGuard', () => {
     expect(draft.leaving.value).toBe(false)
   })
 
+  it('asks the browser to confirm closing the tab only while the draft has changes', async () => {
+    const { form } = edit()
+
+    function closing(): boolean {
+      const event = new Event('beforeunload', { cancelable: true })
+
+      window.dispatchEvent(event)
+
+      return event.defaultPrevented
+    }
+
+    expect(closing()).toBe(false)
+
+    form.label = 'Title'
+    await nextTick()
+
+    expect(closing()).toBe(true)
+
+    app.unmount()
+
+    expect(closing()).toBe(false)
+  })
+
   it('stops guarding once the page is gone', async () => {
     const { form } = edit()
 

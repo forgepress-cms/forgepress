@@ -68,7 +68,7 @@ function insert(): void {
           <UInput
             v-model="search"
             placeholder="Search"
-            icon="i-lucide-search"
+            icon="i-hugeicons-search-01"
             class="flex-1"
           />
 

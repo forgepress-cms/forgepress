@@ -1,3 +1,5 @@
+import type { ForgePressConfig } from 'forgepress'
+
 export default {
   path: '../.forgepress',
 
@@ -14,4 +16,4 @@ export default {
 
     commitMessage: 'docs: {name}',
   },
-}
+} satisfies ForgePressConfig

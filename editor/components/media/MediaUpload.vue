@@ -34,7 +34,7 @@ async function pick(event: Event): Promise<void> {
   <span class="contents">
     <UButton
       :label="label"
-      icon="i-lucide-upload"
+      icon="i-hugeicons-upload-01"
       :color="color"
       :variant="variant"
       :loading="library.pending.value"

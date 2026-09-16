@@ -1,6 +1,15 @@
 import type { OAuthTokens } from '../../src/forge/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { authorizeUrl, createChallenge, createTokenGetter, createVerifier, expired, refreshed, storedTokens, toTokens } from '../../src/forge/oauth'
+import { authorizeUrl, createChallenge, createTokenGetter, createVerifier, exchange, expired, refreshed, renew, storedTokens, toTokens } from '../../src/forge/oauth'
+
+interface ForgeRequest {
+  url: string
+  body: Record<string, string>
+}
+
+function recorded(url: string, init: RequestInit): ForgeRequest {
+  return { url, body: Object.fromEntries(new URLSearchParams(String(init.body))) }
+}
 
 describe('pkce', () => {
   it('matches the RFC 7636 challenge vector', async () => {
@@ -23,7 +32,7 @@ describe('pkce', () => {
 
   it('builds an authorize url with S256 and the requested scopes', () => {
     const url = new URL(authorizeUrl(
-      { authorize: 'https://gitlab.com/oauth/authorize', token: 'https://gitlab.com/oauth/token' },
+      { issuer: 'https://gitlab.com', authorize: 'https://gitlab.com/oauth/authorize', token: 'https://gitlab.com/oauth/token' },
       { clientId: 'abc', redirectUri: 'https://site.test/admin/', scopes: ['api'], state: 'xyz', challenge: 'chal' },
     ))
 
@@ -42,7 +51,7 @@ describe('pkce', () => {
 
 describe('tokens', () => {
   it('reads an access token and turns the lifetime into an instant', () => {
-    expect(toTokens({ access_token: 'a', refresh_token: 'r', expires_in: 7200 }, 1000)).toEqual({
+    expect(toTokens({ access_token: 'a', token_type: 'bearer', refresh_token: 'r', expires_in: 7200 }, 1000)).toEqual({
       access: 'a',
       refresh: 'r',
       expires: 1000 + 7_200_000,
@@ -50,11 +59,7 @@ describe('tokens', () => {
   })
 
   it('accepts a response with no refresh or expiry', () => {
-    expect(toTokens({ access_token: 'a' })).toEqual({ access: 'a' })
-  })
-
-  it('rejects a response with no access token', () => {
-    expect(() => toTokens({ error: 'invalid_grant' })).toThrow('no access token')
+    expect(toTokens({ access_token: 'a', token_type: 'bearer' })).toEqual({ access: 'a' })
   })
 
   it('treats a token without an expiry as good', () => {
@@ -91,18 +96,18 @@ describe('stored tokens', () => {
   })
 
   it('renews expired tokens with the refresh token', async () => {
-    const requests: string[] = []
+    const requests: ForgeRequest[] = []
 
     vi.stubGlobal('fetch', async (input: string, init: RequestInit) => {
-      requests.push(`${input} ${String(init.body)}`)
+      requests.push(recorded(input, init))
 
-      return Response.json({ access_token: 'b', refresh_token: 's', expires_in: 7200 })
+      return Response.json({ access_token: 'b', token_type: 'Bearer', refresh_token: 's', expires_in: 7200 })
     })
 
     const renewed = await refreshed({ access: 'a', refresh: 'r', expires: Date.now() - 1000 }, gitlab)
 
     expect(renewed).toMatchObject({ access: 'b', refresh: 's' })
-    expect(requests).toEqual(['https://gitlab.com/oauth/token client_id=abc&grant_type=refresh_token&refresh_token=r'])
+    expect(requests).toEqual([{ url: 'https://gitlab.com/oauth/token', body: { client_id: 'abc', grant_type: 'refresh_token', refresh_token: 'r' } }])
   })
 
   it('hands out a token that is still good without renewing it', async () => {
@@ -121,7 +126,7 @@ describe('stored tokens', () => {
     vi.stubGlobal('fetch', async () => {
       renewals += 1
 
-      return Response.json({ access_token: `b${renewals}`, refresh_token: 's', expires_in: 7200 })
+      return Response.json({ access_token: `b${renewals}`, token_type: 'bearer', refresh_token: 's', expires_in: 7200 })
     })
 
     const token = createTokenGetter(gitlab, async () => tokens, async (next) => {
@@ -133,5 +138,52 @@ describe('stored tokens', () => {
     expect(await token()).toBe('b1')
     expect(renewals).toBe(1)
     expect(written).toEqual([expect.objectContaining({ access: 'b1', refresh: 's' })])
+  })
+})
+
+describe('forge answers', () => {
+  const forgejo = { issuer: 'http://127.0.0.1:3310', authorize: 'http://127.0.0.1:3310/login/oauth/authorize', token: 'http://127.0.0.1:3310/login/oauth/access_token' }
+  const redirect = 'http://localhost:3000/admin'
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('exchanges the code of a sign-in for tokens, also with a forge on plain http', async () => {
+    const requests: ForgeRequest[] = []
+
+    vi.stubGlobal('fetch', async (input: string, init: RequestInit) => {
+      requests.push(recorded(input, init))
+
+      return Response.json({ access_token: 'a', token_type: 'bearer', refresh_token: 'r', expires_in: 3600 })
+    })
+
+    const tokens = await exchange(forgejo, 'editor', redirect, new URLSearchParams({ code: 'code', state: 'state' }), 'state', 'verifier')
+
+    expect(tokens).toEqual({ access: 'a', refresh: 'r', expires: expect.any(Number) })
+    expect(requests).toEqual([{ url: forgejo.token, body: { client_id: 'editor', grant_type: 'authorization_code', code: 'code', redirect_uri: redirect, code_verifier: 'verifier' } }])
+  })
+
+  it('explains a sign-in the forge refused, without asking for tokens', async () => {
+    const fetch = vi.fn()
+
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(exchange(forgejo, 'editor', redirect, new URLSearchParams({ error: 'access_denied', error_description: 'the request is denied', state: 'state' }), 'state', 'verifier'))
+      .rejects
+      .toThrow('[forgepress] the forge refused the sign-in: the request is denied')
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('explains a token request the forge rejected', async () => {
+    vi.stubGlobal('fetch', async () => Response.json({ error: 'unauthorized_client', error_description: 'token was already used' }, { status: 400 }))
+
+    await expect(renew(forgejo, 'editor', 'used')).rejects.toThrow('[forgepress] the forge rejected the token request: token was already used')
+  })
+
+  it('does not take a token response without an access token', async () => {
+    vi.stubGlobal('fetch', async () => Response.json({ token_type: 'bearer', expires_in: 3600 }))
+
+    await expect(renew(forgejo, 'editor', 'r')).rejects.toThrow('"access_token"')
   })
 })

@@ -84,10 +84,22 @@
     "prepack": "pnpm run build"
   },
   "peerDependencies": {
+    "@nuxt/kit": "^4.0.0",
+    "@nuxt/schema": "^4.0.0",
+    "next": "^16.3.0",
     "react": "^18.0.0 || ^19.0.0",
     "vue": "^3.5.0"
   },
   "peerDependenciesMeta": {
+    "@nuxt/kit": {
+      "optional": true
+    },
+    "@nuxt/schema": {
+      "optional": true
+    },
+    "next": {
+      "optional": true
+    },
     "react": {
       "optional": true
     },
@@ -96,20 +108,34 @@
     }
   },
   "dependencies": {
-    "unplugin": "^3.0.0"
+    "citty": "^0.2.2",
+    "idb-keyval": "^6.3.0",
+    "jsonc-parser": "^3.3.1",
+    "oauth4webapi": "^3.8.8",
+    "perfect-debounce": "^2.1.0",
+    "unplugin": "^3.0.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^9.5.1",
     "@arethetypeswrong/cli": "^0.18.5",
-    "@iconify-json/lucide": "^1.2.131",
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@iconify-json/hugeicons": "^1.2.34",
+    "@nuxt/kit": "^4.5.2",
+    "@nuxt/schema": "^4.5.2",
     "@nuxt/ui": "^4.11.1",
     "@tanstack/vue-table": "^8.21.3",
     "@types/node": "^24.0.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-vue": "^6.0.8",
+    "@vueuse/core": "^14.4.0",
+    "diff": "^8.0.4",
     "eslint": "^10.10.0",
+    "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.14.3",
+    "next": "^16.3.5",
     "obuild": "^0.4.39",
     "publint": "^0.3.24",
     "react": "^19.3.0",

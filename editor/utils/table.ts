@@ -32,6 +32,6 @@ export function actionsColumn<TRow>(): Column<TRow> {
   return {
     id: 'actions',
     header: '',
-    meta: { class: { th: 'sticky right-0 w-0 bg-default', td: 'sticky right-0 w-0 border-l border-default bg-default text-right' } },
+    meta: { class: { th: 'sticky right-0 w-0 bg-sheet', td: 'sticky right-0 w-0 bg-sheet text-right' } },
   }
 }

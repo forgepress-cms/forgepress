@@ -18,10 +18,10 @@ useTitle(() => props.title)
 
 <template>
   <div class="flex flex-wrap items-end justify-between gap-4">
-    <div class="grid gap-1">
-      <UBreadcrumb v-if="breadcrumb?.length" :items="breadcrumb" />
+    <div class="grid min-w-0 gap-1">
+      <UBreadcrumb v-if="breadcrumb?.length" :items="breadcrumb" class="mb-1" />
 
-      <h1 class="text-xl lg:text-2xl font-semibold text-highlighted">
+      <h1 class="font-display text-3xl leading-[1.05] font-bold tracking-[-0.035em] wrap-anywhere text-highlighted lg:text-[2.5rem]">
         {{ title }}
       </h1>
 
@@ -32,7 +32,7 @@ useTitle(() => props.title)
       </p>
     </div>
 
-    <div v-if="$slots.actions" class="flex items-center gap-2">
+    <div v-if="$slots.actions" class="flex flex-wrap items-center gap-2">
       <slot name="actions" />
     </div>
   </div>

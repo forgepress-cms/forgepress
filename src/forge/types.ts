@@ -25,6 +25,7 @@ export interface Conflict {
 export type TokenGetter = () => Promise<string>
 
 export interface OAuthEndpoints {
+  issuer: string
   authorize: string
   token: string
 }

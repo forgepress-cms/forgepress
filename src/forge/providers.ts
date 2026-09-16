@@ -51,7 +51,7 @@ export function describe(config: ProviderConfig): ForgeDescriptor {
       ...shared,
       api: `${root}/api/v4`,
       scopes: config.scopes ?? ['api'],
-      oauth: { authorize: `${root}/oauth/authorize`, token: `${root}/oauth/token` },
+      oauth: { issuer: root, authorize: `${root}/oauth/authorize`, token: `${root}/oauth/token` },
     }
   }
 
@@ -59,7 +59,7 @@ export function describe(config: ProviderConfig): ForgeDescriptor {
     ...shared,
     api: `${root}/api/v1`,
     scopes: config.scopes ?? ['read:user', 'write:repository'],
-    oauth: { authorize: `${root}/login/oauth/authorize`, token: `${root}/login/oauth/access_token` },
+    oauth: { issuer: root, authorize: `${root}/login/oauth/authorize`, token: `${root}/login/oauth/access_token` },
   }
 }
 

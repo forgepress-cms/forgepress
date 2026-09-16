@@ -119,7 +119,7 @@ async function submit(linkedStatus?: EntryStatus): Promise<void> {
 </script>
 
 <template>
-  <div class="grid gap-6">
+  <div class="grid gap-8">
     <PageHeader
       :title="title"
       :breadcrumb="[
@@ -132,7 +132,7 @@ async function submit(linkedStatus?: EntryStatus): Promise<void> {
 
         <UButton
           label="Save"
-          icon="i-lucide-save"
+          icon="i-hugeicons-floppy-disk"
           :loading="saving"
           :disabled="!!missing.length || !(dirty || creating)"
           @click="submit()"

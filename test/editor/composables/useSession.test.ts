@@ -77,13 +77,13 @@ describe('session', () => {
   })
 
   it('stays signed in after signing in on the forge and reloading the editor', async () => {
-    const requests: string[] = []
+    const requests: { url: string, body: Record<string, string> }[] = []
 
     vi.stubGlobal('BroadcastChannel', undefined)
     vi.stubGlobal('fetch', async (input: string, init: RequestInit) => {
-      requests.push(`${input} ${String(init.body)}`)
+      requests.push({ url: input, body: Object.fromEntries(new URLSearchParams(String(init.body))) })
 
-      return new Response(JSON.stringify({ access_token: 'granted', refresh_token: 'renewal', expires_in: 7200 }))
+      return Response.json({ access_token: 'granted', token_type: 'bearer', refresh_token: 'renewal', expires_in: 7200 })
     })
 
     sessionStorage.setItem('forgepress:pkce', JSON.stringify({ verifier: 'verifier', state: 'state' }))
@@ -105,8 +105,30 @@ describe('session', () => {
 
     expect(reloaded.session.identity.value).toEqual({ login: 'fred' })
     expect(reloaded.preview.previewing()).toBe(true)
-    expect(requests).toEqual([`http://127.0.0.1:3310/login/oauth/access_token client_id=editor&grant_type=authorization_code&code=code&redirect_uri=${encodeURIComponent(`${window.location.origin}/admin`)}&code_verifier=verifier`])
+    expect(requests).toEqual([{
+      url: 'http://127.0.0.1:3310/login/oauth/access_token',
+      body: { client_id: 'editor', grant_type: 'authorization_code', code: 'code', redirect_uri: `${window.location.origin}/admin`, code_verifier: 'verifier' },
+    }])
     expect(used).toEqual(['granted', 'granted'])
+  })
+
+  it('shows why the forge refused the sign-in and takes its answer out of the address', async () => {
+    const fetch = vi.fn()
+
+    vi.stubGlobal('fetch', fetch)
+
+    sessionStorage.setItem('forgepress:pkce', JSON.stringify({ verifier: 'verifier', state: 'state' }))
+    window.history.replaceState(null, '', '/admin?tab=content&error=access_denied&error_description=the+request+is+denied&state=state')
+
+    const { session } = await load()
+
+    await session.restore()
+
+    expect(session.identity.value).toBeUndefined()
+    expect(session.error.value).toBe('[forgepress] the forge refused the sign-in: the request is denied')
+    expect(window.location.pathname + window.location.search).toBe('/admin?tab=content')
+    expect(sessionStorage.getItem('forgepress:pkce')).toBeNull()
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it('uses tokens another tab renewed instead of renewing its expired ones again', async () => {

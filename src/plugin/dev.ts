@@ -3,6 +3,7 @@ import type { ResolvedConfig } from '../config/resolve'
 import type { ContentIssue } from '../files/issues'
 import type { OriginPolicy } from './endpoint'
 import { join, sep } from 'node:path'
+import { debounce } from 'perfect-debounce'
 import { buildOutput } from '../disk/output'
 import { ENDPOINT } from '../endpoint/routes'
 import { ContentError } from '../files/issues'
@@ -30,7 +31,6 @@ export function createDevContent(root: string, config: ResolvedConfig, logger: D
   const contentDir = join(root, config.paths.content)
 
   let reported = ''
-  let pending: ReturnType<typeof setTimeout> | undefined
 
   function report(issues: readonly ContentIssue[]): void {
     const message = issues.length > 0 ? new ContentError(issues).message : ''
@@ -60,27 +60,20 @@ export function createDevContent(root: string, config: ResolvedConfig, logger: D
     }
   }
 
-  function refresh(): Promise<void> {
-    return write().catch((error: unknown) => logger.error(`[forgepress] could not write the content output: ${errorMessage(error)}`))
-  }
-
-  function schedule(): void {
-    clearTimeout(pending)
-
-    pending = setTimeout(() => {
-      void refresh().finally(reload)
-    }, 100)
-  }
+  const rebuild = debounce(async (after?: () => void) => {
+    await write().catch((error: unknown) => logger.error(`[forgepress] could not write the content output: ${errorMessage(error)}`))
+    after?.()
+  }, 100)
 
   return {
     watched: [schemaFile, contentDir],
 
     changed: (file) => {
       if (file === schemaFile || file.startsWith(`${contentDir}${sep}`))
-        schedule()
+        void rebuild(reload)
     },
 
-    refresh,
+    refresh: () => rebuild(),
 
     endpoint: (request, response, next) => {
       const method = request.method ?? ''
@@ -92,7 +85,7 @@ export function createDevContent(root: string, config: ResolvedConfig, logger: D
       handle(config, root, request, response, origins)
         .then(() => {
           if (method !== 'GET')
-            schedule()
+            void rebuild(reload)
         })
         .catch((error: unknown) => {
           response.statusCode = error instanceof EndpointError ? error.status : 500

@@ -8,22 +8,22 @@ import { createRouter, routerKey } from './plugins/router'
 import { createTitle, titleKey } from './plugins/title'
 import { routes } from './routes'
 import styles from './styles.css?inline'
+import { documentRules } from './utils/document'
 
-const PROPERTIES_ID = 'forgepress-properties'
+const DOCUMENT_RULES_ID = 'forgepress-document-rules'
 const EDITOR_ATTRIBUTE = 'data-forgepress-editor'
-const PROPERTY_RULE = /@property\s+--[\w-]+\s*\{[^}]*\}/g
 
-function registerProperties(): (() => void) | undefined {
-  if (document.getElementById(PROPERTIES_ID))
+function registerDocumentRules(): (() => void) | undefined {
+  if (document.getElementById(DOCUMENT_RULES_ID))
     return undefined
 
-  const rules = styles.match(PROPERTY_RULE)
+  const rules = documentRules(styles)
 
-  if (!rules)
+  if (!rules.length)
     return undefined
 
   const sheet = document.createElement('style')
-  sheet.id = PROPERTIES_ID
+  sheet.id = DOCUMENT_RULES_ID
   sheet.textContent = rules.join('\n')
   document.head.append(sheet)
 
@@ -55,7 +55,7 @@ export const mountEditor: MountEditor = (target) => {
   root.replaceChildren(sheet, container)
   host.setAttribute(EDITOR_ATTRIBUTE, '')
 
-  const unregister = registerProperties()
+  const unregister = registerDocumentRules()
 
   const app = createApp(App, { container })
   const router = createRouter(routes)

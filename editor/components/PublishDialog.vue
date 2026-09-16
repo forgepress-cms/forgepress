@@ -84,7 +84,7 @@ async function overwrite(): Promise<void> {
           v-if="conflicts.length"
           color="warning"
           variant="subtle"
-          icon="i-lucide-triangle-alert"
+          icon="i-hugeicons-alert-02"
           title="Changed in the repository since your edit"
           :actions="[
             { label: 'Drop my edits', color: 'neutral', variant: 'outline', disabled: publishing, onClick: drop },
@@ -106,7 +106,7 @@ async function overwrite(): Promise<void> {
           v-if="issues.length"
           color="error"
           variant="subtle"
-          icon="i-lucide-circle-x"
+          icon="i-hugeicons-cancel-circle"
           title="The site wouldn't build"
         >
           <template #description>
@@ -134,7 +134,7 @@ async function overwrite(): Promise<void> {
         </UAlert>
 
         <div v-if="loading" class="flex justify-center py-6">
-          <UIcon name="i-lucide-loader-circle" class="size-5 animate-spin text-muted" />
+          <UIcon name="i-hugeicons-loading-03" class="size-5 animate-spin text-muted" />
         </div>
 
         <p v-else-if="!count" class="py-2 text-sm text-muted">

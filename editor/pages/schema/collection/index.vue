@@ -112,14 +112,14 @@ function move(key: string, offset: number): Promise<boolean> {
 </script>
 
 <template>
-  <div class="grid gap-6">
+  <div class="grid gap-8">
     <PageHeader
       :title="collection.label ?? name"
       :description="collection.description"
       :breadcrumb="[{ label: 'Schema', to: href('schema') }]"
     >
       <template #actions>
-        <UButton label="New field" icon="i-lucide-plus" :loading="saving" @click="open()" />
+        <UButton label="New field" icon="i-hugeicons-plus-sign" :loading="saving" @click="open()" />
       </template>
     </PageHeader>
 
@@ -142,19 +142,19 @@ function move(key: string, offset: number): Promise<boolean> {
       </template>
 
       <template #typeLabel-cell="{ row }">
-        <UBadge :label="row.original.typeLabel" :icon="row.original.icon" color="neutral" variant="subtle" />
+        <UBadge :label="row.original.typeLabel" :icon="row.original.icon" color="neutral" variant="soft" />
       </template>
 
       <template #optional-cell="{ row }">
         <UIcon
-          :name="row.original.optional ? 'i-lucide-minus' : 'i-lucide-check'"
+          :name="row.original.optional ? 'i-hugeicons-minus-sign' : 'i-hugeicons-tick-02'"
           :class="row.original.optional ? 'size-4 text-dimmed' : 'size-4 text-primary'"
         />
       </template>
 
       <template #translated-cell="{ row }">
         <UIcon
-          :name="row.original.translated ? 'i-lucide-check' : 'i-lucide-minus'"
+          :name="row.original.translated ? 'i-hugeicons-tick-02' : 'i-hugeicons-minus-sign'"
           :class="row.original.translated ? 'size-4 text-primary' : 'size-4 text-dimmed'"
         />
       </template>
@@ -162,7 +162,7 @@ function move(key: string, offset: number): Promise<boolean> {
       <template #actions-cell="{ row }">
         <div class="flex items-center justify-end">
           <UButton
-            icon="i-lucide-pencil"
+            icon="i-hugeicons-pencil-edit-02"
             color="neutral"
             variant="ghost"
             :aria-label="`Edit ${row.original.key}`"
@@ -170,7 +170,7 @@ function move(key: string, offset: number): Promise<boolean> {
           />
 
           <UButton
-            icon="i-lucide-trash-2"
+            icon="i-hugeicons-delete-02"
             color="error"
             variant="ghost"
             class="text-default hover:text-error focus-visible:text-error"

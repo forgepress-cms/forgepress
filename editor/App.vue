@@ -33,9 +33,9 @@ const locked = computed(() => ready.value && deployed.value && identity.value ==
 
 <template>
   <UApp :portal="container">
-    <div class="fixed inset-0 overflow-y-auto bg-default text-default">
+    <div class="fixed inset-0 overflow-y-auto bg-desk text-default">
       <div v-if="!ready" class="flex min-h-dvh items-center justify-center">
-        <UIcon name="i-lucide-loader-circle" class="size-6 animate-spin text-muted" />
+        <UIcon name="i-hugeicons-loading-03" class="size-6 animate-spin text-muted" />
       </div>
 
       <SignIn v-else-if="locked" />
@@ -43,7 +43,7 @@ const locked = computed(() => ready.value && deployed.value && identity.value ==
       <template v-else>
         <Header :deployed="deployed" />
 
-        <main class="pt-6 pb-16">
+        <main class="pt-8 pb-16 sm:pt-12 sm:pb-20">
           <UContainer>
             <PageView />
           </UContainer>

@@ -41,7 +41,7 @@ function sign(kind: string): string {
         @click="toggle(file.path)"
       >
         <UIcon
-          :name="expanded === file.path ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
+          :name="expanded === file.path ? 'i-hugeicons-arrow-down-01' : 'i-hugeicons-arrow-right-01'"
           class="size-4 shrink-0 text-muted"
         />
 
@@ -52,12 +52,12 @@ function sign(kind: string): string {
           <span class="ml-1 text-red-600 dark:text-red-400">−{{ file.tally.removed }}</span>
         </span>
 
-        <UBadge :label="file.change" :color="COLORS[file.change]" variant="subtle" size="sm" class="shrink-0" />
+        <UBadge :label="file.change" :color="COLORS[file.change]" variant="soft" size="sm" class="shrink-0" />
       </button>
 
       <div v-if="expanded === file.path" class="border-t border-default">
         <div v-if="file.media" class="flex items-center gap-3 p-3">
-          <div class="size-20 shrink-0 overflow-hidden rounded ring ring-default">
+          <div class="size-20 shrink-0 overflow-hidden rounded-sm ring ring-default">
             <MediaPreview
               :url="file.media.preview ?? file.media.url"
               :kind="mediaKind(file.media.name) ?? 'image'"

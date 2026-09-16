@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 import process from 'node:process'
 import { createPaths, DEFAULT_CONTENT_PATH } from '../files/paths'
 
-export const CONFIG_FILES = ['forgepress.config.mjs', 'forgepress.config.js'] as const
+export const CONFIG_FILES = ['forgepress.config.ts', 'forgepress.config.mts', 'forgepress.config.mjs', 'forgepress.config.js'] as const
 
 function ancestor(start: string, found: (dir: string) => boolean): string | undefined {
   for (let dir = start; ; dir = dirname(dir)) {

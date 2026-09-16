@@ -4,6 +4,6 @@
     aria-label="Drag to reorder"
     @click.stop
   >
-    <UIcon name="i-lucide-grip-vertical" class="size-4" />
+    <UIcon name="i-hugeicons-drag-drop-vertical" class="size-4" />
   </span>
 </template>

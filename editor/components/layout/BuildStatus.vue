@@ -13,18 +13,18 @@ interface Look {
 }
 
 const STATES: Record<BuildState, Look> = {
-  building: { label: 'Building', icon: 'i-lucide-loader-circle', color: 'neutral' },
-  passed: { label: 'Built', icon: 'i-lucide-circle-check', color: 'success' },
-  live: { label: 'Live', icon: 'i-lucide-circle-check', color: 'success' },
-  failed: { label: 'Build failed', icon: 'i-lucide-circle-x', color: 'error' },
-  stalled: { label: 'Not live yet', icon: 'i-lucide-clock-alert', color: 'warning' },
+  building: { label: 'Building', icon: 'i-hugeicons-loading-03', color: 'neutral' },
+  passed: { label: 'Built', icon: 'i-hugeicons-checkmark-circle-02', color: 'success' },
+  live: { label: 'Live', icon: 'i-hugeicons-checkmark-circle-02', color: 'success' },
+  failed: { label: 'Build failed', icon: 'i-hugeicons-cancel-circle', color: 'error' },
+  stalled: { label: 'Not live yet', icon: 'i-hugeicons-clock-alert', color: 'warning' },
 }
 
 const CHECKS: Record<CheckState, { icon: string, class: string, label: string }> = {
-  pending: { icon: 'i-lucide-loader-circle', class: 'animate-spin text-muted', label: 'Running' },
-  success: { icon: 'i-lucide-circle-check', class: 'text-success', label: 'Passed' },
-  failure: { icon: 'i-lucide-circle-x', class: 'text-error', label: 'Failed' },
-  skipped: { icon: 'i-lucide-circle-minus', class: 'text-dimmed', label: 'Skipped' },
+  pending: { icon: 'i-hugeicons-loading-03', class: 'animate-spin text-muted', label: 'Running' },
+  success: { icon: 'i-hugeicons-checkmark-circle-02', class: 'text-success', label: 'Passed' },
+  failure: { icon: 'i-hugeicons-cancel-circle', class: 'text-error', label: 'Failed' },
+  skipped: { icon: 'i-hugeicons-minus-sign-circle', class: 'text-dimmed', label: 'Skipped' },
 }
 
 const { commit, state, checks, error, restore, retry, dismiss } = useBuild()
@@ -71,11 +71,11 @@ const detail = computed(() => {
       :icon="look.icon"
       :color="look.color"
       variant="soft"
-      :ui="state === 'building' ? { leadingIcon: 'animate-spin' } : {}"
+      :ui="{ label: 'max-sm:sr-only', leadingIcon: state === 'building' ? 'animate-spin' : '' }"
     />
 
     <template #content>
-      <div class="flex w-96 flex-col gap-3 p-4 text-sm">
+      <div class="flex w-96 max-w-[calc(100vw-2rem)] flex-col gap-3 p-4 text-sm">
         <div>
           <p class="font-medium text-highlighted">
             {{ title }}
@@ -122,7 +122,7 @@ const detail = computed(() => {
             :label="`Open on ${forge}`"
             color="neutral"
             variant="link"
-            trailing-icon="i-lucide-external-link"
+            trailing-icon="i-hugeicons-link-square-02"
             class="me-auto px-0"
           />
 

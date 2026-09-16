@@ -2,9 +2,12 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { afterEach, describe, expect, it, onTestFinished } from 'vitest'
-import { run, USAGE } from '../../src/cli'
+import { runMain } from 'citty'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
+import { version } from '../../package.json'
+import { createCli } from '../../src/cli'
 
 const scratch = fileURLToPath(new URL('../../node_modules/.forgepress-cli-test', import.meta.url))
 
@@ -47,23 +50,40 @@ function project(name = '\'Alice\''): string {
 }
 
 async function command(args: string[], cwd = scratch): Promise<{ code: number, log: string, error: string }> {
-  const log: string[] = []
-  const error: string[] = []
-  const code = await run(args, cwd, { log: message => log.push(message), error: message => error.push(message) })
+  process.exitCode = undefined
 
-  return { code, log: log.join('\n'), error: error.join('\n') }
+  const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never)
+
+  await runMain(createCli(cwd), { rawArgs: args })
+
+  const code = Number(exit.mock.calls.at(-1)?.[0] ?? process.exitCode ?? 0)
+  const lines = (calls: unknown[][]): string => calls.map(call => call.join(' ')).join('\n')
+  const result = { code, log: lines(log.mock.calls), error: lines(error.mock.calls) }
+
+  vi.restoreAllMocks()
+
+  return result
 }
 
 afterEach(() => {
+  process.exitCode = undefined
+  vi.restoreAllMocks()
   rmSync(scratch, { recursive: true, force: true })
 })
 
 describe('forgepress', () => {
   it('explains its commands', async () => {
-    expect(await command([])).toEqual({ code: 0, log: USAGE, error: '' })
-    expect(await command(['--help'])).toEqual({ code: 0, log: USAGE, error: '' })
-    expect(await command(['deploy'])).toEqual({ code: 1, log: '', error: `Unknown command "deploy"\n\n${USAGE}` })
-    expect(await command(['build', '--out', 'dist'])).toEqual({ code: 1, log: '', error: `build takes no arguments\n\n${USAGE}` })
+    const help = await command(['--help'])
+
+    expect(help).toMatchObject({ code: 0, error: '' })
+    expect(help.log).toMatch(/check\s+Check the schema and all content the way the build does/)
+    expect(help.log).toMatch(/build\s+Check the content, then write the content output/)
+    expect((await command(['build', '--help'])).log).toContain('Check the content, then write the content output (forgepress build')
+    expect(await command(['--version'])).toEqual({ code: 0, log: version, error: '' })
+    expect(await command([])).toMatchObject({ code: 1, error: 'No command specified.' })
+    expect(await command(['deploy'])).toMatchObject({ code: 1, error: 'Unknown command deploy' })
   })
 
   it('checks the content from anywhere inside the project', async () => {

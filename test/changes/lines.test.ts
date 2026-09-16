@@ -44,6 +44,22 @@ describe('line diff', () => {
     expect(lines.filter(line => line.kind === 'keep')).toHaveLength(4)
   })
 
+  it('finds a small change in a large file', () => {
+    const before = Array.from({ length: 20000 }, (_, index) => `line ${index}`)
+    const after = before.map(line => line === 'line 12345' ? 'line 12345 changed' : line)
+    const lines = diffLines(before.join('\n'), after.join('\n'))
+
+    expect(counts(lines)).toEqual({ added: 1, removed: 1 })
+    expect(render(lines.filter(line => line.kind !== 'keep'))).toBe('-line 12345\n+line 12345 changed')
+  })
+
+  it('shows a rewrite with more than a thousand changed lines as replaced', () => {
+    const before = Array.from({ length: 600 }, (_, index) => `old ${index}`).join('\n')
+    const after = Array.from({ length: 600 }, (_, index) => `new ${index}`).join('\n')
+
+    expect(diffLines(before, after).map(line => line.kind)).toEqual([...Array.from({ length: 600 }).fill('remove'), ...Array.from({ length: 600 }).fill('add')])
+  })
+
   it('counts additions and removals', () => {
     expect(counts(diffLines('a\nb', 'b\nc'))).toEqual({ added: 1, removed: 1 })
   })

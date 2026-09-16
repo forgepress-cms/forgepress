@@ -22,7 +22,7 @@ group('provider descriptors', () => {
     const found = descriptor(config())
 
     expect(found.api).toBe('https://gitlab.com/api/v4')
-    expect(found.oauth).toEqual({ authorize: 'https://gitlab.com/oauth/authorize', token: 'https://gitlab.com/oauth/token' })
+    expect(found.oauth).toEqual({ issuer: 'https://gitlab.com', authorize: 'https://gitlab.com/oauth/authorize', token: 'https://gitlab.com/oauth/token' })
   })
 
   it('gives Forgejo v1 endpoints and OAuth', () => {

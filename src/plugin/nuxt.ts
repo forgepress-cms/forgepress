@@ -1,27 +1,14 @@
+import type { NuxtModule } from '@nuxt/schema'
 import type { Options } from './project'
 import { join, relative } from 'node:path'
+import { addPluginTemplate, addVitePlugin, defineNuxtModule } from '@nuxt/kit'
+import { configFile } from '../disk/config'
 import { toPosix } from '../disk/paths'
 import { vitePlugin } from './index'
 import { loadProject } from './project'
 
 export interface ModuleOptions extends Options {
   preview?: boolean
-}
-
-interface NuxtHooks {
-  'vite:extend': (context: { config: { plugins?: unknown[] } }) => void
-  'prepare:types': (context: { tsConfig: { include?: string[] } }) => void
-}
-
-export interface Nuxt {
-  options: {
-    rootDir: string
-    buildDir: string
-    plugins: unknown[]
-    build: { templates: unknown[] }
-    forgepress?: ModuleOptions
-  }
-  hook: <TName extends keyof NuxtHooks>(name: TName, handler: NuxtHooks[TName]) => unknown
 }
 
 const PREVIEW_PLUGIN = `import { defineNuxtPlugin, refreshNuxtData, usePreviewMode } from '#app'
@@ -43,30 +30,29 @@ export default defineNuxtPlugin({
 })
 `
 
-async function forgepress(inline: ModuleOptions, nuxt: Nuxt): Promise<void> {
-  const options = { ...nuxt.options.forgepress, ...inline }
-  const { root, config } = await loadProject(nuxt.options.rootDir, options)
-  const plugin = vitePlugin({ ...options, root })
+const forgepress: NuxtModule<ModuleOptions> = defineNuxtModule<ModuleOptions>({
+  meta: { name: 'forgepress', configKey: 'forgepress' },
 
-  nuxt.hook('vite:extend', ({ config: vite }) => {
-    vite.plugins ??= []
-    vite.plugins.push(plugin)
-  })
+  async setup(options, nuxt) {
+    const { root, config } = await loadProject(nuxt.options.rootDir, options)
 
-  nuxt.hook('prepare:types', ({ tsConfig }) => {
-    tsConfig.include ??= []
-    tsConfig.include.push(toPosix(relative(nuxt.options.buildDir, join(root, config.paths.dir, '**/*.ts'))))
-  })
+    addVitePlugin(vitePlugin({ ...options, root }))
 
-  if (options.preview === false)
-    return
+    nuxt.hook('prepare:types', ({ tsConfig, nodeTsConfig }) => {
+      tsConfig.include ??= []
+      tsConfig.include.push(toPosix(relative(nuxt.options.buildDir, join(root, config.paths.dir, '**/*.ts'))))
 
-  const filename = 'forgepress/preview.client.mjs'
+      const file = configFile(root)
 
-  nuxt.options.build.templates.push({ filename, getContents: () => PREVIEW_PLUGIN })
-  nuxt.options.plugins.unshift({ src: join(nuxt.options.buildDir, filename), mode: 'client' })
-}
+      if (file) {
+        nodeTsConfig.include ??= []
+        nodeTsConfig.include.push(toPosix(relative(nuxt.options.buildDir, join(root, file))))
+      }
+    })
 
-forgepress.getMeta = async () => ({ name: 'forgepress', configKey: 'forgepress' })
+    if (options.preview !== false)
+      addPluginTemplate({ filename: 'forgepress/preview.client.mjs', getContents: () => PREVIEW_PLUGIN, mode: 'client' })
+  },
+})
 
 export default forgepress

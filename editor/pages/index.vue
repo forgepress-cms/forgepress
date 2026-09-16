@@ -10,24 +10,30 @@ const editable = await useContent().mode() === 'development'
 <template>
   <UPageGrid :class="editable ? 'sm:grid-cols-3' : 'sm:grid-cols-2'">
     <UPageCard
+      variant="ghost"
+      class="sheet"
       title="Content"
       description="Browse and edit the entries of every collection."
-      icon="i-lucide-file-text"
+      icon="i-hugeicons-file-text"
       :to="href('content')"
     />
 
     <UPageCard
       v-if="editable"
+      variant="ghost"
+      class="sheet"
       title="Schema"
       description="Inspect the collections and fields the project defines."
-      icon="i-lucide-layout-list"
+      icon="i-hugeicons-layout-table-01"
       :to="href('schema')"
     />
 
     <UPageCard
+      variant="ghost"
+      class="sheet"
       title="Assets"
       description="Manage the files the content references."
-      icon="i-lucide-image"
+      icon="i-hugeicons-image-01"
       :to="href('assets')"
     />
   </UPageGrid>

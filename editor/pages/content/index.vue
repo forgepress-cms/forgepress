@@ -39,7 +39,7 @@ const columns: Column<CollectionRow>[] = [
 </script>
 
 <template>
-  <div class="grid gap-6">
+  <div class="grid gap-8">
     <PageHeader title="Content" description="Every collection in the schema. Pick one to see and edit its entries." />
 
     <DataTable

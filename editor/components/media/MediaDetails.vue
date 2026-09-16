@@ -53,7 +53,7 @@ function pixels(value: number | undefined): string {
   >
     <template #body>
       <div v-if="asset" class="grid gap-4">
-        <div class="h-80 overflow-hidden rounded-md bg-elevated">
+        <div class="h-56 overflow-hidden rounded-md bg-elevated sm:h-80">
           <MediaPreview :url="asset.preview ?? asset.url" :kind="kind" :alt="asset.name" fit="contain" controls />
         </div>
 
@@ -76,7 +76,7 @@ function pixels(value: number | undefined): string {
     <template #footer>
       <UButton
         label="Delete"
-        icon="i-lucide-trash-2"
+        icon="i-hugeicons-delete-02"
         color="error"
         variant="subtle"
         :disabled="!asset"

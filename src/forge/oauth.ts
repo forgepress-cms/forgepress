@@ -1,33 +1,12 @@
+import type { AuthorizationServer, Client, TokenEndpointRequestOptions, TokenEndpointResponse } from 'oauth4webapi'
 import type { ProviderConfig } from '../config/types'
 import type { OAuthEndpoints, OAuthTokens, TokenGetter } from './types'
-import { toBase64 } from '../utils/encoding'
+import { allowInsecureRequests, authorizationCodeGrantRequest, AuthorizationResponseError, None, processAuthorizationCodeResponse, processRefreshTokenResponse, refreshTokenGrantRequest, ResponseBodyError, validateAuthResponse } from 'oauth4webapi'
 import { describe } from './providers'
 
-const ENTROPY = 32
+export { calculatePKCECodeChallenge as createChallenge, generateRandomState as createState, generateRandomCodeVerifier as createVerifier } from 'oauth4webapi'
+
 const SKEW = 30_000
-
-function base64url(bytes: ArrayBuffer | Uint8Array): string {
-  return toBase64(bytes)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
-}
-
-function random(): string {
-  return base64url(crypto.getRandomValues(new Uint8Array(ENTROPY)))
-}
-
-export function createVerifier(): string {
-  return random()
-}
-
-export function createState(): string {
-  return random()
-}
-
-export async function createChallenge(verifier: string): Promise<string> {
-  return base64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)))
-}
 
 export interface AuthorizeRequest {
   clientId: string
@@ -53,19 +32,11 @@ export function authorizeUrl(endpoints: OAuthEndpoints, request: AuthorizeReques
   return `${endpoints.authorize}?${params.toString()}`
 }
 
-export function toTokens(payload: Record<string, unknown>, now = Date.now()): OAuthTokens {
-  const access = payload.access_token
-
-  if (typeof access !== 'string' || !access)
-    throw new Error('[forgepress] the forge returned no access token')
-
-  const refresh = payload.refresh_token
-  const expires = payload.expires_in
-
+export function toTokens(response: TokenEndpointResponse, now = Date.now()): OAuthTokens {
   return {
-    access,
-    ...typeof refresh === 'string' && refresh ? { refresh } : {},
-    ...typeof expires === 'number' ? { expires: now + expires * 1000 } : {},
+    access: response.access_token,
+    ...response.refresh_token ? { refresh: response.refresh_token } : {},
+    ...response.expires_in === undefined ? {} : { expires: now + response.expires_in * 1000 },
   }
 }
 
@@ -73,35 +44,51 @@ export function expired(tokens: OAuthTokens, now = Date.now()): boolean {
   return tokens.expires !== undefined && tokens.expires - SKEW <= now
 }
 
-async function form(endpoints: OAuthEndpoints, body: Record<string, string>): Promise<OAuthTokens> {
-  const response = await fetch(endpoints.token, {
-    method: 'POST',
-    headers: { 'accept': 'application/json', 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(body).toString(),
-  })
-
-  if (!response.ok)
-    throw new Error(`[forgepress] the forge rejected the token request (${response.status}): ${(await response.text()).slice(0, 200)}`)
-
-  return toTokens(await response.json() as Record<string, unknown>)
+function server(endpoints: OAuthEndpoints): AuthorizationServer {
+  return { issuer: endpoints.issuer, authorization_endpoint: endpoints.authorize, token_endpoint: endpoints.token }
 }
 
-export function exchange(endpoints: OAuthEndpoints, clientId: string, redirectUri: string, code: string, verifier: string): Promise<OAuthTokens> {
-  return form(endpoints, {
-    client_id: clientId,
-    grant_type: 'authorization_code',
-    code,
-    redirect_uri: redirectUri,
-    code_verifier: verifier,
-  })
+function requestOptions(endpoints: OAuthEndpoints): TokenEndpointRequestOptions {
+  return { [allowInsecureRequests]: new URL(endpoints.token).protocol === 'http:' }
 }
 
-export function renew(endpoints: OAuthEndpoints, clientId: string, refresh: string): Promise<OAuthTokens> {
-  return form(endpoints, {
-    client_id: clientId,
-    grant_type: 'refresh_token',
-    refresh_token: refresh,
-  })
+function refusal(error: unknown): unknown {
+  if (error instanceof AuthorizationResponseError)
+    return new Error(`[forgepress] the forge refused the sign-in: ${error.error_description || error.error}`, { cause: error })
+
+  if (error instanceof ResponseBodyError)
+    return new Error(`[forgepress] the forge rejected the token request: ${error.error_description || error.error}`, { cause: error })
+
+  return error
+}
+
+export async function exchange(endpoints: OAuthEndpoints, clientId: string, redirectUri: string, callback: URLSearchParams, state: string, verifier: string): Promise<OAuthTokens> {
+  const as = server(endpoints)
+  const client: Client = { client_id: clientId }
+
+  try {
+    const params = validateAuthResponse(as, client, callback, state)
+    const response = await authorizationCodeGrantRequest(as, client, None(), params, redirectUri, verifier, requestOptions(endpoints))
+
+    return toTokens(await processAuthorizationCodeResponse(as, client, response))
+  }
+  catch (error) {
+    throw refusal(error)
+  }
+}
+
+export async function renew(endpoints: OAuthEndpoints, clientId: string, refresh: string): Promise<OAuthTokens> {
+  const as = server(endpoints)
+  const client: Client = { client_id: clientId }
+
+  try {
+    const response = await refreshTokenGrantRequest(as, client, None(), refresh, requestOptions(endpoints))
+
+    return toTokens(await processRefreshTokenResponse(as, client, response))
+  }
+  catch (error) {
+    throw refusal(error)
+  }
 }
 
 export function storedTokens(value: OAuthTokens | string | undefined): OAuthTokens | undefined {

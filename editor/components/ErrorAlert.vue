@@ -12,6 +12,6 @@ defineProps<{
     :description="error"
     color="error"
     variant="subtle"
-    icon="i-lucide-triangle-alert"
+    icon="i-hugeicons-alert-02"
   />
 </template>

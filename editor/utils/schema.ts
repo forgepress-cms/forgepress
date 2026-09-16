@@ -4,13 +4,13 @@ import type { Collection } from '../../src/schema/types'
 import { fieldTypeNames, fieldTypes, isTranslated } from '../../src/schema/fields'
 
 export const FIELD_ICONS: Record<string, string> = {
-  text: 'i-lucide-type',
-  richtext: 'i-lucide-text',
-  number: 'i-lucide-hash',
-  image: 'i-lucide-image',
-  video: 'i-lucide-video',
-  relation: 'i-lucide-link',
-  dynamic: 'i-lucide-blocks',
+  text: 'i-hugeicons-text',
+  richtext: 'i-hugeicons-text-align-left',
+  number: 'i-hugeicons-hashtag',
+  image: 'i-hugeicons-image-01',
+  video: 'i-hugeicons-video-02',
+  relation: 'i-hugeicons-link-01',
+  dynamic: 'i-hugeicons-dashboard-square-01',
 }
 
 export const FIELD_TYPE_ITEMS = fieldTypeNames.map(type => ({ label: fieldTypes[type].label, value: type }))
@@ -38,7 +38,7 @@ export function toFields(collection: Collection, locales: readonly string[] = []
     description: config.description ?? '',
     type: config.type,
     typeLabel: fieldTypes[config.type].label,
-    icon: FIELD_ICONS[config.type] ?? 'i-lucide-square',
+    icon: FIELD_ICONS[config.type] ?? 'i-hugeicons-square',
     config,
     translated: isTranslated(config, locales),
     optional: config.optional ?? false,

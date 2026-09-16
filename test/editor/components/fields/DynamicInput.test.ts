@@ -117,8 +117,8 @@ async function mount(blocks: DynamicBlock[], trail: EntryRef[] = [{ collection: 
   app.mount(container)
   await settle()
 
-  const chain = () => container.querySelector<HTMLButtonElement>('[data-icon="i-lucide-link"]')!
-  const arrow = () => container.querySelector<HTMLElement>('[data-icon="i-lucide-arrow-up-right"]')!
+  const chain = () => container.querySelector<HTMLButtonElement>('[data-icon="i-hugeicons-link-01"]')!
+  const arrow = () => container.querySelector<HTMLElement>('[data-icon="i-hugeicons-arrow-up-right-01"]')!
 
   async function click(label: string): Promise<void> {
     const button = [...container.querySelectorAll('button')].find(element => element.textContent === label)
@@ -207,7 +207,7 @@ describe('dynamic blocks', () => {
     input.dispatchEvent(new Event('input'))
     await nextTick()
 
-    container.querySelector<HTMLButtonElement>('[data-icon="i-lucide-trash-2"]')!.click()
+    container.querySelector<HTMLButtonElement>('[data-icon="i-hugeicons-delete-02"]')!.click()
     await nextTick()
 
     expect(model.value).toEqual([])
@@ -250,7 +250,7 @@ describe('relation fields', () => {
 
     app.mount(container)
 
-    const arrow = container.querySelector<HTMLElement>('[data-icon="i-lucide-arrow-up-right"]')!
+    const arrow = container.querySelector<HTMLElement>('[data-icon="i-hugeicons-arrow-up-right-01"]')!
 
     expect(arrow.getAttribute('href')).toBe('/admin?path=/content/hero/hero_1')
     expect(arrow.getAttribute('target')).toBe('_blank')

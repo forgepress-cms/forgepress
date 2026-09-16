@@ -19,7 +19,7 @@ export function clamp(value: string, width = 'max-w-64'): VNode {
 
 export function clampMarkdown(value: string, width = 'max-w-64'): VNode {
   return h('span', {
-    class: `block truncate ${width} [&_code]:rounded [&_code]:bg-elevated [&_code]:px-1 [&_code]:text-xs [&_strong]:text-highlighted`,
+    class: `block truncate ${width} [&_code]:rounded-sm [&_code]:bg-elevated [&_code]:px-1 [&_code]:text-xs [&_strong]:text-highlighted`,
     title: markdownText(value),
     innerHTML: markdownInline(value),
   })
@@ -32,7 +32,7 @@ export function thumbnails(items: MediaContent[], kind: MediaKind): VNode {
   return h('div', { class: 'flex items-center gap-1' }, [
     ...items.slice(0, THUMBNAILS).map(item => h(
       'span',
-      { class: 'block h-8 w-12 overflow-hidden rounded bg-elevated', title: item.alt ?? '' },
+      { class: 'block h-8 w-12 overflow-hidden rounded-sm bg-elevated', title: item.alt ?? '' },
       h(MediaPreview, { url: item.url, kind, alt: item.alt }),
     )),
     items.length > THUMBNAILS && h('span', { class: 'text-xs text-muted' }, `+${items.length - THUMBNAILS}`),

@@ -139,7 +139,7 @@ function submit(): void {
 </script>
 
 <template>
-  <div class="grid gap-6">
+  <div class="grid gap-8">
     <PageHeader
       :title="form.label || field"
       :breadcrumb="[
@@ -152,7 +152,7 @@ function submit(): void {
 
         <UButton
           label="Save"
-          icon="i-lucide-save"
+          icon="i-hugeicons-floppy-disk"
           :loading="saving"
           :disabled="!valid || !dirty || !!migration.missing"
           @click="submit()"
