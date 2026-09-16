@@ -1,4 +1,4 @@
-import type { Entry } from '../../src/types/entry'
+import type { Entry } from '../../src/entries/types'
 import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

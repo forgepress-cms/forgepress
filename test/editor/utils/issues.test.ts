@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { fileIssues } from '../../../src/editor/utils/issues'
-import { defaultPaths } from '../../../src/files/paths'
+import { fileIssues } from '../../../editor/utils/issues'
+import { defaultPaths, repositoryPaths } from '../../../src/files/paths'
 
 describe('file issues', () => {
   it('groups problems by file and names the entry each file holds', () => {
-    const target = { paths: defaultPaths, mediaDir: 'public/uploads', base: 'apps/site' }
+    const target = { paths: repositoryPaths(defaultPaths, 'apps/site'), mediaDir: 'apps/site/public/uploads' }
 
     expect(fileIssues([
       { file: 'apps/site/.forgepress/content/blog-post/post_1.ts', line: 9, column: 3, message: 'Field "author" references author/author_3, which doesn\'t exist' },

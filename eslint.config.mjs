@@ -11,7 +11,7 @@ export default antfu({
     'pnpm/yaml-enforce-settings': 'off',
   },
 }, {
-  files: ['src/**/*.ts', 'src/**/*.vue'],
+  files: ['src/**/*.ts', 'src/**/*.vue', 'editor/**/*.ts', 'editor/**/*.vue'],
   ignores: ['src/cli/**', 'src/disk/**', 'src/plugin/**', 'src/unplugin.ts'],
   rules: {
     'no-restricted-imports': ['error', {

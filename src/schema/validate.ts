@@ -1,5 +1,5 @@
-import type { FieldOptionType } from '../types/field'
-import type { ValueIssue, ValuePath } from '../types/issues'
+import type { ValueIssue, ValuePath } from '../files/issues'
+import type { FieldBase, FieldOptionType } from './fields/types'
 import { META_KEYS } from '../entries/meta'
 import { isCollectionName } from '../files/paths'
 import { isRecord, quote } from '../utils/value'
@@ -22,7 +22,7 @@ interface Context {
 const SCHEMA_KEYS = new Set(['collections', 'locales'])
 const COLLECTION_KEYS = new Set(['label', 'description', 'fields'])
 
-const BASE_OPTIONS: Record<string, FieldOptionType> = {
+export const BASE_OPTIONS: Record<keyof FieldBase, FieldOptionType> = {
   label: 'text',
   description: 'text',
   optional: 'boolean',

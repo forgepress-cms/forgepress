@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
 import type { App } from 'vue'
+import type { FileIssues } from '../../../editor/utils/issues'
 import type { Resolution } from '../../../src/changes/types'
-import type { FileIssues } from '../../../src/editor/utils/issues'
 import type { Conflict } from '../../../src/forge/types'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, ref, shallowRef } from 'vue'
-import { routerKey } from '../../../src/editor/plugins/router'
+import { routerKey } from '../../../editor/plugins/router'
+import { settle } from '../../settle'
 
 const conflicts = shallowRef<readonly Conflict[]>([])
 const issues = shallowRef<readonly FileIssues[]>([])
@@ -13,7 +14,7 @@ const calls: string[] = []
 const outcomes: (() => string | undefined)[] = []
 const reload = vi.fn()
 
-vi.doMock('../../../src/editor/composables/usePublish', () => ({
+vi.doMock('../../../editor/composables/usePublish', () => ({
   usePublish: () => ({
     summary: ref({}),
     diff: ref([]),
@@ -37,11 +38,11 @@ vi.doMock('../../../src/editor/composables/usePublish', () => ({
   }),
 }))
 
-vi.doMock('../../../src/editor/composables/useSession', () => ({
+vi.doMock('../../../editor/composables/useSession', () => ({
   useSession: () => ({ branch: ref('main') }),
 }))
 
-const { default: PublishDialog } = await import('../../../src/editor/components/PublishDialog.vue')
+const { default: PublishDialog } = await import('../../../editor/components/PublishDialog.vue')
 
 const stubs = {
   UModal: defineComponent({
@@ -68,10 +69,6 @@ const stubs = {
 
 let app: App
 let container: HTMLElement
-
-function settle(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 0))
-}
 
 async function click(label: string): Promise<void> {
   const button = [...container.querySelectorAll('button')].find(element => element.textContent === label)

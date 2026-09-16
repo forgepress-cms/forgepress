@@ -1,4 +1,4 @@
-import type { ForgePressSchema } from '../../src/types/schema'
+import type { ForgePressSchema } from '../../src/schema/types'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -112,7 +112,7 @@ function file(index: number): string {
 
 beforeAll(() => {
   mkdirSync(scratch, { recursive: true })
-  writeFileSync(join(scratch, 'schema.ts'), serializeSchema(schema).replace('from \'forgepress\'', 'from \'../../src/types/schema\''))
+  writeFileSync(join(scratch, 'schema.ts'), serializeSchema(schema).replace('from \'forgepress\'', 'from \'../../src/schema/types\''))
 
   cases.forEach((item, index) => writeFileSync(file(index), [
     'import type { Query } from \'../../src/query/types\'',

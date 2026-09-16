@@ -1,16 +1,21 @@
+import type { EntryRef } from '../entries/types'
 import type { HashSource } from '../forge/types'
-import type { MediaSource, PendingUpload } from '../media/types'
+import type { MediaSource } from '../media/types'
 import type { ContentSource, KeyValueStore } from '../store/types'
-import type { EntryRef } from '../types/entry'
 import type { ChangeHashes, Changes, ChangeService, ChangeSummary } from './types'
+import { once } from '../utils/once'
 import { createContentChanges } from './content'
 import { diffChanges } from './diff'
 import { changedEntries, toFiles } from './files'
-import { createMediaChanges, publishedUploads } from './media'
+import { createMediaChanges, localUploads } from './media'
 import { createPreviews } from './previews'
 
-function empty(): Changes {
+export function emptyChanges(): Changes {
   return { entries: {}, uploads: {}, removed: [] }
+}
+
+export async function readChanges(store: KeyValueStore<Changes>): Promise<Changes> {
+  return { ...emptyChanges(), ...await store.read() }
 }
 
 function refs(changes: Changes, staged: boolean): EntryRef[] {
@@ -24,7 +29,7 @@ export function createChanges(base: ContentSource, media: MediaSource, store: Ke
   const previews = createPreviews()
   const listeners = new Set<() => void>()
 
-  let loaded: Promise<Changes> | undefined
+  let loaded = once(() => readChanges(store))
 
   function notify(): void {
     for (const listener of listeners)
@@ -32,9 +37,7 @@ export function createChanges(base: ContentSource, media: MediaSource, store: Ke
   }
 
   function ready(): Promise<Changes> {
-    loaded ??= store.read().then(changes => changes ? { ...empty(), ...changes } : empty())
-
-    return loaded
+    return loaded()
   }
 
   async function track(changes: Changes): Promise<void> {
@@ -109,18 +112,10 @@ export function createChanges(base: ContentSource, media: MediaSource, store: Ke
     },
 
     published: async () => {
-      const changes = await ready()
-      const removed = new Set(changes.removed)
-      const kept: Record<string, PendingUpload> = {}
+      const kept = Object.fromEntries(localUploads(await ready()).map(upload => [upload.name, upload]))
+      const next: Changes = { ...emptyChanges(), ...Object.keys(kept).length > 0 ? { publishedMedia: kept } : {} }
 
-      for (const upload of [...publishedUploads(changes), ...Object.values(changes.uploads)]) {
-        if (!removed.has(upload.name))
-          kept[upload.name] = upload
-      }
-
-      const next: Changes = { ...empty(), ...Object.keys(kept).length > 0 ? { publishedMedia: kept } : {} }
-
-      loaded = Promise.resolve(next)
+      loaded = async () => next
       notify()
 
       await (next.publishedMedia ? store.write(next) : store.clear())
@@ -128,10 +123,10 @@ export function createChanges(base: ContentSource, media: MediaSource, store: Ke
 
     discard: async () => {
       const { publishedMedia } = await ready()
-      const next: Changes = { ...empty(), ...publishedMedia ? { publishedMedia } : {} }
+      const next: Changes = { ...emptyChanges(), ...publishedMedia ? { publishedMedia } : {} }
 
       previews.clear()
-      loaded = Promise.resolve(next)
+      loaded = async () => next
       notify()
 
       await (publishedMedia ? store.write(next) : store.clear())

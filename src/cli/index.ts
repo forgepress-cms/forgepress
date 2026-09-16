@@ -1,9 +1,10 @@
-import type { ContentIssue } from '../types/issues'
+import type { ContentIssue } from '../files/issues'
 import { resolveConfig } from '../config/resolve'
-import { checkContent } from '../disk/check'
 import { loadConfig } from '../disk/config'
+import { diskFiles } from '../disk/files'
 import { buildOutput } from '../disk/output'
 import { findRoot } from '../disk/root'
+import { readContent } from '../files/content'
 import { ContentError, formatIssue } from '../files/issues'
 import { errorMessage } from '../utils/error'
 
@@ -26,7 +27,7 @@ function report(issues: readonly ContentIssue[], terminal: Terminal): number {
 
 async function check(root: string, terminal: Terminal): Promise<number> {
   const config = resolveConfig(await loadConfig(root))
-  const issues = await checkContent(root, config.paths)
+  const { issues } = await readContent(diskFiles(root), config.paths)
 
   if (issues.length > 0)
     return report(issues, terminal)

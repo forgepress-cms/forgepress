@@ -1,5 +1,5 @@
+import type { ContentConfig } from '../config/types'
 import type { ContentPaths } from '../files/paths'
-import type { ContentConfig } from '../types/config'
 
 export interface ForgeIdentity {
   login: string
@@ -75,6 +75,5 @@ export interface Forge {
 export interface RepoTarget {
   paths: ContentPaths
   mediaDir: string
-  base?: string | undefined
   format?: ContentConfig | undefined
 }

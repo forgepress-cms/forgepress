@@ -1,11 +1,11 @@
+import type { ContentConfig } from '../config/types'
 import type { ContentPaths } from '../files/paths'
 import type { ContentWriter, SchemaWriter } from '../store/types'
-import type { ContentConfig } from '../types/config'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { defaultPaths, isCollectionName, isEntryId } from '../files/paths'
+import { defaultPaths, isCollectionName, isEntryFile, isEntryId, toEntryId } from '../files/paths'
 import { serializeEntry, serializeSchema } from '../files/serialize'
-import { readEntryIds } from './collections'
+import { listFiles } from './files'
 
 function collectionName(collection: string): string {
   if (!isCollectionName(collection))
@@ -48,7 +48,7 @@ export function createWriter(root: string, paths: ContentPaths = defaultPaths, c
 
       await mkdir(directory(collection), { recursive: true })
 
-      const stale = readEntryIds(directory(collection)).filter(id => !kept.has(id))
+      const stale = (await listFiles(directory(collection))).filter(isEntryFile).map(toEntryId).filter(id => !kept.has(id))
 
       await Promise.all(stale.map(id => rm(file(collection, id), { force: true })))
       await Promise.all(targets.map(([target, text]) => writeFile(target, text)))

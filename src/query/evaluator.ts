@@ -1,9 +1,9 @@
 import type { OutputEntry } from '../output/types'
 import type { QueryPlan, WhereClause } from './types'
-import { isRecord } from '../utils/value'
+import { isEntryRef } from '../entries/references'
 
 function comparable(value: unknown): unknown {
-  return isRecord(value) && typeof value.collection === 'string' && typeof value.id === 'string' ? value.id : value
+  return isEntryRef(value) ? value.id : value
 }
 
 function compare(left: unknown, right: unknown): number {

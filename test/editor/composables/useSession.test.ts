@@ -5,15 +5,17 @@ import { createPaths } from '../../../src/files/paths'
 const stored = new Map<string, unknown>()
 const cleared: string[] = []
 const used: string[] = []
+let accessing = (): void => {}
 const provider = { type: 'forgejo' as const, url: 'http://127.0.0.1:3310', clientId: 'editor', repository: { owner: 'fred', name: 'site' } }
 
-vi.doMock('../../../src/editor/settings', () => ({
+vi.doMock('../../../editor/settings', () => ({
   baked: async () => ({ local: false, provider, paths: createPaths('content'), media: { dir: 'public/media', url: '/media', maxSize: 1024, assets: [] } }),
 }))
 
 vi.doMock('../../../src/forge', () => ({
   createForge: (_config: unknown, token: () => Promise<string>) => ({
     access: async () => {
+      accessing()
       used.push(await token())
 
       return { identity: { login: 'fred' }, writable: true, branch: 'main' }
@@ -21,7 +23,7 @@ vi.doMock('../../../src/forge', () => ({
   }),
 }))
 
-vi.doMock('../../../src/storage', () => ({
+vi.doMock('../../../src/store', () => ({
   TOKEN_KEY: 'token',
   persist: (key: string) => ({
     read: async () => stored.get(key),
@@ -45,7 +47,7 @@ vi.doMock('../../../src/storage', () => ({
 async function load() {
   vi.resetModules()
 
-  const { useSession } = await import('../../../src/editor/composables/useSession')
+  const { useSession } = await import('../../../editor/composables/useSession')
 
   return { session: useSession(), preview: await import('../../../src/preview/state') }
 }
@@ -58,6 +60,7 @@ afterEach(() => {
   localStorage.clear()
   sessionStorage.clear()
   window.history.replaceState(null, '', '/')
+  accessing = () => {}
 })
 
 describe('session', () => {
@@ -104,6 +107,22 @@ describe('session', () => {
     expect(reloaded.preview.previewing()).toBe(true)
     expect(requests).toEqual([`http://127.0.0.1:3310/login/oauth/access_token client_id=editor&grant_type=authorization_code&code=code&redirect_uri=${encodeURIComponent(`${window.location.origin}/admin`)}&code_verifier=verifier`])
     expect(used).toEqual(['granted', 'granted'])
+  })
+
+  it('uses tokens another tab renewed instead of renewing its expired ones again', async () => {
+    vi.stubGlobal('fetch', async () => {
+      throw new Error('renewed a second time')
+    })
+
+    stored.set('token', { access: 'expired', refresh: 'used', expires: Date.now() - 60_000 })
+    accessing = () => stored.set('token', { access: 'renewed', refresh: 'next', expires: Date.now() + 3_600_000 })
+
+    const { session } = await load()
+
+    await session.restore()
+
+    expect(session.identity.value).toEqual({ login: 'fred' })
+    expect(used).toEqual(['renewed'])
   })
 
   it('removes the token, everything kept from the repository and the site preview when signing out', async () => {

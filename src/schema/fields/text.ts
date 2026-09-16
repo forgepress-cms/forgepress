@@ -1,4 +1,4 @@
-import type { FieldOf, FieldTypeDefinition } from '../../types/field'
+import type { FieldOf, FieldTypeDefinition } from './types'
 
 const text = {
   type: 'text',

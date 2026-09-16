@@ -1,4 +1,4 @@
-import type { MediaConfig } from '../../src/types/config'
+import type { MediaConfig } from '../../src/config/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { assetUrl, checkUpload, isAssetName, isMediaFile, isServed, MEDIA_DEFAULTS, mediaAccept, mediaKind, mediaType, resolveMedia, slugify, sortAssets, storedAsset, toAssetName } from '../../src/media'
 

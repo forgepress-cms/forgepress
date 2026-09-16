@@ -1,18 +1,18 @@
 import type { Changes } from '../changes/types'
 import type { ContentEntries } from '../entries/references'
+import type { Entry } from '../entries/types'
 import type { OAuthTokens } from '../forge/types'
-import type { PendingUpload } from '../media/types'
-import type { Entry } from '../types/entry'
 import type { PreviewSettings } from './state'
+import { readChanges } from '../changes'
 import { createContentChanges } from '../changes/content'
-import { publishedUploads } from '../changes/media'
+import { localUploads } from '../changes/media'
 import { createPreviews } from '../changes/previews'
-import { createPaths } from '../files/paths'
+import { createPaths, repositoryPaths } from '../files/paths'
 import { createForge } from '../forge'
-import { refreshed, storedTokens } from '../forge/oauth'
+import { createTokenGetter, storedTokens } from '../forge/oauth'
 import { createForgeSource } from '../forge/source'
 import { createOutput } from '../output'
-import { CHANGES_KEY, persist, repositoryCache, TOKEN_KEY } from '../storage'
+import { CHANGES_KEY, persist, repositoryCache, TOKEN_KEY } from '../store'
 import { isRecord } from '../utils/value'
 
 export type PreviewFiles = ReadonlyMap<string, string>
@@ -34,10 +34,6 @@ function swap(value: unknown, urls: ReadonlyMap<string, string>): unknown {
   return value
 }
 
-function uploads(changes: Changes): PendingUpload[] {
-  return [...Object.values(changes.uploads), ...publishedUploads(changes)]
-}
-
 export function createPreviewReader(settings: PreviewSettings): PreviewReader {
   const tokens = persist<OAuthTokens | string>(TOKEN_KEY)
   const pending = persist<Changes>(CHANGES_KEY)
@@ -46,19 +42,16 @@ export function createPreviewReader(settings: PreviewSettings): PreviewReader {
 
   let token: Promise<string> | undefined
 
-  async function access(): Promise<string> {
-    const saved = storedTokens(await tokens.read())
+  async function saved(): Promise<OAuthTokens> {
+    const found = storedTokens(await tokens.read())
 
-    if (!saved)
+    if (!found)
       throw new Error('[forgepress] sign in to the editor to preview unpublished content')
 
-    const current = await refreshed(saved, settings.provider)
-
-    if (current !== saved)
-      await tokens.write(current)
-
-    return current.access
+    return found
   }
+
+  const access = createTokenGetter(settings.provider, saved, next => tokens.write(next))
 
   const forge = createForge(settings.provider, () => {
     token ??= access()
@@ -66,10 +59,10 @@ export function createPreviewReader(settings: PreviewSettings): PreviewReader {
     return token
   })
 
-  const source = createForgeSource(() => forge, createPaths(settings.contentPath), settings.provider.base, repositoryCache())
+  const source = createForgeSource(() => forge, { paths: repositoryPaths(createPaths(settings.contentPath), settings.provider.base) }, repositoryCache())
 
   function local(changes: Changes): ReadonlyMap<string, string> {
-    const assets = uploads(changes).map(upload => previews.asset(upload, settings.mediaUrl))
+    const assets = localUploads(changes).map(upload => previews.asset(upload, settings.mediaUrl))
     const names = new Set(assets.map(asset => asset.name))
 
     for (const name of shown) {
@@ -90,7 +83,7 @@ export function createPreviewReader(settings: PreviewSettings): PreviewReader {
       token = undefined
       source.reset()
 
-      const changes: Changes = { entries: {}, uploads: {}, removed: [], ...await pending.read() }
+      const changes = await readChanges(pending)
       const content = createContentChanges(source, async () => changes, async () => {
         throw new Error('[forgepress] the preview only reads content')
       })

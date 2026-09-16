@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { markdownInline, markdownText } from '../../../src/editor/utils/markdown'
+import { markdownInline, markdownText } from '../../../editor/utils/markdown'
 
 describe('markdownText', () => {
   it('drops heading and list markers', () => {

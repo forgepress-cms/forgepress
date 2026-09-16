@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import type { PreviewSettings } from '../../src/preview/state'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { settle } from '../settle'
 
 const settings: PreviewSettings = {
   provider: { type: 'forgejo', url: 'http://127.0.0.1:3310', repository: { owner: 'fred', name: 'site' } },
@@ -38,10 +39,6 @@ async function load() {
   })
 
   return { preview, state, reader, published }
-}
-
-function settle(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 0))
 }
 
 function badge() {

@@ -1,5 +1,6 @@
+import type { ProviderConfig } from '../config/types'
 import type { KeyValueStore } from '../store/types'
-import type { ProviderConfig } from '../types/config'
+import { readLocal, readLocalJson, writeLocal } from '../store/local'
 
 export interface PreviewSettings {
   provider: ProviderConfig
@@ -16,26 +17,6 @@ const listeners = new Set<() => void>()
 let version = 0
 let channel: BroadcastChannel | undefined
 let listening = false
-
-function read(key: string): string | null {
-  try {
-    return localStorage.getItem(key)
-  }
-  catch {
-    return null
-  }
-}
-
-function write(key: string, value: string | undefined): void {
-  try {
-    if (value === undefined)
-      localStorage.removeItem(key)
-    else
-      localStorage.setItem(key, value)
-  }
-  catch {
-  }
-}
 
 function emit(): void {
   version += 1
@@ -62,22 +43,15 @@ function listen(): void {
 }
 
 export function previewSettings(): PreviewSettings | undefined {
-  const text = read(SETTINGS_KEY)
-
-  try {
-    return text ? JSON.parse(text) as PreviewSettings : undefined
-  }
-  catch {
-    return undefined
-  }
+  return readLocalJson<PreviewSettings>(SETTINGS_KEY)
 }
 
 export function previewEnabled(): boolean {
-  return read(OFF_KEY) === null
+  return readLocal(OFF_KEY) === null
 }
 
 export function previewing(): boolean {
-  return typeof window !== 'undefined' && previewEnabled() && read(SETTINGS_KEY) !== null
+  return typeof window !== 'undefined' && previewEnabled() && readLocal(SETTINGS_KEY) !== null
 }
 
 export function previewVersion(): number {
@@ -97,25 +71,25 @@ export function setPreviewEnabled(enabled: boolean): void {
   if (previewEnabled() === enabled)
     return
 
-  write(OFF_KEY, enabled ? undefined : '1')
+  writeLocal(OFF_KEY, enabled ? undefined : '1')
   emit()
 }
 
 export function openPreview(settings: PreviewSettings): void {
   const text = JSON.stringify(settings)
 
-  if (read(SETTINGS_KEY) === text)
+  if (readLocal(SETTINGS_KEY) === text)
     return
 
-  write(SETTINGS_KEY, text)
+  writeLocal(SETTINGS_KEY, text)
   emit()
 }
 
 export function closePreview(): void {
-  if (read(SETTINGS_KEY) === null)
+  if (readLocal(SETTINGS_KEY) === null)
     return
 
-  write(SETTINGS_KEY, undefined)
+  writeLocal(SETTINGS_KEY, undefined)
   emit()
 }
 

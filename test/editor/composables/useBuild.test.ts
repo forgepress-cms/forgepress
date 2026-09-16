@@ -8,7 +8,7 @@ let checks: BuildCheck[] = []
 let forge: Forge | undefined
 const asked: string[] = []
 
-vi.doMock('../../../src/storage', () => ({
+vi.doMock('../../../src/store', () => ({
   persist: () => ({
     read: async () => saved,
     write: async (value: unknown) => {
@@ -20,7 +20,7 @@ vi.doMock('../../../src/storage', () => ({
   }),
 }))
 
-vi.doMock('../../../src/editor/composables/useSession', () => ({
+vi.doMock('../../../editor/composables/useSession', () => ({
   useSession: () => ({ forge: () => forge }),
 }))
 
@@ -31,7 +31,7 @@ vi.doMock('../../../src/query/fetch', () => ({
 async function load() {
   vi.resetModules()
 
-  return (await import('../../../src/editor/composables/useBuild')).useBuild()
+  return (await import('../../../editor/composables/useBuild')).useBuild()
 }
 
 function settle(): Promise<void> {

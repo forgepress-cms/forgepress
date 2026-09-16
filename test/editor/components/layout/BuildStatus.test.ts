@@ -4,6 +4,7 @@ import type { BuildState } from '../../../../src/forge/build'
 import type { BuildCheck } from '../../../../src/forge/types'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, ref, shallowRef } from 'vue'
+import { settle } from '../../../settle'
 
 const commit = ref('')
 const state = ref<BuildState>()
@@ -11,7 +12,7 @@ const checks = shallowRef<readonly BuildCheck[]>([])
 const error = ref('')
 const calls: string[] = []
 
-vi.doMock('../../../../src/editor/composables/useBuild', () => ({
+vi.doMock('../../../../editor/composables/useBuild', () => ({
   PATIENCE: 30 * 60_000,
   useBuild: () => ({
     commit,
@@ -31,11 +32,11 @@ vi.doMock('../../../../src/editor/composables/useBuild', () => ({
   }),
 }))
 
-vi.doMock('../../../../src/editor/composables/useSession', () => ({
+vi.doMock('../../../../editor/composables/useSession', () => ({
   useSession: () => ({ provider: ref({ type: 'forgejo', url: 'http://127.0.0.1:3310', repository: { owner: 'fred', name: 'site' } }) }),
 }))
 
-const { default: BuildStatus } = await import('../../../../src/editor/components/layout/BuildStatus.vue')
+const { default: BuildStatus } = await import('../../../../editor/components/layout/BuildStatus.vue')
 
 const stubs = {
   UPopover: defineComponent({
@@ -56,10 +57,6 @@ const stubs = {
 
 let app: App
 let container: HTMLElement
-
-function settle(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 0))
-}
 
 function text(): string {
   return container.textContent ?? ''

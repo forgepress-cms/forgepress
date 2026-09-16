@@ -1,7 +1,7 @@
 import type { FileChange } from '../../src/forge/types'
 import { describe, expect, it } from 'vitest'
 import { formatIssue } from '../../src/files/issues'
-import { defaultPaths } from '../../src/files/paths'
+import { defaultPaths, repositoryPaths } from '../../src/files/paths'
 import { checkResult } from '../../src/forge/check'
 
 const target = { paths: defaultPaths, mediaDir: 'public/uploads' }
@@ -38,7 +38,7 @@ function repository(files: Record<string, string>) {
 async function problems(files: Record<string, string>, changes: FileChange[], base?: string): Promise<string[]> {
   const repo = repository(files)
 
-  return (await checkResult(repo.listing, changes, repo.read, { ...target, base })).map(formatIssue)
+  return (await checkResult(repo.listing, changes, repo.read, { ...target, paths: repositoryPaths(defaultPaths, base) })).map(formatIssue)
 }
 
 describe('checking the result of publishing', () => {

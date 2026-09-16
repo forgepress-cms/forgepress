@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createPaths, defaultPaths, normalizeDir, prefixer, repositoryPath, toCollectionDir, toCollectionName, toEntryRef } from '../../src/files/paths'
+import { createPaths, defaultPaths, normalizeDir, prefixer, repositoryPath, repositoryPaths, toCollectionDir, toCollectionName, toEntryRef } from '../../src/files/paths'
 
 describe('createPaths', () => {
   it('defaults to the .forgepress directory', () => {
@@ -39,6 +39,20 @@ describe('repository paths', () => {
     expect(at(paths.dir)).toBe('playgrounds/.forgepress')
     expect(at(paths.entry('blogPost', 'post_1'))).toBe('playgrounds/.forgepress/content/blog-post/post_1.ts')
     expect(toEntryRef(at(paths.content), 'playgrounds/.forgepress/content/blog-post/post_1.ts')).toEqual({ collection: 'blogPost', id: 'post_1' })
+  })
+
+  it('names every content path from the root of the repository', () => {
+    const paths = repositoryPaths(createPaths('../.forgepress'), '/playgrounds/nuxt/')
+
+    expect([paths.dir, paths.content, paths.schema, paths.types]).toEqual([
+      'playgrounds/.forgepress',
+      'playgrounds/.forgepress/content',
+      'playgrounds/.forgepress/schema.ts',
+      'playgrounds/.forgepress/forgepress.d.ts',
+    ])
+    expect(paths.collection('blogPost')).toBe('playgrounds/.forgepress/content/blog-post')
+    expect(paths.entry('blogPost', 'post_1')).toBe('playgrounds/.forgepress/content/blog-post/post_1.ts')
+    expect(repositoryPaths(defaultPaths).entry('hero', 'h1')).toBe('.forgepress/content/hero/h1.ts')
   })
 
   it('reads the same path however it is written', () => {

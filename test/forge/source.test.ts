@@ -1,8 +1,9 @@
 import type { Forge } from '../../src/forge/types'
 import type { RepositoryCache } from '../../src/store/types'
 import { describe, expect, it } from 'vitest'
-import { createPaths, defaultPaths } from '../../src/files/paths'
+import { defaultPaths, repositoryPaths } from '../../src/files/paths'
 import { createForgeSource } from '../../src/forge/source'
+import { settle } from '../settle'
 
 const schema = 'export default { collections: { author: { fields: { name: { type: \'text\' } } }, blogPost: { fields: {} } } }\n'
 
@@ -136,14 +137,10 @@ function browserCache(available = true) {
   return { cache, files, listings }
 }
 
-function settle(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 0))
-}
-
 describe('forge source', () => {
   it('reads the schema and every entry of a collection, unpublished ones included', async () => {
     const repo = repository({ c1: first })
-    const source = createForgeSource(() => repo.forge, defaultPaths)
+    const source = createForgeSource(() => repo.forge, { paths: defaultPaths })
 
     expect(Object.keys((await source.schema()).collections)).toEqual(['author', 'blogPost'])
     expect((await source.list('author')).map(row => row.id)).toEqual(['author_1', 'author_2'])
@@ -152,7 +149,7 @@ describe('forge source', () => {
 
   it('reads nothing for entries and collections that do not exist', async () => {
     const repo = repository({ c1: first })
-    const source = createForgeSource(() => repo.forge, defaultPaths)
+    const source = createForgeSource(() => repo.forge, { paths: defaultPaths })
 
     expect(await source.list('blogPost')).toEqual([])
     expect(await source.entry('author', 'author_4')).toBeUndefined()
@@ -162,7 +159,7 @@ describe('forge source', () => {
   it('finds the content inside a larger repository', async () => {
     const nested = Object.fromEntries(Object.entries(first).map(([path, text]) => [`apps/site/${path}`, text]))
     const repo = repository({ c1: nested })
-    const source = createForgeSource(() => repo.forge, createPaths('.forgepress'), 'apps/site')
+    const source = createForgeSource(() => repo.forge, { paths: repositoryPaths(defaultPaths, 'apps/site') })
 
     expect((await source.list('author')).map(row => row.id)).toEqual(['author_1', 'author_2'])
     expect(repo.calls).toContain('files c1 apps/site/.forgepress')
@@ -170,7 +167,7 @@ describe('forge source', () => {
 
   it('reads every file once and parses a fresh copy each time', async () => {
     const repo = repository({ c1: first })
-    const source = createForgeSource(() => repo.forge, defaultPaths)
+    const source = createForgeSource(() => repo.forge, { paths: defaultPaths })
 
     const [before] = await source.list('author')
     const again = await source.list('author')
@@ -189,7 +186,7 @@ describe('forge source', () => {
       c1: first,
       c2: { ...first, '.forgepress/content/author/author_1.ts': entry('author_1', 'published', '2024-01-01T00:00:00Z', 'Alice') },
     })
-    const source = createForgeSource(() => repo.forge, defaultPaths)
+    const source = createForgeSource(() => repo.forge, { paths: defaultPaths })
 
     await source.list('author')
     repo.move('c2')
@@ -226,7 +223,7 @@ describe('forge source', () => {
       },
     })
     const { cache, listings } = browserCache()
-    const source = createForgeSource(() => repo.forge, createPaths('.forgepress'), 'apps/site', cache, 'public/uploads')
+    const source = createForgeSource(() => repo.forge, { paths: repositoryPaths(defaultPaths, 'apps/site'), mediaDir: 'apps/site/public/uploads' }, cache)
     const listed = (): string[] => repo.calls.filter(call => call.startsWith('files') && call.includes('public/uploads'))
 
     expect((await source.media()).sort()).toEqual(['clip.5e6f7a8b.webm', 'team.1a2b3c4d.png'])
@@ -237,7 +234,7 @@ describe('forge source', () => {
 
     expect(listings.get('apps/site/public/uploads')?.commit).toBe('c1')
 
-    const reloaded = createForgeSource(() => repo.forge, createPaths('.forgepress'), 'apps/site', cache, 'public/uploads')
+    const reloaded = createForgeSource(() => repo.forge, { paths: repositoryPaths(defaultPaths, 'apps/site'), mediaDir: 'apps/site/public/uploads' }, cache)
 
     expect(await reloaded.media()).toHaveLength(2)
     expect(listed()).toHaveLength(1)
@@ -251,14 +248,14 @@ describe('forge source', () => {
   it('lists no uploads without a media folder', async () => {
     const repo = repository({ c1: first })
 
-    expect(await createForgeSource(() => repo.forge, defaultPaths).media()).toEqual([])
+    expect(await createForgeSource(() => repo.forge, { paths: defaultPaths }).media()).toEqual([])
     expect(repo.calls).toEqual([])
   })
 
   it('hands out the hash of every file in the commit it reads', async () => {
     const changed = entry('author_1', 'published', '2024-01-01T00:00:00Z', 'Alice')
     const repo = repository({ c1: first, c2: { ...first, '.forgepress/content/author/author_1.ts': changed } })
-    const source = createForgeSource(() => repo.forge, defaultPaths)
+    const source = createForgeSource(() => repo.forge, { paths: defaultPaths })
 
     expect(await source.hashes.entry('author', 'author_1')).toBe(repo.shaOf(first['.forgepress/content/author/author_1.ts']!))
     expect(await source.hashes.entry('author', 'author_4')).toBeUndefined()
@@ -275,12 +272,12 @@ describe('forge source', () => {
     const repo = repository({ c1: first, c2: { ...first, '.forgepress/content/author/author_1.ts': changed } })
     const { cache, files } = browserCache()
 
-    await createForgeSource(() => repo.forge, defaultPaths, undefined, cache).list('author')
+    await createForgeSource(() => repo.forge, { paths: defaultPaths }, cache).list('author')
     await settle()
 
     expect(repo.reads()).toBe(2)
 
-    const reloaded = createForgeSource(() => repo.forge, defaultPaths, undefined, cache)
+    const reloaded = createForgeSource(() => repo.forge, { paths: defaultPaths }, cache)
 
     expect((await reloaded.list('author')).map(row => row.name)).toEqual(['author_1', 'author_2'])
     expect(repo.reads()).toBe(2)
@@ -289,7 +286,7 @@ describe('forge source', () => {
 
     repo.move('c2')
 
-    const moved = createForgeSource(() => repo.forge, defaultPaths, undefined, cache)
+    const moved = createForgeSource(() => repo.forge, { paths: defaultPaths }, cache)
 
     expect((await moved.list('author')).map(row => row.name)).toEqual(['Alice', 'author_2'])
     await settle()
@@ -303,7 +300,7 @@ describe('forge source', () => {
     const repo = repository({ c1: first, c2: { ...first, '.forgepress/content/author/author_1.ts': entry('author_1', 'published', '2024-01-01T00:00:00Z', 'Alice') } })
     const { cache, listings } = browserCache()
     const listed = (): number => repo.calls.filter(call => call.startsWith('files')).length
-    const open = () => createForgeSource(() => repo.forge, defaultPaths, undefined, cache)
+    const open = () => createForgeSource(() => repo.forge, { paths: defaultPaths }, cache)
 
     await open().list('author')
     await settle()
@@ -333,10 +330,10 @@ describe('forge source', () => {
     const repo = repository({ c1: { ...first, ...nested } })
     const { cache } = browserCache()
 
-    await createForgeSource(() => repo.forge, defaultPaths, undefined, cache).list('author')
+    await createForgeSource(() => repo.forge, { paths: defaultPaths }, cache).list('author')
     await settle()
 
-    expect((await createForgeSource(() => repo.forge, defaultPaths, 'apps/site', cache).list('author')).map(row => row.id)).toEqual(['author_1', 'author_2'])
+    expect((await createForgeSource(() => repo.forge, { paths: repositoryPaths(defaultPaths, 'apps/site') }, cache).list('author')).map(row => row.id)).toEqual(['author_1', 'author_2'])
     expect(repo.calls.filter(call => call.startsWith('files'))).toEqual(['files c1 .forgepress', 'files c1 apps/site/.forgepress'])
   })
 
@@ -344,8 +341,8 @@ describe('forge source', () => {
     const repo = repository({ c1: first })
     const { cache } = browserCache(false)
 
-    expect(await createForgeSource(() => repo.forge, defaultPaths, undefined, cache).list('author')).toHaveLength(2)
-    expect(await createForgeSource(() => repo.forge, defaultPaths, undefined, cache).list('author')).toHaveLength(2)
+    expect(await createForgeSource(() => repo.forge, { paths: defaultPaths }, cache).list('author')).toHaveLength(2)
+    expect(await createForgeSource(() => repo.forge, { paths: defaultPaths }, cache).list('author')).toHaveLength(2)
     expect(repo.reads()).toBe(4)
     expect(repo.calls.filter(call => call.startsWith('files'))).toHaveLength(2)
   })
@@ -355,7 +352,7 @@ describe('forge source', () => {
     const { cache, listings } = browserCache()
     let signedIn = true
 
-    const source = createForgeSource(() => signedIn ? repo.forge : undefined, defaultPaths, undefined, cache)
+    const source = createForgeSource(() => signedIn ? repo.forge : undefined, { paths: defaultPaths }, cache)
     const release = repo.hold()
     const hash = source.hashes.entry('author', 'author_1')
 
@@ -375,7 +372,7 @@ describe('forge source', () => {
     const { cache, files } = browserCache()
     let signedIn = true
 
-    const source = createForgeSource(() => signedIn ? repo.forge : undefined, defaultPaths, undefined, cache)
+    const source = createForgeSource(() => signedIn ? repo.forge : undefined, { paths: defaultPaths }, cache)
 
     await source.hashes.entry('author', 'author_1')
 
@@ -396,7 +393,7 @@ describe('forge source', () => {
 
   it('tries again after the forge failed', async () => {
     const repo = repository({ c1: first })
-    const source = createForgeSource(() => repo.forge, defaultPaths)
+    const source = createForgeSource(() => repo.forge, { paths: defaultPaths })
 
     repo.fail(1)
 
@@ -406,7 +403,7 @@ describe('forge source', () => {
 
   it('names the file in the repository when it cannot be parsed', async () => {
     const repo = repository({ c1: { 'apps/site/.forgepress/content/author/author_1.ts': 'export default { id: someId }\n' } })
-    const source = createForgeSource(() => repo.forge, defaultPaths, 'apps/site')
+    const source = createForgeSource(() => repo.forge, { paths: repositoryPaths(defaultPaths, 'apps/site') })
 
     await expect(source.list('author')).rejects.toThrow('[forgepress] apps/site/.forgepress/content/author/author_1.ts:1:22 `someId` is not a literal value')
   })
@@ -414,10 +411,10 @@ describe('forge source', () => {
   it('reads a repository without a schema as one without collections', async () => {
     const repo = repository({ c1: { 'src/pages/index.vue': '<template />\n' } })
 
-    expect(await createForgeSource(() => repo.forge, defaultPaths).schema()).toEqual({ collections: {} })
+    expect(await createForgeSource(() => repo.forge, { paths: defaultPaths }).schema()).toEqual({ collections: {} })
   })
 
   it('explains a missing sign-in', async () => {
-    await expect(createForgeSource(() => undefined, defaultPaths).list('author')).rejects.toThrow('[forgepress] sign in to read the content from the repository')
+    await expect(createForgeSource(() => undefined, { paths: defaultPaths }).list('author')).rejects.toThrow('[forgepress] sign in to read the content from the repository')
   })
 })

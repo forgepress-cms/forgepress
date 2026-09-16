@@ -1,5 +1,6 @@
 import type { OutputEntry, OutputIndex, OutputManifest } from '../output/types'
 import { OUTPUT_INDEX, OUTPUT_VERSION } from '../output/types'
+import { keyed } from '../utils/once'
 import { quote } from '../utils/value'
 
 export type ContentReader = (path: string) => Promise<unknown>
@@ -34,24 +35,15 @@ function manifestPath(index: OutputIndex, collection: string, locale: string | u
 }
 
 export function createLoader(read: ContentReader): ContentLoader {
-  const files = new Map<string, Promise<unknown>>()
+  const files = keyed<unknown>()
 
   function file(path: string): Promise<unknown> {
-    let pending = files.get(path)
+    return files(path, () => read(path).then((value) => {
+      if (value === undefined)
+        throw new MissingFile(path)
 
-    if (!pending) {
-      pending = read(path).then((value) => {
-        if (value === undefined)
-          throw new MissingFile(path)
-
-        return value
-      })
-
-      pending.catch(() => files.delete(path))
-      files.set(path, pending)
-    }
-
-    return pending
+      return value
+    }))
   }
 
   async function snapshot(): Promise<Snapshot> {

@@ -1,4 +1,4 @@
-import type { EntryMeta } from '../../src/types/entry'
+import type { EntryMeta } from '../../src/entries/types'
 import { describe, expect, it } from 'vitest'
 import { sortByCreation } from '../../src/entries/order'
 

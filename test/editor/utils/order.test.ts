@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { moveItem, moveKey } from '../../../src/editor/utils/order'
+import { moveItem, moveKey } from '../../../editor/utils/order'
 
 describe('moveItem', () => {
   it('moves an item without changing the list it was given', () => {

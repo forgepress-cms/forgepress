@@ -1,5 +1,5 @@
-import type { ProviderConfig } from '../types/config'
-import type { OAuthEndpoints, OAuthTokens } from './types'
+import type { ProviderConfig } from '../config/types'
+import type { OAuthEndpoints, OAuthTokens, TokenGetter } from './types'
 import { toBase64 } from '../utils/encoding'
 import { describe } from './providers'
 
@@ -118,4 +118,30 @@ export async function refreshed(tokens: OAuthTokens, config: ProviderConfig): Pr
     return tokens
 
   return renew(oauth, config.clientId, tokens.refresh)
+}
+
+export function createTokenGetter(config: ProviderConfig, read: () => Promise<OAuthTokens>, write: (tokens: OAuthTokens) => Promise<void>): TokenGetter {
+  let renewal: Promise<OAuthTokens> | undefined
+
+  async function renewed(tokens: OAuthTokens): Promise<OAuthTokens> {
+    const next = await refreshed(tokens, config)
+
+    if (next !== tokens)
+      await write(next)
+
+    return next
+  }
+
+  return async () => {
+    const tokens = await read()
+
+    if (!expired(tokens))
+      return tokens.access
+
+    renewal ??= renewed(tokens).finally(() => {
+      renewal = undefined
+    })
+
+    return (await renewal).access
+  }
 }

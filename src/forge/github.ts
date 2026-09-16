@@ -1,9 +1,9 @@
-import type { ProviderConfig } from '../types/config'
+import type { ProviderConfig } from '../config/types'
 import type { TreeItem } from './repository'
 import type { BuildCheck, CheckState, Forge, ForgeAccess, ForgeFile, TokenGetter } from './types'
 import { describe } from './providers'
 import { publishable } from './publish'
-import { createRepositoryApi, findTree } from './repository'
+import { blobs, createRepositoryApi, findTree, toIdentity } from './repository'
 
 interface Repository {
   default_branch: string
@@ -41,6 +41,7 @@ interface CommitStatus {
 
 const BUILD_EVENTS = new Set(['push', 'workflow_run'])
 const FAILED = new Set(['failure', 'timed_out', 'startup_failure'])
+const UNREADABLE = [403, 404]
 
 function runState(status: string, conclusion: string | null): CheckState {
   if (status !== 'completed' || conclusion === 'action_required')
@@ -70,17 +71,8 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
 
   let apps = true
 
-  async function readable<TResult>(path: string): Promise<TResult | undefined> {
-    const response = await repo.send(path)
-
-    if (response.status === 403 || response.status === 404)
-      return undefined
-
-    return await (await repo.check(response)).json() as TResult
-  }
-
   async function runs(commit: string): Promise<BuildCheck[] | undefined> {
-    const found = await readable<{ workflow_runs: WorkflowRun[] }>(`/actions/runs?head_sha=${commit}&per_page=100`)
+    const found = await repo.find<{ workflow_runs: WorkflowRun[] }>(`/actions/runs?head_sha=${commit}&per_page=100`, UNREADABLE)
 
     return found?.workflow_runs
       .filter(run => BUILD_EVENTS.has(run.event) || run.path.startsWith('dynamic/pages/'))
@@ -88,13 +80,13 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
   }
 
   async function statuses(commit: string): Promise<BuildCheck[] | undefined> {
-    const found = await readable<{ statuses: CommitStatus[] }>(`/commits/${commit}/status?per_page=100`)
+    const found = await repo.find<{ statuses: CommitStatus[] }>(`/commits/${commit}/status?per_page=100`, UNREADABLE)
 
     return found?.statuses.map(status => ({ name: status.context, state: statusState(status.state), ...linked(status.target_url) }))
   }
 
   async function others(commit: string): Promise<BuildCheck[]> {
-    const found = apps ? await readable<{ check_runs: CheckRun[] }>(`/commits/${commit}/check-runs?per_page=100`) : undefined
+    const found = apps ? await repo.find<{ check_runs: CheckRun[] }>(`/commits/${commit}/check-runs?per_page=100`, UNREADABLE) : undefined
 
     if (!found) {
       apps = false
@@ -115,11 +107,7 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
       ])
 
       return {
-        identity: {
-          login: user.login,
-          ...user.name ? { name: user.name } : {},
-          ...user.avatar_url ? { avatar: user.avatar_url } : {},
-        },
+        identity: toIdentity(user.login, user.name, user.avatar_url),
         writable: repository.permissions?.push === true,
         branch: await repo.branch(),
       }
@@ -140,9 +128,7 @@ export function createGitHubForge(config: ProviderConfig, token: TokenGetter): F
       if (tree.truncated)
         throw new Error(`[forgepress] GitHub lists too many files in ${directory} to read them in one request`)
 
-      return tree.tree
-        .filter(item => item.type === 'blob')
-        .map(item => ({ path: `${directory}/${item.path}`, sha: item.sha }))
+      return blobs(directory, tree.tree)
     },
 
     async read(sha): Promise<string> {

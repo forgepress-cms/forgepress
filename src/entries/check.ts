@@ -1,20 +1,14 @@
+import type { ContentIssue } from '../files/issues'
 import type { ParsedModule } from '../files/module'
-import type { Entry } from '../types/entry'
-import type { ContentIssue, ValueIssue } from '../types/issues'
-import type { ForgePressSchema } from '../types/schema'
+import type { ContentFile, ParsedSchema } from '../files/parse'
+import type { ForgePressSchema } from '../schema/types'
 import type { ContentEntries } from './references'
-import { ContentError } from '../files/issues'
-import { parseModule } from '../files/module'
+import type { Entry } from './types'
+import { located, parseFile, parseSchemaFile } from '../files/parse'
 import { toEntryFile } from '../files/paths'
-import { validateSchema } from '../schema/validate'
 import { isRecord, quote } from '../utils/value'
 import { entryKey, validateReferences } from './references'
 import { validateEntry } from './validate'
-
-export interface ContentFile {
-  path: string
-  text: string
-}
 
 export interface EntryFile extends ContentFile {
   collection: string
@@ -27,44 +21,12 @@ export interface ParsedContent {
   content: ContentEntries
 }
 
-function parse(file: ContentFile): ParsedModule | readonly ContentIssue[] {
-  try {
-    return parseModule(file.text, file.path)
-  }
-  catch (error) {
-    if (error instanceof ContentError)
-      return error.issues
-
-    throw error
-  }
-}
-
-function located(file: string, parsed: ParsedModule, issue: ValueIssue): ContentIssue {
-  return { file, ...parsed.locate(issue.path), message: issue.message }
-}
-
 function byPosition(left: ContentIssue, right: ContentIssue): number {
   return left.line - right.line || left.column - right.column
 }
 
-function parseSchemaFile(file: ContentFile | undefined): { schema: ForgePressSchema } | { issues: ContentIssue[] } {
-  if (!file)
-    return { schema: { collections: {} } }
-
-  const parsed = parse(file)
-
-  if (!('value' in parsed))
-    return { issues: [...parsed] }
-
-  const issues = validateSchema(parsed.value)
-
-  return issues.length > 0
-    ? { issues: issues.map(issue => located(file.path, parsed, issue)) }
-    : { schema: parsed.value as ForgePressSchema }
-}
-
 export function parseContent(schemaFile: ContentFile | undefined, entryFiles: readonly EntryFile[]): ParsedContent {
-  const parsedSchema = parseSchemaFile(schemaFile)
+  const parsedSchema: ParsedSchema = schemaFile ? parseSchemaFile(schemaFile) : { schema: { collections: {} } }
 
   if ('issues' in parsedSchema)
     return { issues: parsedSchema.issues, schema: undefined, content: {} }
@@ -77,7 +39,7 @@ export function parseContent(schemaFile: ContentFile | undefined, entryFiles: re
   for (const file of entryFiles) {
     const { collection, id, path } = file
     const found = issues.get(path)!
-    const parsed = parse(file)
+    const parsed = parseFile(file)
 
     if (!('value' in parsed)) {
       found.push(...parsed)
@@ -104,8 +66,4 @@ export function parseContent(schemaFile: ContentFile | undefined, entryFiles: re
   }
 
   return { issues: [...issues.values()].flatMap(found => found.sort(byPosition)), schema, content }
-}
-
-export function checkFiles(schemaFile: ContentFile | undefined, entryFiles: readonly EntryFile[]): ContentIssue[] {
-  return parseContent(schemaFile, entryFiles).issues
 }

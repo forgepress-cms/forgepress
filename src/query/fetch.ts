@@ -1,5 +1,6 @@
 import type { ContentReader } from './client'
 import { OUTPUT_INDEX } from '../output/types'
+import { isPage } from '../utils/response'
 
 export function fetchReader(url: string): ContentReader {
   const base = url.replace(/\/+$/, '')
@@ -8,7 +9,7 @@ export function fetchReader(url: string): ContentReader {
     const location = `${base}/${path}`
     const response = await fetch(location, path === OUTPUT_INDEX ? { cache: 'no-cache' } : {})
 
-    if (response.status === 404 || (response.ok && response.headers.get('content-type')?.includes('text/html')))
+    if (response.status === 404 || (response.ok && isPage(response)))
       return undefined
 
     if (!response.ok)

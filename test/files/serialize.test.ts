@@ -1,5 +1,5 @@
-import type { Entry } from '../../src/types/entry'
-import type { ForgePressSchema } from '../../src/types/schema'
+import type { Entry } from '../../src/entries/types'
+import type { ForgePressSchema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { parseEntry, parseSchema } from '../../src/files/parse'
 import { serializeEntry, serializeSchema } from '../../src/files/serialize'

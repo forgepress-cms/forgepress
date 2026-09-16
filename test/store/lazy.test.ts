@@ -48,20 +48,20 @@ describe('lazy store', () => {
     expect(selected).toBe(0)
   })
 
-  it('selects a store once across many calls', async () => {
+  it('selects the store again after selecting it failed', async () => {
     let selected = 0
 
     const store = lazyStore(async () => {
       selected += 1
 
+      if (selected === 1)
+        throw new Error('offline')
+
       return spy()
     })
 
-    await store.list('hero')
-    await store.list('author')
-    await store.writeEntry('hero', { id: 'a', status: 'unpublished', createdAt: '', updatedAt: '' })
-
-    expect(selected).toBe(1)
+    await expect(store.list('hero')).rejects.toThrow('offline')
+    expect(await store.list('hero')).toEqual([])
   })
 
   it('delegates every method to the selected store', async () => {

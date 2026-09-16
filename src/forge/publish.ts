@@ -1,7 +1,6 @@
-import type { ContentIssue } from '../types/issues'
+import type { ContentIssue } from '../files/issues'
 import type { Conflict, FileChange, Forge, RepoTarget } from './types'
 import { ContentError } from '../files/issues'
-import { prefixer } from '../files/paths'
 import { base64ToBytes, digest } from '../utils/encoding'
 
 export type Verify = (listing: ReadonlyMap<string, string>) => Promise<readonly ContentIssue[]>
@@ -88,7 +87,7 @@ async function checkConflicts(files: FileChange[], listing: ReadonlyMap<string, 
 }
 
 export async function publishFiles(forge: Forge, files: FileChange[], message: string, target: RepoTarget, verify: Verify): Promise<string> {
-  const directory = prefixer(target.base)(target.paths.dir)
+  const directory = target.paths.dir
 
   async function attempt(again: boolean): Promise<string> {
     const parent = await forge.head()

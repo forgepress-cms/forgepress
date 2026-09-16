@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest'
-import { usePreview } from '../../../src/editor/composables/usePreview'
+import { usePreview } from '../../../editor/composables/usePreview'
 import { setPreviewEnabled } from '../../../src/preview/state'
 
 describe('preview switch', () => {

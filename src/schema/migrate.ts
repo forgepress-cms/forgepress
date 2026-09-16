@@ -1,6 +1,7 @@
-import type { Entry } from '../types/entry'
+import type { Entry } from '../entries/types'
 import type { Field } from './fields'
 import { asList, filled, isRecord, same } from '../utils/value'
+import { isTranslated } from './fields'
 
 const TEXTUAL = new Set<Field['type']>(['text', 'richtext'])
 const MEDIA = new Set<Field['type']>(['image', 'video'])
@@ -14,10 +15,6 @@ export interface Migration {
 
 function listed(config: Field): boolean {
   return config.type === 'dynamic' || ('multiple' in config && config.multiple === true)
-}
-
-function translates(config: Field, locales: readonly string[]): boolean {
-  return config.translate === true && locales.length > 0
 }
 
 function convert(value: unknown, before: Field, after: Field): unknown {
@@ -63,8 +60,8 @@ function migrateValue(value: unknown, before: Field, after: Field): unknown {
 }
 
 function migrateField(value: unknown, before: Field, after: Field, locales: readonly string[]): unknown {
-  const was = translates(before, locales)
-  const is = translates(after, locales)
+  const was = isTranslated(before, locales)
+  const is = isTranslated(after, locales)
 
   if (was && is && isRecord(value)) {
     const translations = Object.entries(value)
@@ -102,7 +99,7 @@ function complete(value: unknown, after: Field, locales: readonly string[]): boo
   if (!filled(value))
     return false
 
-  if (!translates(after, locales))
+  if (!isTranslated(after, locales))
     return true
 
   return isRecord(value) && locales.every(locale => filled(value[locale]))
@@ -126,7 +123,7 @@ export function migrate(
     if (!same(next, value))
       changed += 1
 
-    if (size(next, translates(after, locales)) < size(value, translates(before, locales)))
+    if (size(next, isTranslated(after, locales)) < size(value, isTranslated(before, locales)))
       lost += 1
 
     if (after.optional !== true && !complete(next, after, locales))

@@ -35,3 +35,7 @@ export type FieldContent<TField extends Field>
                 : never
 
 export const fieldTypeNames = Object.keys(fieldTypes) as Field['type'][]
+
+export function isTranslated(field: Field, locales: readonly string[]): boolean {
+  return field.translate === true && locales.length > 0
+}

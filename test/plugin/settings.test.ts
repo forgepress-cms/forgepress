@@ -27,22 +27,14 @@ describe('editor settings module', () => {
   })
 
   it('tells the editor whether it runs against the dev server', async () => {
-    expect(await plugin('serve').load('\0virtual:forgepress/settings')).toContain('export const local = true')
-    expect(await plugin('build').load('\0virtual:forgepress/settings')).toContain('export const local = false')
-    expect(await plugin('serve', false).load('\0virtual:forgepress/settings')).toContain('export const local = false')
+    expect(await plugin('serve').load('\0virtual:forgepress/settings')).toContain('"local":true')
+    expect(await plugin('build').load('\0virtual:forgepress/settings')).toContain('"local":false')
+    expect(await plugin('serve', false).load('\0virtual:forgepress/settings')).toContain('"local":false')
   })
 
   it('holds the editor settings but no content', async () => {
     const code = await plugin('build').load('\0virtual:forgepress/settings')
 
-    expect(code).toBe([
-      'export const local = false',
-      'export const devServer = ""',
-      'export const provider = null',
-      'export const format = null',
-      'export const contentPath = ".forgepress"',
-      'export const media = {"dir":"public/uploads","url":"/uploads","maxSize":8388608}',
-      '',
-    ].join('\n'))
+    expect(code).toBe('export default {"local":false,"devServer":"","contentPath":".forgepress","media":{"dir":"public/uploads","url":"/uploads","maxSize":8388608}}\n')
   })
 })

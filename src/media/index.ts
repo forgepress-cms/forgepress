@@ -1,5 +1,7 @@
-import type { MediaConfig } from '../types/config'
-import type { MediaAsset } from './types'
+import type { MediaConfig } from '../config/types'
+import type { MediaAsset, ResolvedMedia } from './types'
+import { digest } from '../utils/encoding'
+import { isPage } from '../utils/response'
 import { defined } from '../utils/value'
 
 export type MediaKind = 'image' | 'video'
@@ -23,8 +25,6 @@ export const MEDIA_DEFAULTS = {
   url: '/uploads',
   maxSize: 8 * 1024 * 1024,
 } as const satisfies Required<MediaConfig>
-
-export type ResolvedMedia = Required<MediaConfig>
 
 const EXTENSION = /\.([a-z0-9]+)$/i
 const SEPARATOR = /[^a-z0-9]+/gi
@@ -83,6 +83,10 @@ export function toAssetName(file: string, hash: string): string {
   return `${slugify(stem)}.${hash.slice(0, 8)}${found ? `.${found[1]!.toLowerCase()}` : ''}`
 }
 
+export async function assetName(file: string, data: ArrayBuffer | Uint8Array<ArrayBuffer>): Promise<string> {
+  return toAssetName(file, await digest('SHA-256', data))
+}
+
 export function isAssetName(name: string): boolean {
   return NAME.test(name) && !name.includes('..')
 }
@@ -103,7 +107,7 @@ export async function isServed(url: string): Promise<boolean> {
   try {
     const response = await fetch(url, { method: 'HEAD', cache: 'no-store' })
 
-    return response.ok && !response.headers.get('content-type')?.includes('text/html')
+    return response.ok && !isPage(response)
   }
   catch {
     return false

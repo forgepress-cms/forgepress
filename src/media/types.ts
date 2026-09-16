@@ -1,3 +1,5 @@
+import type { MediaConfig } from '../config/types'
+
 export interface MediaContent {
   url: string
   alt?: string
@@ -22,21 +24,17 @@ export interface PendingUpload {
   data: ArrayBuffer
 }
 
-export interface MediaSettings {
-  dir: string
-  url: string
-  maxSize: number
-}
+export type ResolvedMedia = Required<MediaConfig>
 
 export interface MediaSource {
-  settings: () => Promise<MediaSettings>
+  settings: () => Promise<ResolvedMedia>
   stored: () => Promise<string[]>
   served: (url: string) => Promise<boolean>
 }
 
 export interface MediaUpload {
   name: string
-  data: Uint8Array
+  data: Uint8Array<ArrayBuffer>
 }
 
 export interface MediaStore {

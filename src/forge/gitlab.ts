@@ -1,8 +1,8 @@
-import type { ProviderConfig } from '../types/config'
+import type { ProviderConfig } from '../config/types'
 import type { BuildCheck, CheckState, Forge, ForgeAccess, ForgeFile, TokenGetter } from './types'
 import { describe } from './providers'
 import { publishable } from './publish'
-import { createRepositoryApi } from './repository'
+import { createRepositoryApi, toIdentity } from './repository'
 
 const DEVELOPER = 30
 const PAGE_SIZE = 100
@@ -59,13 +59,8 @@ export function createGitLabForge(config: ProviderConfig, token: TokenGetter): F
   const { api } = describe(config)
   const repo = createRepositoryApi(config, `${api}/projects/${encodeURIComponent(`${config.repository.owner}/${config.repository.name}`)}`, token)
 
-  async function existing(path: string, ref: string): Promise<ExistingFile | undefined> {
-    const response = await repo.send(`/repository/files/${encodeURIComponent(path)}?ref=${encodeURIComponent(ref)}`)
-
-    if (response.status === 404)
-      return undefined
-
-    return await (await repo.check(response)).json() as ExistingFile
+  function existing(path: string, ref: string): Promise<ExistingFile | undefined> {
+    return repo.find<ExistingFile>(`/repository/files/${encodeURIComponent(path)}?ref=${encodeURIComponent(ref)}`)
   }
 
   return {
@@ -76,11 +71,7 @@ export function createGitLabForge(config: ProviderConfig, token: TokenGetter): F
       ])
 
       return {
-        identity: {
-          login: user.username,
-          ...user.name ? { name: user.name } : {},
-          ...user.avatar_url ? { avatar: user.avatar_url } : {},
-        },
+        identity: toIdentity(user.username, user.name, user.avatar_url),
         writable: writable(project),
         branch: await repo.branch(),
       }

@@ -1,16 +1,17 @@
 // @vitest-environment happy-dom
 import type { App } from 'vue'
 import type { ChangeService } from '../../../src/changes/types'
+import type { Entry } from '../../../src/entries/types'
 import type { Forge } from '../../../src/forge/types'
+import type { ForgePressSchema } from '../../../src/schema/types'
 import type { ContentSource } from '../../../src/store/types'
-import type { Entry } from '../../../src/types/entry'
-import type { ForgePressSchema } from '../../../src/types/schema'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, onMounted, ref } from 'vue'
 import { createChanges } from '../../../src/changes'
 import { defaultPaths } from '../../../src/files/paths'
 import { serializeEntry, serializeSchema } from '../../../src/files/serialize'
-import { createMemoryStore } from '../../../src/storage/memory'
+import { createMemoryStore } from '../../../src/store/memory'
+import { settle } from '../../settle'
 
 const media = { dir: 'public/uploads', url: '/uploads', maxSize: 1024 }
 const uploads = { settings: async () => media, stored: async () => [], served: async () => false }
@@ -21,15 +22,15 @@ const blobs = new Map<string, string>()
 const pinned: string[] = []
 const tracked: string[] = []
 
-vi.doMock('../../../src/editor/settings', () => ({
+vi.doMock('../../../editor/settings', () => ({
   baked: async () => ({ local: false, media, provider: undefined, format: undefined, paths: defaultPaths }),
 }))
 
-vi.doMock('../../../src/editor/composables/useSession', () => ({
+vi.doMock('../../../editor/composables/useSession', () => ({
   useSession: () => ({ forge: () => forge, provider: ref(undefined) }),
 }))
 
-vi.doMock('../../../src/editor/composables/useBuild', () => ({
+vi.doMock('../../../editor/composables/useBuild', () => ({
   useBuild: () => ({
     track: async (commit: string) => {
       tracked.push(commit)
@@ -37,7 +38,7 @@ vi.doMock('../../../src/editor/composables/useBuild', () => ({
   }),
 }))
 
-vi.doMock('../../../src/editor/composables/useContent', () => ({
+vi.doMock('../../../editor/composables/useContent', () => ({
   useContent: () => ({
     changes: async () => changes,
     target: async () => ({ paths: defaultPaths, mediaDir: media.dir }),
@@ -49,7 +50,7 @@ vi.doMock('../../../src/editor/composables/useContent', () => ({
   }),
 }))
 
-const { usePublish } = await import('../../../src/editor/composables/usePublish')
+const { usePublish } = await import('../../../editor/composables/usePublish')
 
 function row(id: string): Entry {
   return { id, status: 'published', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' }
@@ -59,10 +60,6 @@ const base: ContentSource = {
   schema: async () => ({ collections: { hero: { fields: {} } } }),
   list: async () => [],
   entry: async () => undefined,
-}
-
-function settle(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 0))
 }
 
 function site() {

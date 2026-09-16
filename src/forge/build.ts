@@ -1,5 +1,6 @@
 import type { BuildCheck, Forge } from './types'
 import { errorMessage } from '../utils/error'
+import { keyed } from '../utils/once'
 
 export type BuildState = 'building' | 'passed' | 'live' | 'failed' | 'stalled'
 
@@ -27,19 +28,10 @@ export function buildState(checks: readonly BuildCheck[], live: boolean | undefi
 }
 
 export function createBuildReader(deployed: Deployed): BuildReader {
-  const known = new Map<string, Promise<boolean>>()
+  const known = keyed<boolean>()
 
   function contains(forge: Forge, current: string, commit: string): Promise<boolean> {
-    const key = `${current}...${commit}`
-    let pending = known.get(key)
-
-    if (!pending) {
-      pending = forge.contains(current, commit)
-      known.set(key, pending)
-      pending.catch(() => known.delete(key))
-    }
-
-    return pending.catch(() => false)
+    return known(`${current}...${commit}`, () => forge.contains(current, commit)).catch(() => false)
   }
 
   async function live(forge: Forge, commit: string): Promise<boolean | undefined> {

@@ -1,5 +1,6 @@
+import type { OAuthTokens } from '../../src/forge/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { authorizeUrl, createChallenge, createVerifier, expired, refreshed, storedTokens, toTokens } from '../../src/forge/oauth'
+import { authorizeUrl, createChallenge, createTokenGetter, createVerifier, expired, refreshed, storedTokens, toTokens } from '../../src/forge/oauth'
 
 describe('pkce', () => {
   it('matches the RFC 7636 challenge vector', async () => {
@@ -102,5 +103,35 @@ describe('stored tokens', () => {
 
     expect(renewed).toMatchObject({ access: 'b', refresh: 's' })
     expect(requests).toEqual(['https://gitlab.com/oauth/token client_id=abc&grant_type=refresh_token&refresh_token=r'])
+  })
+
+  it('hands out a token that is still good without renewing it', async () => {
+    const written: OAuthTokens[] = []
+    const token = createTokenGetter(gitlab, async () => ({ access: 'a', refresh: 'r', expires: Date.now() + 3_600_000 }), async next => void written.push(next))
+
+    expect(await token()).toBe('a')
+    expect(written).toEqual([])
+  })
+
+  it('renews an expired token once for every request waiting on it and keeps the renewed tokens', async () => {
+    let renewals = 0
+    let tokens: OAuthTokens = { access: 'a', refresh: 'r', expires: Date.now() - 1000 }
+    const written: OAuthTokens[] = []
+
+    vi.stubGlobal('fetch', async () => {
+      renewals += 1
+
+      return Response.json({ access_token: `b${renewals}`, refresh_token: 's', expires_in: 7200 })
+    })
+
+    const token = createTokenGetter(gitlab, async () => tokens, async (next) => {
+      tokens = next
+      written.push(next)
+    })
+
+    expect(await Promise.all([token(), token(), token()])).toEqual(['b1', 'b1', 'b1'])
+    expect(await token()).toBe('b1')
+    expect(renewals).toBe(1)
+    expect(written).toEqual([expect.objectContaining({ access: 'b1', refresh: 's' })])
   })
 })

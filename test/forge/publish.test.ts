@@ -1,7 +1,7 @@
+import type { ContentIssue } from '../../src/files/issues'
 import type { FileChange, Forge } from '../../src/forge/types'
-import type { ContentIssue } from '../../src/types/issues'
 import { describe, expect, it } from 'vitest'
-import { defaultPaths } from '../../src/files/paths'
+import { defaultPaths, repositoryPaths } from '../../src/files/paths'
 import { commitMessage, ConflictError, gitHash, InvalidContentError, publishable, publishFiles } from '../../src/forge/publish'
 
 const target = { paths: defaultPaths, mediaDir: 'public/uploads' }
@@ -186,7 +186,7 @@ describe('publishing files', () => {
   it('lists the content folder inside a larger repository', async () => {
     const repo = repository({ 'apps/site/.forgepress/schema.ts': 's1' })
 
-    await publishFiles(repo.forge, [edit('apps/site/.forgepress/schema.ts', 's2', await hash('s1'))], 'schema', { ...target, base: 'apps/site' }, valid)
+    await publishFiles(repo.forge, [edit('apps/site/.forgepress/schema.ts', 's2', await hash('s1'))], 'schema', { ...target, paths: repositoryPaths(defaultPaths, 'apps/site') }, valid)
 
     expect(repo.calls).toContain('files c1 apps/site/.forgepress')
   })

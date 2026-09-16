@@ -1,15 +1,12 @@
 // @vitest-environment happy-dom
-import type { EditorRouter } from '../../../src/editor/plugins/router'
+import type { EditorRouter } from '../../../editor/plugins/router'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createRouter } from '../../../src/editor/plugins/router'
+import { createRouter } from '../../../editor/plugins/router'
+import { settle } from '../../settle'
 
 const routes = { '': { name: 'index' }, 'content': { name: 'content' }, 'schema': { name: 'schema' } }
 
 let router: EditorRouter
-
-function settle(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 0))
-}
 
 function address(): string {
   return `${window.location.pathname}${window.location.search}`

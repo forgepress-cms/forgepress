@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { matchRoute } from '../../../src/editor/plugins/router'
+import { matchRoute } from '../../../editor/plugins/router'
 
 const index = { name: 'index' }
 const content = { name: 'content' }

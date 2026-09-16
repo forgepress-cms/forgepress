@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import type { Changes } from '../../src/changes/types'
+import type { Entry } from '../../src/entries/types'
 import type { ForgeFile, TokenGetter } from '../../src/forge/types'
 import type { OutputIndex, OutputManifest } from '../../src/output/types'
-import type { Entry } from '../../src/types/entry'
-import type { ForgePressSchema } from '../../src/types/schema'
+import type { ForgePressSchema } from '../../src/schema/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultPaths } from '../../src/files/paths'
 import { serializeEntry, serializeSchema } from '../../src/files/serialize'
@@ -22,7 +22,7 @@ const heads: string[] = []
 let head = 'c1'
 let tokens: TokenGetter | undefined
 
-vi.doMock('../../src/storage', () => ({
+vi.doMock('../../src/store', () => ({
   TOKEN_KEY: 'token',
   CHANGES_KEY: 'changes',
   persist: (key: string) => ({
@@ -142,6 +142,27 @@ describe('preview reader', () => {
     await preview.build()
 
     expect(created).toBe(2)
+  })
+
+  it('leaves out uploads that were deleted in the editor before the site served them', async () => {
+    let created = 0
+
+    URL.createObjectURL = () => `blob:preview/${created += 1}`
+    URL.revokeObjectURL = () => {}
+
+    const upload = { name: 'bob.5e6f7a8b.png', type: 'image/png', size: 3, modifiedAt: '2024-01-01T00:00:00Z', data: new Uint8Array([1, 2, 3]).buffer }
+
+    commit('c1', [author('author_2', 'Bob', 'unpublished', { portrait: { url: '/uploads/bob.5e6f7a8b.png' } })])
+
+    stored.set('changes', {
+      entries: {},
+      uploads: {},
+      removed: ['bob.5e6f7a8b.png'],
+      publishedMedia: { 'bob.5e6f7a8b.png': upload },
+    } satisfies Changes)
+
+    expect((await authors(await reader().build())).map(entry => entry.portrait)).toEqual([{ url: '/uploads/bob.5e6f7a8b.png' }])
+    expect(created).toBe(0)
   })
 
   it('reads the head of the branch again for every build', async () => {

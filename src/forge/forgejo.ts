@@ -1,10 +1,10 @@
-import type { ProviderConfig } from '../types/config'
+import type { ProviderConfig } from '../config/types'
 import type { TreeItem } from './repository'
 import type { BuildCheck, CheckState, Forge, ForgeAccess, ForgeFile, TokenGetter } from './types'
 import { base64ToText, textToBase64 } from '../utils/encoding'
 import { describe } from './providers'
 import { publishable } from './publish'
-import { createRepositoryApi, findTree } from './repository'
+import { blobs, createRepositoryApi, findTree, toIdentity } from './repository'
 
 const PAGE_SIZE = 1000
 const STATUS_LIMIT = 50
@@ -56,12 +56,7 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
   }
 
   async function sha(path: string, ref: string): Promise<string | undefined> {
-    const response = await repo.send(`/contents/${encodePath(path)}?ref=${encodeURIComponent(ref)}`)
-
-    if (response.status === 404)
-      return undefined
-
-    return (await (await repo.check(response)).json() as { sha: string }).sha
+    return (await repo.find<{ sha: string }>(`/contents/${encodePath(path)}?ref=${encodeURIComponent(ref)}`))?.sha
   }
 
   return {
@@ -72,11 +67,7 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
       ])
 
       return {
-        identity: {
-          login: user.login,
-          ...user.full_name ? { name: user.full_name } : {},
-          ...user.avatar_url ? { avatar: user.avatar_url } : {},
-        },
+        identity: toIdentity(user.login, user.full_name, user.avatar_url),
         writable: repository.permissions?.push === true,
         branch: await repo.branch(),
       }
@@ -92,9 +83,7 @@ export function createForgejoForge(config: ProviderConfig, token: TokenGetter): 
       if (!tree)
         return []
 
-      return (await entries(tree, true))
-        .filter(item => item.type === 'blob')
-        .map(item => ({ path: `${directory}/${item.path}`, sha: item.sha }))
+      return blobs(directory, await entries(tree, true))
     },
 
     async read(blob): Promise<string> {

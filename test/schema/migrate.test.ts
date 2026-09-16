@@ -1,5 +1,5 @@
+import type { Entry } from '../../src/entries/types'
 import type { Field } from '../../src/schema/fields'
-import type { Entry } from '../../src/types/entry'
 import { describe, expect, it } from 'vitest'
 import { migrate } from '../../src/schema/migrate'
 

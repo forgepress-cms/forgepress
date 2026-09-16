@@ -1,12 +1,14 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { ResolvedConfig } from '../config/resolve'
-import type { Entry } from '../types/entry'
-import type { ForgePressSchema } from '../types/schema'
+import type { Entry } from '../entries/types'
+import type { ForgePressSchema } from '../schema/types'
 import { Buffer } from 'node:buffer'
+import { diskFiles } from '../disk/files'
 import { createMediaStore } from '../disk/media'
-import { createSource } from '../disk/source'
 import { createWriter } from '../disk/writer'
-import { ENDPOINT, isCollectionName, isEntryId } from '../files/paths'
+import { ENDPOINT, ROUTES } from '../endpoint/routes'
+import { createFileSource } from '../files/content'
+import { isCollectionName, isEntryId } from '../files/paths'
 import { isAssetName, mediaType } from '../media'
 import { validateSchema } from '../schema/validate'
 import { isRecord } from '../utils/value'
@@ -54,7 +56,7 @@ function missing(path: string): EndpointError {
   return new EndpointError(404, `there is no endpoint ${JSON.stringify(path)}`)
 }
 
-async function bytes(request: IncomingMessage): Promise<Buffer> {
+async function bytes(request: IncomingMessage): Promise<Buffer<ArrayBuffer>> {
   const chunks: Buffer[] = []
   for await (const chunk of request)
     chunks.push(chunk as Buffer)
@@ -93,8 +95,12 @@ function decode(value: string, path: string): string {
   }
 }
 
-function segments(path: string, prefix: string, count: number): (string | undefined)[] {
-  const found = path.slice(prefix.length).split('/').filter(Boolean).map(segment => decode(segment, path))
+function under(path: string, route: string): boolean {
+  return path.startsWith(`${route}/`)
+}
+
+function segments(path: string, route: string, count: number): (string | undefined)[] {
+  const found = path.slice(route.length + 1).split('/').filter(Boolean).map(segment => decode(segment, path))
 
   if (found.length > count)
     throw missing(path)
@@ -131,7 +137,7 @@ async function media(config: ResolvedConfig, root: string, path: string, request
   if (request.method === 'GET')
     return json(response, await store.list())
 
-  const name = decode(path.slice('/media/'.length), path)
+  const name = decode(path.slice(ROUTES.media.length + 1), path)
 
   if (request.method === 'DELETE') {
     if (!isAssetName(name))
@@ -149,22 +155,22 @@ async function media(config: ResolvedConfig, root: string, path: string, request
 }
 
 async function read(config: ResolvedConfig, root: string, path: string, response: ServerResponse): Promise<void> {
-  const source = createSource(root, config.paths, { unpublished: true })
+  const source = createFileSource(diskFiles(root), config.paths)
 
-  if (path === '/schema')
+  if (path === ROUTES.schema)
     return json(response, await source.schema())
 
-  if (path.startsWith('/content/')) {
-    const [collection = ''] = segments(path, '/content/', 1)
+  if (under(path, ROUTES.content)) {
+    const [collection = ''] = segments(path, ROUTES.content, 1)
     const schema = await source.schema()
 
     return json(response, Object.hasOwn(schema.collections, collection) ? await source.list(collection) : [])
   }
 
-  if (!path.startsWith('/entry/'))
+  if (!under(path, ROUTES.entry))
     throw missing(path)
 
-  const [collection = '', id = ''] = segments(path, '/entry/', 2)
+  const [collection = '', id = ''] = segments(path, ROUTES.entry, 2)
   const schema = await source.schema()
   const row = Object.hasOwn(schema.collections, collection) && isEntryId(id) ? await source.entry(collection, id) : undefined
 
@@ -179,7 +185,7 @@ async function write(config: ResolvedConfig, root: string, path: string, request
   const writer = createWriter(root, config.paths, config.content)
   const removing = request.method === 'DELETE'
 
-  if (path === '/schema' && !removing) {
+  if (path === ROUTES.schema && !removing) {
     const schema = await body(request)
     const issues = validateSchema(schema)
 
@@ -188,8 +194,8 @@ async function write(config: ResolvedConfig, root: string, path: string, request
 
     await writer.writeSchema(schema as ForgePressSchema)
   }
-  else if (path.startsWith('/entry/')) {
-    const [name, id] = segments(path, '/entry/', 2)
+  else if (under(path, ROUTES.entry)) {
+    const [name, id] = segments(path, ROUTES.entry, 2)
     const collection = collectionName(name)
 
     if (removing) {
@@ -204,8 +210,8 @@ async function write(config: ResolvedConfig, root: string, path: string, request
       await writer.writeEntry(collection, row)
     }
   }
-  else if (path.startsWith('/content/')) {
-    const [name] = segments(path, '/content/', 1)
+  else if (under(path, ROUTES.content)) {
+    const [name] = segments(path, ROUTES.content, 1)
     const collection = collectionName(name)
 
     if (removing) {
@@ -233,7 +239,7 @@ export async function handle(config: ResolvedConfig, root: string, request: Inco
 
   const path = (request.url ?? '').slice(ENDPOINT.length)
 
-  if (path === '/media' || path.startsWith('/media/'))
+  if (path === ROUTES.media || under(path, ROUTES.media))
     return media(config, root, path, request, response)
 
   if (request.method === 'GET')

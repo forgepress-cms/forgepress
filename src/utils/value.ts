@@ -21,6 +21,10 @@ export function same(left: unknown, right: unknown): boolean {
   return JSON.stringify(left ?? null) === JSON.stringify(right ?? null)
 }
 
+export function pick(record: Readonly<Record<string, unknown>>, keys: readonly string[]): Record<string, unknown> {
+  return Object.fromEntries(keys.filter(key => record[key] !== undefined).map(key => [key, record[key]]))
+}
+
 export function defined<TValue extends object>(value: TValue | undefined): Partial<TValue> {
   if (!value)
     return {}

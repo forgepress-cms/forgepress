@@ -1,4 +1,4 @@
-import type { EntryMeta } from '../types/entry'
+import type { EntryMeta } from './types'
 
 function compareCreation(left: EntryMeta, right: EntryMeta): number {
   if (left.createdAt !== right.createdAt)

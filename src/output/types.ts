@@ -1,4 +1,4 @@
-import type { OutputMeta } from '../types/entry'
+import type { OutputMeta } from '../entries/types'
 
 export const OUTPUT_VERSION = 1
 

@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
 import type { App } from 'vue'
-import type { EditorRouter } from '../../../../src/editor/plugins/router'
+import type { EditorRouter } from '../../../../editor/plugins/router'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createApp, defineComponent, h } from 'vue'
-import PageView from '../../../../src/editor/components/layout/PageView.vue'
-import { createRouter, routerKey } from '../../../../src/editor/plugins/router'
+import PageView from '../../../../editor/components/layout/PageView.vue'
+import { createRouter, routerKey } from '../../../../editor/plugins/router'
+import { settle } from '../../../settle'
 
 let visits = 0
 
@@ -34,10 +35,6 @@ const routes = {
 
 let router: EditorRouter
 let app: App
-
-function settle(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 0))
-}
 
 async function open(path: string) {
   window.history.replaceState(null, '', `/admin?path=/${path}`)

@@ -1,4 +1,4 @@
-import type { ProviderConfig } from '../types/config'
+import type { ProviderConfig } from '../config/types'
 import type { Forge, TokenGetter } from './types'
 import { createForgejoForge } from './forgejo'
 import { createGitHubForge } from './github'

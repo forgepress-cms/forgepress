@@ -1,7 +1,8 @@
+import type { ValueIssue, ValuePath } from '../files/issues'
 import type { Field } from '../schema/fields'
-import type { Entry, EntryRef } from '../types/entry'
-import type { ValueIssue, ValuePath } from '../types/issues'
-import type { ForgePressSchema } from '../types/schema'
+import type { ForgePressSchema } from '../schema/types'
+import type { Entry, EntryRef } from './types'
+import { isTranslated } from '../schema/fields'
 import { isRecord, quote } from '../utils/value'
 
 export interface EntryIssue extends ValueIssue {
@@ -22,6 +23,10 @@ export interface CollectionEntry {
 
 export function entryKey(collection: string, id: string): string {
   return `${collection}/${id}`
+}
+
+export function isEntryRef(value: unknown): value is EntryRef {
+  return isRecord(value) && typeof value.collection === 'string' && typeof value.id === 'string'
 }
 
 function localized(value: unknown, path: ValuePath, translated: boolean): [ValuePath, unknown][] {
@@ -45,7 +50,7 @@ function references(field: Field, value: unknown, path: ValuePath): Reference[] 
   }
 
   if (field.type === 'dynamic') {
-    return value.flatMap((block, index) => isRecord(block) && typeof block.id === 'string' && typeof block.collection === 'string' && field.collections.includes(block.collection)
+    return value.flatMap((block, index) => isEntryRef(block) && field.collections.includes(block.collection)
       ? [{ path: [...path, index], collection: block.collection, id: block.id }]
       : [])
   }
@@ -54,10 +59,10 @@ function references(field: Field, value: unknown, path: ValuePath): Reference[] 
 }
 
 export function entryReferences(schema: ForgePressSchema, collection: string, row: Entry): Reference[] {
-  const translatable = (schema.locales ?? []).length > 0
+  const locales = schema.locales ?? []
 
   return Object.entries(schema.collections[collection]?.fields ?? {}).flatMap(([key, field]) =>
-    localized(row[key], [key], translatable && field.translate === true)
+    localized(row[key], [key], isTranslated(field, locales))
       .flatMap(([path, value]) => references(field, value, path)))
 }
 

@@ -3,6 +3,7 @@ import type { PreviewFiles, PreviewReader } from './reader'
 import type { PreviewSettings } from './state'
 import { overlayContent } from '../query/overlay'
 import { errorMessage } from '../utils/error'
+import { once } from '../utils/once'
 import { createBadge } from './badge'
 import { onPreviewChange, previewing, previewSettings, previewVersion, setPreviewEnabled } from './state'
 
@@ -15,7 +16,7 @@ interface Snapshot {
 
 let enabled = false
 let snapshot: Snapshot | undefined
-let selected: { key: string, reader: Promise<PreviewReader> } | undefined
+let selected: { key: string, reader: () => Promise<PreviewReader> } | undefined
 
 const badge = createBadge(() => setPreviewEnabled(false))
 
@@ -23,9 +24,9 @@ function readerFor(settings: PreviewSettings): Promise<PreviewReader> {
   const key = JSON.stringify(settings)
 
   if (selected?.key !== key)
-    selected = { key, reader: import('./reader').then(module => module.createPreviewReader(settings)) }
+    selected = { key, reader: once(() => import('./reader').then(module => module.createPreviewReader(settings))) }
 
-  return selected.reader
+  return selected.reader()
 }
 
 function load(): Promise<PreviewFiles | undefined> {

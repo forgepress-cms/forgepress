@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from 'vitest'
 import { nextTick, ref } from 'vue'
-import { createTitle } from '../../../src/editor/plugins/title'
+import { createTitle } from '../../../editor/plugins/title'
 
 afterEach(() => {
   document.title = ''

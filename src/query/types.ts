@@ -1,5 +1,5 @@
-import type { OutputOf } from '../types/entry'
-import type { ForgePressSchema, SchemaLocale } from '../types/schema'
+import type { OutputOf } from '../entries/types'
+import type { ForgePressSchema, SchemaLocale } from '../schema/types'
 
 export type Operator = 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'contains'
 

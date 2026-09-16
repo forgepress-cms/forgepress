@@ -1,6 +1,6 @@
 import type { ContentEntries } from '../../src/entries/references'
-import type { Entry } from '../../src/types/entry'
-import type { ForgePressSchema } from '../../src/types/schema'
+import type { Entry } from '../../src/entries/types'
+import type { ForgePressSchema } from '../../src/schema/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createOutput } from '../../src/output'
 import { Builder } from '../../src/query/builder'

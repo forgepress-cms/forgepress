@@ -1,5 +1,5 @@
 import type { MediaContent } from '../../media/types'
-import type { FieldOf, FieldTypeDefinition } from '../../types/field'
+import type { FieldOf, FieldTypeDefinition } from './types'
 
 const image = {
   type: 'image',

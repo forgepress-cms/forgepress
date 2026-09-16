@@ -1,16 +1,14 @@
+import type { EntryRef } from '../entries/types'
 import type { OutputEntry, OutputManifest } from '../output/types'
-import type { EntryRef } from '../types/entry'
 import type { ContentLoader, Snapshot } from './client'
 import type { Operator, QueryPlan } from './types'
-import { entryKey } from '../entries/references'
-import { isRecord, quote } from '../utils/value'
+import { OUTPUT_META_KEYS } from '../entries/meta'
+import { entryKey, isEntryRef } from '../entries/references'
+import { pick, quote } from '../utils/value'
 import { evaluate } from './evaluator'
 
-const META = ['id', 'createdAt', 'updatedAt']
-
 function refsOf(value: unknown): EntryRef[] {
-  return (Array.isArray(value) ? value : [value]).filter((item): item is EntryRef =>
-    isRecord(item) && typeof item.collection === 'string' && typeof item.id === 'string')
+  return (Array.isArray(value) ? value : [value]).filter(isEntryRef)
 }
 
 function listing(names: readonly string[]): string {
@@ -94,7 +92,7 @@ export class Builder {
     if (unlinked.length > 0)
       throw new Error(`[forgepress] .with() loads relation and dynamic fields, and ${listing(unlinked)} ${unlinked.length === 1 ? 'is not one' : 'are not'} in ${quote(collection)}`)
 
-    const listed = new Set([...META, ...manifest.indexed])
+    const listed = new Set<string>([...OUTPUT_META_KEYS, ...manifest.indexed])
     const unindexed = [...new Set([...plan.where, ...plan.sort].map(clause => clause.field))].filter(field => !listed.has(field))
 
     if (unindexed.length > 0 && index.dev)
@@ -105,8 +103,8 @@ export class Builder {
     const listedOnly = plan.pick !== undefined && [...plan.pick, ...plan.with].every(field => listed.has(field))
     const rows = unindexed.length > 0 || listedOnly ? selected : await snapshot.entries(collection, locale, selected.map(entry => entry.id))
     const linked = plan.with.length > 0 ? await this.link(snapshot, manifest, rows) : rows
-    const { pick } = plan
-    const picked = pick === undefined ? linked : linked.map(row => Object.fromEntries(pick.filter(field => row[field] !== undefined).map(field => [field, row[field]])) as OutputEntry)
+    const fields = plan.pick
+    const picked = fields === undefined ? linked : linked.map(row => pick(row, fields) as OutputEntry)
 
     return structuredClone(picked)
   }

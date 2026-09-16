@@ -1,8 +1,8 @@
 import type { Options } from './project'
-import { join, relative, resolve, sep } from 'node:path'
-import { findRoot } from '../disk/root'
+import { join, relative } from 'node:path'
+import { toPosix } from '../disk/paths'
 import { vitePlugin } from './index'
-import { loadProjectConfig } from './project'
+import { loadProject } from './project'
 
 export interface ModuleOptions extends Options {
   preview?: boolean
@@ -45,8 +45,7 @@ export default defineNuxtPlugin({
 
 async function forgepress(inline: ModuleOptions, nuxt: Nuxt): Promise<void> {
   const options = { ...nuxt.options.forgepress, ...inline }
-  const root = options.root ? resolve(nuxt.options.rootDir, options.root) : findRoot(nuxt.options.rootDir)
-  const config = await loadProjectConfig(root, options)
+  const { root, config } = await loadProject(nuxt.options.rootDir, options)
   const plugin = vitePlugin({ ...options, root })
 
   nuxt.hook('vite:extend', ({ config: vite }) => {
@@ -56,7 +55,7 @@ async function forgepress(inline: ModuleOptions, nuxt: Nuxt): Promise<void> {
 
   nuxt.hook('prepare:types', ({ tsConfig }) => {
     tsConfig.include ??= []
-    tsConfig.include.push(relative(nuxt.options.buildDir, join(root, config.paths.dir, '**/*.ts')).split(sep).join('/'))
+    tsConfig.include.push(toPosix(relative(nuxt.options.buildDir, join(root, config.paths.dir, '**/*.ts'))))
   })
 
   if (options.preview === false)

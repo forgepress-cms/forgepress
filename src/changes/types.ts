@@ -1,7 +1,7 @@
+import type { Entry, EntryRef } from '../entries/types'
 import type { Conflict, FileChange, RepoTarget } from '../forge/types'
 import type { MediaAsset, MediaClient, PendingUpload } from '../media/types'
 import type { ContentStore } from '../store/types'
-import type { Entry, EntryRef } from '../types/entry'
 
 export interface Changes {
   entries: Record<string, Record<string, Entry | null>>

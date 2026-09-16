@@ -1,8 +1,8 @@
 import type { Changes } from '../../src/changes/types'
-import type { Entry } from '../../src/types/entry'
+import type { Entry } from '../../src/entries/types'
 import { describe, expect, it } from 'vitest'
 import { toFiles } from '../../src/changes/files'
-import { defaultPaths } from '../../src/files/paths'
+import { defaultPaths, repositoryPaths } from '../../src/files/paths'
 
 const target = { paths: defaultPaths, mediaDir: 'public/uploads' }
 
@@ -81,10 +81,10 @@ describe('file changes', () => {
     ])
   })
 
-  it('prefixes every path when the project sits inside a larger repo', () => {
+  it('writes to the repository paths of a project inside a larger repo', () => {
     const files = toFiles(
       changes({ entries: { hero: { h1: row('h1') } }, uploads: { 'a.png': upload('a.png', 'hi') }, removed: ['old.png'] }),
-      { ...target, base: 'playgrounds/nuxt' },
+      { paths: repositoryPaths(defaultPaths, 'playgrounds/nuxt'), mediaDir: 'playgrounds/nuxt/public/uploads' },
     )
 
     expect(files.map(file => file.path)).toEqual([
@@ -92,12 +92,6 @@ describe('file changes', () => {
       'playgrounds/nuxt/public/uploads/a.png',
       'playgrounds/nuxt/public/uploads/old.png',
     ])
-  })
-
-  it('tolerates a base with stray slashes', () => {
-    const [file] = toFiles(changes({ entries: { hero: { h1: row('h1') } } }), { ...target, base: '/apps/site/' })
-
-    expect(file?.path).toBe('apps/site/.forgepress/content/hero/h1.ts')
   })
 
   it('produces nothing when there is nothing pending', () => {

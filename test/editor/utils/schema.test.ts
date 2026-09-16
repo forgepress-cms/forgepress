@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { seedField, seedOption, toKey } from '../../../src/editor/utils/schema'
+import { seedField, seedOption, toKey } from '../../../editor/utils/schema'
 
 describe('toKey', () => {
   it('camel cases names', () => {

@@ -1,12 +1,13 @@
+import type { OutputConfig } from '../config/types'
 import type { ContentEntries } from '../entries/references'
-import type { OutputConfig } from '../types/config'
-import type { Entry } from '../types/entry'
-import type { ForgePressSchema } from '../types/schema'
+import type { Entry } from '../entries/types'
+import type { ForgePressSchema } from '../schema/types'
 import type { OutputCollection, OutputEntry, OutputFile, OutputIndex, OutputManifest } from './types'
+import { OUTPUT_META_KEYS } from '../entries/meta'
 import { sortByCreation } from '../entries/order'
 import { toCollectionDir } from '../files/paths'
 import { digest } from '../utils/encoding'
-import { defined } from '../utils/value'
+import { defined, pick } from '../utils/value'
 import { indexedFields, isLocalized, linkFields, toOutputEntry } from './entry'
 import { OUTPUT_INDEX, OUTPUT_VERSION } from './types'
 
@@ -38,27 +39,17 @@ async function hashed(folder: string, name: string, value: unknown): Promise<Out
   return { path: `${folder}/${name}.${hash.slice(0, 8)}.json`, text }
 }
 
-function listed(entry: OutputEntry, indexed: readonly string[]): OutputEntry {
-  const item: OutputEntry = { id: entry.id, createdAt: entry.createdAt, updatedAt: entry.updatedAt }
-
-  for (const field of indexed) {
-    if (entry[field] !== undefined)
-      item[field] = entry[field]
-  }
-
-  return item
-}
-
 async function collectionOutput(schema: ForgePressSchema, collection: string, entries: readonly Entry[], locale?: string): Promise<CollectionOutput> {
   const folder = locale === undefined ? toCollectionDir(collection) : `${toCollectionDir(collection)}/${locale}`
   const indexed = indexedFields(schema, collection)
+  const listed = [...OUTPUT_META_KEYS, ...indexed]
   const converted = entries.map(entry => toOutputEntry(schema, collection, entry, locale))
   const files = await Promise.all(converted.map(entry => hashed(folder, entry.id, entry)))
 
   const manifest: OutputManifest = {
     indexed,
     links: linkFields(schema, collection),
-    entries: converted.map(entry => listed(entry, indexed)),
+    entries: converted.map(entry => pick(entry, listed) as OutputEntry),
     files: Object.fromEntries(converted.map((entry, index) => [entry.id, files[index]!.path])),
   }
 

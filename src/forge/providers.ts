@@ -1,4 +1,4 @@
-import type { ProviderConfig, ProviderType } from '../types/config'
+import type { ProviderConfig, ProviderType } from '../config/types'
 import type { ForgeDescriptor } from './types'
 
 interface Provider {

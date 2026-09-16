@@ -3,7 +3,7 @@ import type { AddressInfo, Socket } from 'node:net'
 import type { ResolvedConfig } from '../config/resolve'
 import type { DevLogger } from './dev'
 import type { OriginPolicy } from './endpoint'
-import type { Options } from './project'
+import type { Options, Project } from './project'
 import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
@@ -12,15 +12,16 @@ import { basename, dirname, extname, join, relative, resolve, sep } from 'node:p
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { isMainThread, Worker } from 'node:worker_threads'
-import { buildOutput, outputDir } from '../disk/output'
-import { OUTPUT_VARIABLE } from '../disk/reader'
-import { findRoot } from '../disk/root'
-import { EVENTS } from '../files/paths'
+import { editorSettings } from '../config/settings'
+import { buildOutput } from '../disk/output'
+import { toPosix } from '../disk/paths'
+import { EVENTS } from '../endpoint/routes'
 import { errorMessage } from '../utils/error'
+import { keyed } from '../utils/once'
 import { isRecord } from '../utils/value'
 import { createDevContent } from './dev'
-import { loadProjectConfig, syncTypes } from './project'
-import { editorSettings, SETTINGS_ID } from './settings'
+import { loadProject, syncTypes } from './project'
+import { SETTINGS_ID } from './settings'
 
 export interface NextOptions extends Options {
   preview?: boolean
@@ -54,9 +55,7 @@ export interface NextConfig {
 
 export type NextConfigFunction<TConfig> = (phase: string, context: { defaultConfig: TConfig }) => TConfig | Promise<TConfig>
 
-interface Project {
-  root: string
-  config: ResolvedConfig
+interface NextProject extends Project {
   local: boolean
   server: string | undefined
 }
@@ -126,10 +125,12 @@ function end(response: ServerResponse, status: number, text?: string): void {
   response.end(text)
 }
 
-function servers(): Map<string, Promise<string>> {
-  const scope = globalThis as { [SERVERS]?: Map<string, Promise<string>> }
+type Servers = (root: string, start: () => Promise<string>) => Promise<string>
 
-  scope[SERVERS] ??= new Map()
+function servers(): Servers {
+  const scope = globalThis as { [SERVERS]?: Servers }
+
+  scope[SERVERS] ??= keyed<string>()
 
   return scope[SERVERS]
 }
@@ -165,7 +166,7 @@ function includeContent(root: string, config: ResolvedConfig, tsconfig: string):
   if (!existsSync(file))
     return
 
-  const folder = relative(dirname(file), join(root, config.paths.dir)).split(sep).join('/')
+  const folder = toPosix(relative(dirname(file), join(root, config.paths.dir)))
   const pattern = `${folder}/**/*.ts`
 
   if (!folder.split('/').some(segment => segment.startsWith('.')))
@@ -291,20 +292,13 @@ async function startDevServer(root: string, config: ResolvedConfig, write: boole
 }
 
 function devServer(root: string, config: ResolvedConfig, write: boolean): Promise<string> {
-  const known = servers()
-  const found = known.get(root) ?? startDevServer(root, config, write)
-
-  known.set(root, found)
-
-  return found
+  return servers()(root, () => startDevServer(root, config, write))
 }
 
-async function prepare(phase: string, next: NextConfig, options: NextOptions): Promise<Project> {
-  const root = options.root ? resolve(options.root) : findRoot(process.cwd())
-  const config = await loadProjectConfig(root, options)
+async function prepare(phase: string, next: NextConfig, options: NextOptions): Promise<NextProject> {
+  const project = await loadProject(process.cwd(), options)
+  const { root, config } = project
   const serving = phase === DEVELOPMENT && isMainThread
-
-  process.env[OUTPUT_VARIABLE] = outputDir(root, config)
 
   if (isMainThread && (phase === DEVELOPMENT || phase === BUILD)) {
     syncTypes(root, config)
@@ -312,14 +306,13 @@ async function prepare(phase: string, next: NextConfig, options: NextOptions): P
   }
 
   return {
-    root,
-    config,
+    ...project,
     local: phase === DEVELOPMENT && options.write !== false,
     server: serving ? await devServer(root, config, options.write !== false) : undefined,
   }
 }
 
-function extend<TConfig extends object>(found: TConfig, project: Project, options: NextOptions): TConfig {
+function extend<TConfig extends object>(found: TConfig, project: NextProject, options: NextOptions): TConfig {
   const next: NextConfig = found
 
   const extended: NextConfig = {

@@ -1,8 +1,7 @@
+import type { Entry } from '../entries/types'
 import type { FileChange, RepoTarget } from '../forge/types'
 import type { PendingUpload } from '../media/types'
-import type { Entry } from '../types/entry'
 import type { Changes } from './types'
-import { prefixer } from '../files/paths'
 import { serializeEntry } from '../files/serialize'
 import { toBase64 } from '../utils/encoding'
 
@@ -21,10 +20,8 @@ export interface ChangedMedia {
 }
 
 export function changedEntries(changes: Changes, target: RepoTarget): ChangedEntry[] {
-  const at = prefixer(target.base)
-
   return Object.entries(changes.entries).flatMap(([collection, overlay]) => Object.entries(overlay).map(([id, row]) => ({
-    path: at(target.paths.entry(collection, id)),
+    path: target.paths.entry(collection, id),
     collection,
     id,
     row,
@@ -33,8 +30,7 @@ export function changedEntries(changes: Changes, target: RepoTarget): ChangedEnt
 }
 
 export function changedMedia(changes: Changes, target: RepoTarget): ChangedMedia[] {
-  const prefix = prefixer(target.base)
-  const at = (name: string): string => prefix(`${target.mediaDir}/${name}`)
+  const at = (name: string): string => `${target.mediaDir}/${name}`
 
   return [
     ...Object.values(changes.uploads).map(upload => ({ path: at(upload.name), name: upload.name, upload })),

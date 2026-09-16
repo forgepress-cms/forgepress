@@ -1,10 +1,9 @@
+import type { MediaConfig } from '../config/types'
 import type { MediaAsset, MediaStore } from '../media/types'
-import type { MediaConfig } from '../types/config'
-import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { assetUrl, checkUpload, isAssetName, isMediaFile, mediaType, resolveMedia, sortAssets, toAssetName } from '../media'
+import { assetName, checkUpload, isAssetName, isMediaFile, resolveMedia, sortAssets, storedAsset } from '../media'
 
 export function createMediaStore(root: string, config?: MediaConfig): MediaStore {
   const media = resolveMedia(config)
@@ -13,13 +12,7 @@ export function createMediaStore(root: string, config?: MediaConfig): MediaStore
   async function describe(name: string): Promise<MediaAsset> {
     const info = await stat(join(dir, name))
 
-    return {
-      name,
-      url: assetUrl(media.url, name),
-      type: mediaType(name),
-      size: info.size,
-      modifiedAt: info.mtime.toISOString(),
-    }
+    return { ...storedAsset(name, media.url), size: info.size, modifiedAt: info.mtime.toISOString() }
   }
 
   return {
@@ -35,7 +28,7 @@ export function createMediaStore(root: string, config?: MediaConfig): MediaStore
     async write({ name, data }) {
       checkUpload(name, data.byteLength, media.maxSize)
 
-      const file = toAssetName(name, createHash('sha256').update(data).digest('hex'))
+      const file = await assetName(name, data)
 
       await mkdir(dir, { recursive: true })
       await writeFile(join(dir, file), data)

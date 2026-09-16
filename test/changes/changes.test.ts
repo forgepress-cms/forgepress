@@ -1,14 +1,14 @@
 import type { Changes } from '../../src/changes/types'
+import type { Entry } from '../../src/entries/types'
 import type { HashSource } from '../../src/forge/types'
 import type { MediaSource } from '../../src/media/types'
+import type { ForgePressSchema } from '../../src/schema/types'
 import type { ContentSource, KeyValueStore } from '../../src/store/types'
-import type { Entry } from '../../src/types/entry'
-import type { ForgePressSchema } from '../../src/types/schema'
 import { describe, expect, it } from 'vitest'
 import { reactive } from 'vue'
 import { createChanges } from '../../src/changes'
-import { defaultPaths } from '../../src/files/paths'
-import { createMemoryStore } from '../../src/storage/memory'
+import { defaultPaths, repositoryPaths } from '../../src/files/paths'
+import { createMemoryStore } from '../../src/store/memory'
 
 const baseSchema = { collections: { hero: { fields: {} } }, locales: ['en'] } as ForgePressSchema
 
@@ -372,13 +372,13 @@ describe('diff', () => {
     expect((await changes.diff(target)).map(entry => entry.path)).toEqual(['.forgepress/content/hero/a.ts'])
   })
 
-  it('prefixes diff paths with the repo base', async () => {
+  it('diffs the files of a project inside a larger repository', async () => {
     const { changes } = make()
 
     await changes.content.writeEntry('hero', row('b'))
     await changes.content.removeEntry('hero', 'a')
 
-    expect((await changes.diff({ ...target, base: 'apps/site' })).map(entry => entry.path)).toEqual([
+    expect((await changes.diff({ ...target, paths: repositoryPaths(defaultPaths, 'apps/site') })).map(entry => entry.path)).toEqual([
       'apps/site/.forgepress/content/hero/a.ts',
       'apps/site/.forgepress/content/hero/b.ts',
     ])
@@ -474,7 +474,7 @@ describe('file hashes', () => {
 
   it('drops only my changes to conflicting files', async () => {
     const { changes } = tracked()
-    const nested = { ...target, base: 'apps/site' }
+    const nested = { ...target, paths: repositoryPaths(defaultPaths, 'apps/site') }
 
     await changes.content.writeEntry('hero', row('a', 'Goodbye'))
     await changes.content.writeEntry('author', row('x'))

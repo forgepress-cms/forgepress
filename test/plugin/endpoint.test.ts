@@ -1,14 +1,14 @@
 import type { IncomingMessage, Server, ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import type { UnpluginContextMeta } from 'unplugin'
-import type { Endpoint } from '../../src/editor/endpoint'
+import type { Endpoint } from '../../src/endpoint/client'
 import { Buffer } from 'node:buffer'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer, request as send } from 'node:http'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { createEndpoint } from '../../src/editor/endpoint'
+import { createEndpoint } from '../../src/endpoint/client'
 import { unpluginFactory } from '../../src/unplugin'
 
 type Middleware = (request: IncomingMessage, response: ServerResponse, next: () => void) => void

@@ -3,15 +3,16 @@ import type { App } from 'vue'
 import type { MediaAsset } from '../../../../src/media/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, ref } from 'vue'
+import { settle } from '../../../settle'
 
 const measured = vi.fn()
 
-vi.doMock('../../../../src/editor/utils/media', async importOriginal => ({
-  ...await importOriginal<typeof import('../../../../src/editor/utils/media')>(),
+vi.doMock('../../../../editor/utils/media', async importOriginal => ({
+  ...await importOriginal<typeof import('../../../../editor/utils/media')>(),
   measure: measured,
 }))
 
-const { default: MediaDetails } = await import('../../../../src/editor/components/media/MediaDetails.vue')
+const { default: MediaDetails } = await import('../../../../editor/components/media/MediaDetails.vue')
 
 const stubs = {
   UModal: defineComponent({
@@ -34,10 +35,6 @@ afterEach(() => {
   app = undefined
   measured.mockReset()
 })
-
-function settle(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 0))
-}
 
 function mount(asset: MediaAsset = photo) {
   const container = document.createElement('div')

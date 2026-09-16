@@ -3,7 +3,7 @@ import type { App } from 'vue'
 import type { MediaAsset } from '../../../../src/media/types'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createApp, defineComponent, h, nextTick, ref } from 'vue'
-import MediaGrid from '../../../../src/editor/components/media/MediaGrid.vue'
+import MediaGrid from '../../../../editor/components/media/MediaGrid.vue'
 
 const stubs = {
   UButton: defineComponent({

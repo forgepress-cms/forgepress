@@ -1,4 +1,4 @@
-import type { ForgePressSchema, RegisteredSchema } from '../types/schema'
+import type { ForgePressSchema, RegisteredSchema } from '../schema/types'
 import type { Query } from './types'
 import { reader } from '#content-reader'
 import { Builder } from './builder'

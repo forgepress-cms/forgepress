@@ -1,7 +1,7 @@
-import type { FormField } from '../../../src/editor/utils/schema'
+import type { FormField } from '../../../editor/utils/schema'
 import type { Field } from '../../../src/schema/fields'
 import { describe, expect, it } from 'vitest'
-import { entryLabel, fieldLocale, fromValues, missingFields, newEntry, SINGLE, statusLabel, titleField, toLocalizedFields, toRow, toValues, withPublished } from '../../../src/editor/utils/entry'
+import { entryLabel, fieldLocale, fromValues, missingFields, newEntry, SINGLE, statusLabel, titleField, toLocalizedFields, toRow, toValues, withPublished } from '../../../editor/utils/entry'
 
 const locales = ['en', 'de']
 

@@ -2,11 +2,17 @@ import type { MediaClient, MediaSource, PendingUpload } from '../media/types'
 import type { Mutate, Ready } from './content'
 import type { Previews } from './previews'
 import type { Changes } from './types'
-import { assetUrl, checkUpload, sortAssets, storedAsset, toAssetName } from '../media'
-import { digest } from '../utils/encoding'
+import { assetName, assetUrl, checkUpload, sortAssets, storedAsset } from '../media'
 
-export function publishedUploads(changes: Changes): PendingUpload[] {
+function publishedUploads(changes: Changes): PendingUpload[] {
   return Object.values(changes.publishedMedia ?? {}).filter(Boolean)
+}
+
+export function localUploads(changes: Changes): PendingUpload[] {
+  const removed = new Set(changes.removed)
+  const uploads = new Map([...Object.values(changes.uploads), ...publishedUploads(changes)].map(upload => [upload.name, upload]))
+
+  return [...uploads.values()].filter(upload => !removed.has(upload.name))
 }
 
 export function createMediaChanges(media: MediaSource, previews: Previews, ready: Ready, mutate: Mutate): MediaClient {
@@ -38,20 +44,18 @@ export function createMediaChanges(media: MediaSource, previews: Previews, ready
 
       const [changes, stored] = await Promise.all([ready(), media.stored()])
       const removed = new Set(changes.removed)
-      const local = [...publishedUploads(changes), ...Object.values(changes.uploads)]
-        .filter(upload => !removed.has(upload.name))
-        .map(upload => previews.asset(upload, url))
+      const local = localUploads(changes).map(upload => previews.asset(upload, url))
       const shown = new Set(local.map(asset => asset.name))
       const rest = stored.filter(name => !removed.has(name) && !shown.has(name)).map(name => storedAsset(name, url))
 
-      return sortAssets([...new Map(local.map(asset => [asset.name, asset])).values(), ...rest])
+      return sortAssets([...local, ...rest])
     },
 
     upload: async (file) => {
       const { url, maxSize } = await media.settings()
       const data = await file.arrayBuffer()
       const type = checkUpload(file.name, data.byteLength, maxSize)
-      const name = toAssetName(file.name, await digest('SHA-256', data))
+      const name = await assetName(file.name, data)
 
       if ((await media.stored()).includes(name)) {
         if ((await ready()).removed.includes(name)) {

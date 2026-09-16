@@ -23,8 +23,7 @@
   },
   "include": [
     "src",
-    "test",
-    "components.d.ts",
-    "auto-imports.d.ts"
+    "editor",
+    "test"
   ]
 }

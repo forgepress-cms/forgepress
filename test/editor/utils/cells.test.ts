@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
 import type { VNode } from 'vue'
-import type { Entries } from '../../../src/editor/composables/useEntries'
-import type { FormField } from '../../../src/editor/utils/schema'
+import type { Entries } from '../../../editor/composables/useEntries'
+import type { FormField } from '../../../editor/utils/schema'
 import type { Field } from '../../../src/schema/fields'
 import { describe, expect, it } from 'vitest'
 import { createApp } from 'vue'
-import { clampMarkdown, fieldCell, flag, thumbnails } from '../../../src/editor/utils/cells'
+import { clampMarkdown, fieldCell, thumbnails } from '../../../editor/utils/cells'
 
 function render(node: () => VNode): HTMLElement {
   const host = document.createElement('div')
@@ -129,12 +129,5 @@ describe('fieldCell', () => {
 
   it('leaves plain fields as text', () => {
     expect(render(() => fieldCell(field({ type: 'text' }), 'Jane', entries)).textContent).toBe('Jane')
-  })
-})
-
-describe('flag', () => {
-  it('reads as yes or a dash', () => {
-    expect(render(() => flag(true)).textContent).toBe('Yes')
-    expect(render(() => flag(false)).textContent).toBe('—')
   })
 })

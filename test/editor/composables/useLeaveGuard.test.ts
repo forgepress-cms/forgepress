@@ -1,20 +1,17 @@
 // @vitest-environment happy-dom
 import type { App } from 'vue'
-import type { EditorRouter } from '../../../src/editor/plugins/router'
+import type { EditorRouter } from '../../../editor/plugins/router'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createApp, defineComponent, h, nextTick, reactive } from 'vue'
-import { useDraft } from '../../../src/editor/composables/useDraft'
-import { useLeaveGuard } from '../../../src/editor/composables/useLeaveGuard'
-import { createRouter, routerKey } from '../../../src/editor/plugins/router'
+import { useDraft } from '../../../editor/composables/useDraft'
+import { useLeaveGuard } from '../../../editor/composables/useLeaveGuard'
+import { createRouter, routerKey } from '../../../editor/plugins/router'
+import { settle } from '../../settle'
 
 const routes = { '': { name: 'index' }, 'content': { name: 'content' }, 'schema': { name: 'schema' } }
 
 let router: EditorRouter
 let app: App
-
-function settle(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 0))
-}
 
 async function follow(path: string): Promise<void> {
   const link = document.createElement('a')

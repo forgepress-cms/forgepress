@@ -1,8 +1,6 @@
-import type { EntryRef } from '../types/entry'
+import type { EntryRef } from '../entries/types'
 
 export const DEFAULT_CONTENT_PATH = '.forgepress'
-export const ENDPOINT = '/__forgepress'
-export const EVENTS = `${ENDPOINT}/events`
 
 const ENTRY_FILE = /\.ts$/
 const ENTRY_ID = /^[\w-]+$/
@@ -78,6 +76,19 @@ export function prefixer(base?: string): (path: string) => string {
   const prefix = base?.replace(/\\/g, '/').replace(EDGE_SLASHES, '') ?? ''
 
   return path => repositoryPath(prefix ? `${prefix}/${path}` : path)
+}
+
+export function repositoryPaths(paths: ContentPaths, base?: string): ContentPaths {
+  const at = prefixer(base)
+
+  return {
+    dir: at(paths.dir),
+    content: at(paths.content),
+    schema: at(paths.schema),
+    types: at(paths.types),
+    collection: name => at(paths.collection(name)),
+    entry: (name, id) => at(paths.entry(name, id)),
+  }
 }
 
 export function createPaths(path?: string): ContentPaths {

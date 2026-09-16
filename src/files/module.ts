@@ -1,4 +1,4 @@
-import type { Location, ValuePath } from '../types/issues'
+import type { Location, ValuePath } from './issues'
 import { ContentError } from './issues'
 
 export interface ParsedModule {

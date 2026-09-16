@@ -1,6 +1,6 @@
-import type { ContentConfig } from '../types/config'
-import type { Entry } from '../types/entry'
-import type { ForgePressSchema } from '../types/schema'
+import type { ContentConfig } from '../config/types'
+import type { Entry } from '../entries/types'
+import type { ForgePressSchema } from '../schema/types'
 import { META_KEYS } from '../entries/meta'
 
 const IDENTIFIER = /^[A-Z_$][\w$]*$/i

@@ -1,14 +1,15 @@
 // @vitest-environment happy-dom
 import type { App } from 'vue'
-import type { Entries } from '../../../../src/editor/composables/useEntries'
-import type { NestedEntries } from '../../../../src/editor/composables/useNestedEntries'
-import type { EditorRouter } from '../../../../src/editor/plugins/router'
+import type { Entries } from '../../../../editor/composables/useEntries'
+import type { NestedEntries } from '../../../../editor/composables/useNestedEntries'
+import type { EditorRouter } from '../../../../editor/plugins/router'
+import type { Entry, EntryRef } from '../../../../src/entries/types'
 import type { DynamicBlock } from '../../../../src/schema/fields/dynamic'
-import type { Entry, EntryRef } from '../../../../src/types/entry'
-import type { ForgePressSchema } from '../../../../src/types/schema'
+import type { ForgePressSchema } from '../../../../src/schema/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, nextTick, ref } from 'vue'
-import { routerKey } from '../../../../src/editor/plugins/router'
+import { routerKey } from '../../../../editor/plugins/router'
+import { settle } from '../../../settle'
 
 const schema = {
   collections: {
@@ -17,13 +18,13 @@ const schema = {
   },
 } as const satisfies ForgePressSchema
 
-vi.doMock('../../../../src/editor/composables/useContent', () => ({
+vi.doMock('../../../../editor/composables/useContent', () => ({
   useContent: () => ({ store: { schema: async () => schema } }),
 }))
 
-const { default: DynamicInput } = await import('../../../../src/editor/components/fields/DynamicInput.vue')
-const { default: RelationInput } = await import('../../../../src/editor/components/fields/RelationInput.vue')
-const { useNestedEntries } = await import('../../../../src/editor/composables/useNestedEntries')
+const { default: DynamicInput } = await import('../../../../editor/components/fields/DynamicInput.vue')
+const { default: RelationInput } = await import('../../../../editor/components/fields/RelationInput.vue')
+const { useNestedEntries } = await import('../../../../editor/composables/useNestedEntries')
 
 const rows: Record<string, Entry> = {
   'hero/hero_1': { id: 'hero_1', status: 'published', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', headline: 'Welcome' },
@@ -87,10 +88,6 @@ afterEach(() => {
   app?.unmount()
   app = undefined
 })
-
-function settle(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 0))
-}
 
 async function mount(blocks: DynamicBlock[], trail: EntryRef[] = [{ collection: 'page', id: 'page_1' }]) {
   const container = document.createElement('div')

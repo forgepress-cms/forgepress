@@ -1,6 +1,6 @@
 import type { EntryFile } from '../../src/entries/check'
 import { describe, expect, it } from 'vitest'
-import { checkFiles, parseContent } from '../../src/entries/check'
+import { parseContent } from '../../src/entries/check'
 import { formatIssue } from '../../src/files/issues'
 
 const schema = {
@@ -47,10 +47,10 @@ function meta(id: string, status = 'published'): string[] {
 }
 
 function problems(entries: EntryFile[], schemaFile = schema): string[] {
-  return checkFiles(schemaFile, entries).map(formatIssue)
+  return parseContent(schemaFile, entries).issues.map(formatIssue)
 }
 
-describe('checkFiles', () => {
+describe('checking content', () => {
   it('finds nothing wrong with valid content', () => {
     expect(problems([
       entry('author', 'author_1', [...meta('author_1'), 'name: \'Alice\',']),

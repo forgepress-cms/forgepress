@@ -1,17 +1,16 @@
+import type { Entry } from '../entries/types'
 import type { Field } from '../schema/fields'
-import type { Entry } from '../types/entry'
-import type { ForgePressSchema } from '../types/schema'
+import type { ForgePressSchema } from '../schema/types'
 import type { LinkKind, OutputEntry } from './types'
-import { isRecord } from '../utils/value'
+import { OUTPUT_META_KEYS } from '../entries/meta'
+import { isTranslated } from '../schema/fields'
+import { isRecord, pick } from '../utils/value'
 
 function fieldsOf(schema: ForgePressSchema, collection: string): [string, Field][] {
   return Object.entries(schema.collections[collection]?.fields ?? {})
 }
 
-function localized(field: Field, stored: unknown, locale: string | undefined): unknown {
-  if (field.translate !== true)
-    return stored
-
+function translation(stored: unknown, locale: string | undefined): unknown {
   return locale !== undefined && isRecord(stored) ? stored[locale] : undefined
 }
 
@@ -25,7 +24,7 @@ function linked(field: Field, value: unknown): unknown {
 }
 
 export function isLocalized(schema: ForgePressSchema, collection: string): boolean {
-  return (schema.locales ?? []).length > 0 && fieldsOf(schema, collection).some(([, field]) => field.translate === true)
+  return fieldsOf(schema, collection).some(([, field]) => isTranslated(field, schema.locales ?? []))
 }
 
 export function indexedFields(schema: ForgePressSchema, collection: string): string[] {
@@ -37,10 +36,11 @@ export function linkFields(schema: ForgePressSchema, collection: string): Record
 }
 
 export function toOutputEntry(schema: ForgePressSchema, collection: string, entry: Entry, locale?: string): OutputEntry {
-  const output: OutputEntry = { id: entry.id, createdAt: entry.createdAt, updatedAt: entry.updatedAt }
+  const locales = schema.locales ?? []
+  const output = pick(entry, OUTPUT_META_KEYS) as OutputEntry
 
   for (const [key, field] of fieldsOf(schema, collection)) {
-    const value = localized(field, entry[key], locale)
+    const value = isTranslated(field, locales) ? translation(entry[key], locale) : entry[key]
 
     if (value !== undefined)
       output[key] = linked(field, value)

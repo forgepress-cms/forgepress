@@ -1,4 +1,4 @@
-import type { ForgePressSchema } from '../../src/types/schema'
+import type { ForgePressSchema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { validateEntry } from '../../src/entries/validate'
 

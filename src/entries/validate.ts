@@ -1,17 +1,17 @@
+import type { ValueIssue, ValuePath } from '../files/issues'
 import type { Field } from '../schema/fields'
 import type { DynamicField } from '../schema/fields/dynamic'
 import type { NumberField } from '../schema/fields/number'
 import type { TextField } from '../schema/fields/text'
-import type { ValueIssue, ValuePath } from '../types/issues'
-import type { ForgePressSchema } from '../types/schema'
+import type { ForgePressSchema } from '../schema/types'
 import { isEntryId } from '../files/paths'
+import { isTranslated } from '../schema/fields'
 import { compilePattern } from '../schema/fields/text'
 import { isRecord, quote } from '../utils/value'
-import { META_KEYS } from './meta'
+import { ENTRY_STATUSES, META_KEYS } from './meta'
 
 type Report = (path: ValuePath, message: string) => void
 
-const STATUSES: readonly unknown[] = ['published', 'unpublished']
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))?$/
 const MEDIA_OPTIONS: Record<string, readonly [kind: string, fits: (value: unknown) => boolean]> = {
   url: ['a string', value => typeof value === 'string'],
@@ -42,8 +42,8 @@ function checkMeta(report: Report, entry: Record<string, unknown>): void {
 
   if (entry.status === undefined)
     report([], 'The entry needs a "status"')
-  else if (!STATUSES.includes(entry.status))
-    report(['status'], '"status" has to be "published" or "unpublished"')
+  else if (!(ENTRY_STATUSES as readonly unknown[]).includes(entry.status))
+    report(['status'], `"status" has to be ${ENTRY_STATUSES.map(quote).join(' or ')}`)
 
   for (const key of ['createdAt', 'updatedAt']) {
     if (entry[key] === undefined)
@@ -222,7 +222,7 @@ export function validateEntry(schema: ForgePressSchema, collection: string, entr
       if (!field.optional)
         report([], `Field ${quote(key)} is required`)
     }
-    else if (field.translate && locales.length > 0) {
+    else if (isTranslated(field, locales)) {
       checkTranslations(report, key, field, value, locales)
     }
     else {

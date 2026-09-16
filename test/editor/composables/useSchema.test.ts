@@ -1,5 +1,5 @@
+import type { ForgePressSchema } from '../../../src/schema/types'
 import type { SchemaWriter } from '../../../src/store/types'
-import type { ForgePressSchema } from '../../../src/types/schema'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const schema: ForgePressSchema = { collections: { author: { fields: {} } } }
@@ -7,14 +7,14 @@ const calls: string[] = []
 
 let writer: SchemaWriter | undefined
 
-vi.doMock('../../../src/editor/composables/useContent', () => ({
+vi.doMock('../../../editor/composables/useContent', () => ({
   useContent: () => ({
     store: { schema: async () => schema },
     schemaWriter: async () => writer,
   }),
 }))
 
-const { useSchema } = await import('../../../src/editor/composables/useSchema')
+const { useSchema } = await import('../../../editor/composables/useSchema')
 
 beforeEach(() => {
   calls.length = 0

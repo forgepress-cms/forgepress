@@ -1,15 +1,17 @@
 import type { ResolvedConfig } from '../config/resolve'
+import type { ContentIssue } from '../files/issues'
 import type { OutputFile } from '../output/types'
-import type { ContentIssue } from '../types/issues'
 import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, readdir, rename, rm, rmdir, writeFile } from 'node:fs/promises'
-import { dirname, isAbsolute, join, relative, sep } from 'node:path'
+import { mkdir, rename, rm, rmdir, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
+import { readContent } from '../files/content'
 import { ContentError } from '../files/issues'
 import { createOutput } from '../output'
 import { OUTPUT_INDEX } from '../output/types'
-import { loadContent } from './check'
 import { readCommit } from './commit'
+import { diskFiles, listFiles } from './files'
+import { isInside } from './paths'
 
 const HASHED_FILE = /^[^/]+(?:\/[^/]+)*\/[\w-]+\.[\da-f]{8}\.json$/
 
@@ -38,12 +40,6 @@ async function place(path: string, text: string): Promise<void> {
   await rename(temporary, path)
 }
 
-async function listFiles(dir: string): Promise<string[]> {
-  const items = await readdir(dir, { withFileTypes: true, recursive: true })
-
-  return items.filter(item => item.isFile()).map(item => relative(dir, join(item.parentPath, item.name)).split(sep).join('/'))
-}
-
 function ancestors(folder: string): string[] {
   return folder === '.' || folder === '' ? [] : [folder, ...ancestors(dirname(folder))]
 }
@@ -69,9 +65,8 @@ async function prune(dir: string, folders: readonly string[]): Promise<void> {
 
 export function outputDir(root: string, config: ResolvedConfig): string {
   const dir = join(root, config.output.dir)
-  const inside = relative(root, dir)
 
-  if (inside === '' || inside === '..' || inside.startsWith(`..${sep}`) || isAbsolute(inside))
+  if (!isInside(root, dir))
     throw new Error(`[forgepress] the output folder has to be inside the project, not ${JSON.stringify(config.output.dir)}`)
 
   return dir
@@ -105,7 +100,7 @@ export function writeOutput(dir: string, files: readonly OutputFile[]): Promise<
 
 export async function buildOutput(root: string, config: ResolvedConfig, options: BuildOptions = {}): Promise<BuildResult> {
   const dir = outputDir(root, config)
-  const { issues, schema, content } = await loadContent(root, config.paths)
+  const { issues, schema, content } = await readContent(diskFiles(root), config.paths)
 
   if (!schema || (issues.length > 0 && !options.dev))
     throw new ContentError(issues)

@@ -135,8 +135,6 @@ describe('next build', () => {
     expect(settings(config)).toEqual({
       local: false,
       devServer: '',
-      provider: null,
-      format: null,
       contentPath: '.forgepress',
       media: { dir: 'public/uploads', url: '/uploads', maxSize: 8388608 },
     })

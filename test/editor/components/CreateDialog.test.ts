@@ -2,7 +2,7 @@
 import type { App } from 'vue'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createApp, defineComponent, h, nextTick, ref } from 'vue'
-import CreateDialog from '../../../src/editor/components/CreateDialog.vue'
+import CreateDialog from '../../../editor/components/CreateDialog.vue'
 
 const stubs = {
   UModal: defineComponent({

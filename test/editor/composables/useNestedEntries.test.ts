@@ -1,7 +1,7 @@
-import type { Entry, EntryStatus } from '../../../src/types/entry'
-import type { ForgePressSchema } from '../../../src/types/schema'
+import type { Entry, EntryStatus } from '../../../src/entries/types'
+import type { ForgePressSchema } from '../../../src/schema/types'
 import { describe, expect, it, vi } from 'vitest'
-import { SINGLE } from '../../../src/editor/utils/entry'
+import { SINGLE } from '../../../editor/utils/entry'
 
 const schema = {
   collections: {
@@ -10,11 +10,11 @@ const schema = {
   },
 } as const satisfies ForgePressSchema
 
-vi.doMock('../../../src/editor/composables/useContent', () => ({
+vi.doMock('../../../editor/composables/useContent', () => ({
   useContent: () => ({ store: { schema: async () => schema } }),
 }))
 
-const { useNestedEntries } = await import('../../../src/editor/composables/useNestedEntries')
+const { useNestedEntries } = await import('../../../editor/composables/useNestedEntries')
 
 function nested() {
   return useNestedEntries()

@@ -1,5 +1,5 @@
-import type { Entry } from '../types/entry'
-import type { ForgePressSchema } from '../types/schema'
+import type { Entry } from '../entries/types'
+import type { ForgePressSchema } from '../schema/types'
 
 export interface ContentSource {
   schema: () => Promise<ForgePressSchema>

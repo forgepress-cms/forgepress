@@ -1,4 +1,4 @@
-import type { ForgePressConfig } from '../types/config'
+import type { ForgePressConfig } from '../config/types'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
