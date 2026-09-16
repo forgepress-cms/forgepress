@@ -44,7 +44,7 @@ async function load() {
 function badge() {
   const root = document.querySelector('forgepress-preview')?.shadowRoot
 
-  return root ? { label: root.querySelector('span:not(.dot)')?.textContent, button: root.querySelector('button') } : undefined
+  return root ? { label: root.querySelector('span:not(.dot)')?.textContent, button: root.querySelector<HTMLElement>('button:not(.close)'), close: root.querySelector<HTMLElement>('.close') } : undefined
 }
 
 beforeEach(() => {
@@ -83,7 +83,7 @@ describe('enablePreview', () => {
 
     await settle()
 
-    expect(badge()?.label).toBe('Preview')
+    expect(badge()?.label).toBe('Preview: on')
     expect(builds).toBe(1)
   })
 
@@ -119,7 +119,7 @@ describe('enablePreview', () => {
     expect(badge()?.label).toBe('Preview unavailable')
   })
 
-  it('turns off from the badge and reads the published content again', async () => {
+  it('turns off from the badge, keeps it to turn on again and reads the published content', async () => {
     const { preview, state, reader } = await load()
     const changed = vi.fn()
 
@@ -134,13 +134,47 @@ describe('enablePreview', () => {
 
     expect(preview.previewing()).toBe(false)
     expect(changed).toHaveBeenCalledOnce()
-    expect(badge()).toBeUndefined()
+    expect(badge()?.label).toBe('Preview: off')
     expect(await reader('index.json')).toEqual({ published: 'index.json' })
 
+    badge()?.button?.click()
+    await settle()
+
+    expect(preview.previewing()).toBe(true)
+    expect(badge()?.label).toBe('Preview: on')
+    expect(await reader('index.json')).toEqual({ version: 1, commit: null, build: 2 })
+  })
+
+  it('keeps the badge off when the preview is switched off while it loads', async () => {
+    const { preview, state } = await load()
+
+    state.openPreview(settings)
+    preview.enablePreview()
+    state.setPreviewEnabled(false)
+    await settle()
+
+    expect(badge()?.label).toBe('Preview: off')
+  })
+
+  it('removes the badge when the editor signs out and leaves it closed until a reload', async () => {
+    const { preview, state } = await load()
+
+    state.openPreview(settings)
+    preview.enablePreview()
+    await settle()
+
+    state.closePreview()
+
+    expect(badge()).toBeUndefined()
+
+    state.openPreview(settings)
+    await settle()
+    badge()?.close?.click()
+    state.setPreviewEnabled(false)
     state.setPreviewEnabled(true)
     await settle()
 
-    expect(badge()?.label).toBe('Preview')
-    expect(await reader('index.json')).toEqual({ version: 1, commit: null, build: 2 })
+    expect(badge()).toBeUndefined()
+    expect(preview.previewing()).toBe(true)
   })
 })

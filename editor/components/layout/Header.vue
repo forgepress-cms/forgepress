@@ -84,9 +84,9 @@ const setting = { root: 'flex-row-reverse items-center justify-between gap-3 px-
       <BuildStatus v-if="deployed && identity" />
 
       <UButton
-        v-if="identity"
+        v-if="identity && count"
         icon="i-hugeicons-upload-01"
-        :label="count ? `Publish (${count})` : 'Publish'"
+        :label="`Publish (${count})`"
         @click="publish()"
       />
 
@@ -94,16 +94,12 @@ const setting = { root: 'flex-row-reverse items-center justify-between gap-3 px-
         <UButton :label="identity.login" icon="i-hugeicons-user" color="neutral" variant="ghost" class="hidden lg:inline-flex" />
       </UDropdownMenu>
 
-      <UButton
+      <USwitch
         v-if="identity"
-        :icon="previewing ? 'i-hugeicons-view' : 'i-hugeicons-view-off'"
-        color="neutral"
-        variant="ghost"
-        class="hidden lg:inline-flex"
-        :aria-pressed="previewing"
-        :aria-label="`Site preview: ${previewing ? 'on' : 'off'}`"
-        :title="`Site preview: ${previewing ? 'on' : 'off'}`"
-        @click="setPreview(!previewing)"
+        :model-value="previewing"
+        label="Site preview"
+        :ui="{ root: 'hidden shrink-0 flex-row-reverse items-center gap-2 px-2 lg:flex', wrapper: 'ms-0', label: 'font-normal whitespace-nowrap' }"
+        @update:model-value="setPreview"
       />
 
       <UButton

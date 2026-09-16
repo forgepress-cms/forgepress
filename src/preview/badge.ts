@@ -1,4 +1,4 @@
-export type BadgeState = { status: 'loading' | 'ready' } | { status: 'failed', error: string }
+export type BadgeState = { status: 'loading' | 'ready' | 'off' } | { status: 'failed', error: string }
 
 export interface Badge {
   show: (state: BadgeState) => void
@@ -10,7 +10,8 @@ const HIDING = 'forgepress-preview-hiding'
 
 const LABELS: Record<BadgeState['status'], string> = {
   loading: 'Loading preview…',
-  ready: 'Preview',
+  ready: 'Preview: on',
+  off: 'Preview: off',
   failed: 'Preview unavailable',
 }
 
@@ -50,12 +51,30 @@ const STYLE = `
   background: #f87171;
 }
 
+[data-status="off"] .dot {
+  background: #8a8378;
+}
+
 button {
   all: unset;
   padding: 2px 10px;
   border-radius: 999px;
   color: #ffd27a;
   cursor: pointer;
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 2px;
+  color: #b8b0a4;
+}
+
+.close svg {
+  width: 12px;
+  height: 12px;
 }
 
 button:hover {
@@ -80,11 +99,13 @@ button:focus-visible {
 }
 `
 
-export function createBadge(turnOff: () => void): Badge {
+export function createBadge(setEnabled: (enabled: boolean) => void): Badge {
   let host: HTMLElement | undefined
   let badge: HTMLElement | undefined
   let label: HTMLElement | undefined
+  let toggle: HTMLButtonElement | undefined
   let latest: BadgeState | undefined
+  let dismissed = false
 
   function hideInEditor(): void {
     if (document.getElementById(HIDING))
@@ -103,28 +124,39 @@ export function createBadge(turnOff: () => void): Badge {
     host = document.createElement(TAG)
     badge = document.createElement('div')
     label = document.createElement('span')
+    toggle = document.createElement('button')
 
     const root = host.attachShadow({ mode: 'open' })
     const style = document.createElement('style')
     const dot = document.createElement('span')
-    const button = document.createElement('button')
+    const close = document.createElement('button')
 
     style.textContent = STYLE
     badge.className = 'badge'
     badge.setAttribute('role', 'status')
     dot.className = 'dot'
-    button.type = 'button'
-    button.textContent = 'Turn off'
-    button.setAttribute('aria-label', 'Turn off preview')
-    button.addEventListener('click', turnOff)
+    toggle.type = 'button'
+    toggle.addEventListener('click', () => setEnabled(latest?.status === 'off'))
+    close.type = 'button'
+    close.className = 'close'
+    close.title = 'Hide until the page reloads'
+    close.setAttribute('aria-label', 'Hide the preview badge')
+    close.innerHTML = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6"/></svg>'
+    close.addEventListener('click', () => {
+      dismissed = true
+      host?.remove()
+    })
 
-    badge.append(dot, label, button)
+    badge.append(dot, label, toggle, close)
     root.append(style, badge)
     document.body.append(host)
   }
 
   function show(state: BadgeState): void {
     latest = state
+
+    if (dismissed)
+      return
 
     if (!document.body) {
       document.addEventListener('DOMContentLoaded', () => latest && show(latest), { once: true })
@@ -137,6 +169,8 @@ export function createBadge(turnOff: () => void): Badge {
 
     badge!.dataset.status = state.status
     label!.textContent = LABELS[state.status]
+    toggle!.textContent = state.status === 'off' ? 'Turn on' : 'Turn off'
+    toggle!.setAttribute('aria-label', state.status === 'off' ? 'Turn on preview' : 'Turn off preview')
     badge!.title = state.status === 'failed' ? `${state.error}. The site shows published content.` : ''
   }
 

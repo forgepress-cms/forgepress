@@ -18,7 +18,7 @@ let enabled = false
 let snapshot: Snapshot | undefined
 let selected: { key: string, reader: () => Promise<PreviewReader> } | undefined
 
-const badge = createBadge(() => setPreviewEnabled(false))
+const badge = createBadge(setPreviewEnabled)
 
 function readerFor(settings: PreviewSettings): Promise<PreviewReader> {
   const key = JSON.stringify(settings)
@@ -43,12 +43,12 @@ function load(): Promise<PreviewFiles | undefined> {
   const current: Snapshot = {
     version,
     files: building.then((files) => {
-      if (snapshot === current)
+      if (snapshot === current && previewing())
         badge.show({ status: 'ready' })
 
       return files
     }, (cause: unknown) => {
-      if (snapshot === current)
+      if (snapshot === current && previewing())
         badge.show({ status: 'failed', error: errorMessage(cause) })
 
       return undefined
@@ -78,6 +78,8 @@ async function read(path: string, base: ContentReader): Promise<unknown> {
 function refresh(): void {
   if (previewing())
     void load()
+  else if (previewSettings())
+    badge.show({ status: 'off' })
   else
     badge.hide()
 }
