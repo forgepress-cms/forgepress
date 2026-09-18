@@ -2,7 +2,7 @@ import type { Changes, ChangeService } from '../../src/changes/types'
 import type { ForgeSource } from '../../src/forge/source'
 import type { RepoTarget } from '../../src/forge/types'
 import type { MediaClient } from '../../src/media/types'
-import type { ContentStore, SchemaWriter } from '../../src/store/types'
+import type { ContentStore, SchemaStore } from '../../src/store/types'
 import type { BakedSettings } from '../settings'
 import { createChanges } from '../../src/changes'
 import { createEndpoint } from '../../src/endpoint/client'
@@ -22,7 +22,7 @@ export interface EditorContent {
   mode: () => Promise<EditorMode>
   store: ContentStore
   media: MediaClient
-  schemaWriter: () => Promise<SchemaWriter | undefined>
+  schemaStore: () => Promise<SchemaStore | undefined>
   changes: () => Promise<ChangeService | undefined>
   target: () => Promise<RepoTarget>
   read: (sha: string) => Promise<string>
@@ -33,7 +33,7 @@ export interface EditorContent {
 interface Resolved {
   store: ContentStore
   media: MediaClient
-  schemaWriter?: SchemaWriter
+  schemaStore?: SchemaStore
   changes?: ChangeService
   source?: ForgeSource
 }
@@ -48,9 +48,9 @@ async function build(): Promise<Resolved> {
   const settings = await baked()
 
   if (settings.local) {
-    const { reader, writer, media } = createEndpoint(settings.devServer)
+    const { reader, writer, schema, media } = createEndpoint(settings.devServer)
 
-    return { store: { ...reader, ...writer }, media, schemaWriter: writer }
+    return { store: { ...reader, ...writer }, media, schemaStore: schema }
   }
 
   const session = useSession()
@@ -67,7 +67,7 @@ const content: EditorContent = {
   mode: async () => (await baked()).local ? 'development' : 'static',
   store: lazyStore(async () => (await resolve()).store),
   media: lazyMedia(async () => (await resolve()).media),
-  schemaWriter: async () => (await resolve()).schemaWriter,
+  schemaStore: async () => (await resolve()).schemaStore,
   changes: async () => (await resolve()).changes,
 
   target: async () => repositoryTarget(await baked()),

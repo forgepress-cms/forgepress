@@ -1,36 +1,36 @@
 <script setup lang="ts">
+import type { SchemaDraft } from '../../../../src/migrate/schema'
 import type { Field } from '../../../../src/schema/fields'
-import { computed, reactive, ref, watch } from 'vue'
+import type { ForgePressSchema } from '../../../../src/schema/types'
+import { computed, reactive, watch } from 'vue'
 
+import { planMigration } from '../../../../src/migrate/plan'
 import { fieldTypes } from '../../../../src/schema/fields'
-import { migrate } from '../../../../src/schema/migrate'
-import { BASE_OPTIONS } from '../../../../src/schema/validate'
-import { filled } from '../../../../src/utils/value'
-import ConfirmDialog from '../../../components/ConfirmDialog.vue'
+import { BASE_OPTIONS, RESERVED_FIELDS } from '../../../../src/schema/validate'
+import { filled, plain } from '../../../../src/utils/value'
 import DiscardDialog from '../../../components/DiscardDialog.vue'
 import ErrorAlert from '../../../components/ErrorAlert.vue'
 import ListSelect from '../../../components/fields/ListSelect.vue'
 import FormLayout from '../../../components/layout/FormLayout.vue'
 import PageHeader from '../../../components/layout/PageHeader.vue'
-import MetaItem from '../../../components/MetaItem.vue'
-import { useContent } from '../../../composables/useContent'
+import MigrationDialog from '../../../components/MigrationDialog.vue'
+import MigrationNotice from '../../../components/MigrationNotice.vue'
 import { useDraft } from '../../../composables/useDraft'
 import { useLeaveGuard } from '../../../composables/useLeaveGuard'
 import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
 import { useSchema } from '../../../composables/useSchema'
-import { FIELD_TYPE_ITEMS, seedOption } from '../../../utils/schema'
+import { FIELD_TYPE_ITEMS, KEY_PATTERN, seedOption } from '../../../utils/schema'
 
 const BASE_KEYS = new Set(['type', ...Object.keys(BASE_OPTIONS)])
 
 const { navigate, href } = useRouter()
 
-const { store } = useContent()
-
 const name = useParam('collection')
 const field = useParam('field')
 
-const { schema, saving, error, write } = await useSchema()
+const editor = await useSchema()
+const { schema, saving, error, review, change } = editor
 
 const collection = schema.value.collections[name]
 const current = collection?.fields[field]
@@ -39,12 +39,14 @@ if (!collection || !current) {
   throw new Error(`[forgepress] ${name} has no field named ${field}`)
 }
 
+const title = collection.label ?? name
 const locales = schema.value.locales ?? []
 const translatable = locales.length > 0
 
-const rows = await store.list(name)
+const content = await editor.content()
 
 const form = reactive({
+  key: field,
   label: current.label ?? '',
   description: current.description ?? '',
   type: current.type as Field['type'],
@@ -78,7 +80,25 @@ function back(): void {
 
 const { dirty, leaving, commit, cancel, discard, proceed } = useLeaveGuard(useDraft(() => ({ form, options }), back))
 
-const valid = computed(() => Object.entries(definition.value.options)
+const keyError = computed(() => {
+  const key = form.key.trim()
+
+  if (key === field)
+    return ''
+
+  if (!key)
+    return 'A key is required'
+
+  if (!KEY_PATTERN.test(key))
+    return 'A key has to start with a letter and hold only letters, digits or underscores'
+
+  if (RESERVED_FIELDS.includes(key))
+    return `${key} is reserved for entry metadata`
+
+  return Object.hasOwn(collection.fields, key) ? `${key} already exists` : ''
+})
+
+const valid = computed(() => !keyError.value && Object.entries(definition.value.options)
   .every(([option, spec]) => !('required' in spec) || configured(options[option])))
 
 function next(): Field {
@@ -104,37 +124,35 @@ function next(): Field {
   return config as unknown as Field
 }
 
-const migration = computed(() => migrate(rows, field, current, next(), locales))
+const key = computed(() => form.key.trim())
+const renames = computed(() => key.value === field ? {} : { fields: { [name]: { [field]: key.value } } })
 
-const confirming = ref(false)
+function apply(draft: SchemaDraft): void {
+  const target = draft.collections[name]!
+  const config = next()
+
+  target.fields = Object.fromEntries(Object.entries(target.fields).map(([item, value]) => item === field ? [key.value, config] : [item, value]))
+}
+
+const rewrites = computed(() => {
+  if (!valid.value)
+    return 0
+
+  const after = plain(schema.value) as SchemaDraft
+
+  apply(after)
+
+  const { changeset } = planMigration({ before: schema.value, after: after as ForgePressSchema, content, renames: renames.value })
+
+  return changeset.write.length
+})
 
 async function save(): Promise<void> {
-  confirming.value = false
-
-  const config = next()
-  const { rows: migrated, changed } = migration.value
-
-  const written = await write((draft) => {
-    draft.collections[name]!.fields[field] = config
-  }, async (writer) => {
-    if (changed)
-      await writer.writeContent(name, migrated)
-  })
-
-  if (!written)
+  if (!await change(apply, renames.value))
     return
-
-  rows.splice(0, rows.length, ...migrated)
 
   commit()
   proceed()
-}
-
-function submit(): void {
-  if (migration.value.lost)
-    confirming.value = true
-  else
-    void save()
 }
 </script>
 
@@ -144,7 +162,7 @@ function submit(): void {
       :title="form.label || field"
       :breadcrumb="[
         { label: 'Schema', to: href('schema') },
-        { label: collection.label ?? name, to: href(`schema/${name}`) },
+        { label: title, to: href(`schema/${name}`) },
       ]"
     >
       <template #actions>
@@ -154,37 +172,26 @@ function submit(): void {
           label="Save"
           icon="i-hugeicons-floppy-disk"
           :loading="saving"
-          :disabled="!valid || !dirty || !!migration.missing"
-          @click="submit()"
+          :disabled="!valid || !dirty"
+          @click="save()"
         />
       </template>
     </PageHeader>
 
+    <MigrationNotice :editor="editor" />
+
     <ErrorAlert title="The schema could not be saved" :error="error" />
 
-    <p v-if="migration.missing" class="text-sm text-muted">
-      {{ migration.missing }} {{ migration.missing === 1 ? 'entry has' : 'entries have' }} no value for every locale of a
-      required field. Fill {{ migration.missing === 1 ? 'it' : 'them' }} in first, or leave the field optional.
-    </p>
-
-    <p v-else-if="migration.changed" class="text-sm text-muted">
-      Saving rewrites {{ migration.changed }} {{ migration.changed === 1 ? 'entry' : 'entries' }} to match the field.
+    <p v-if="dirty && rewrites" class="text-sm text-muted">
+      Saving rewrites {{ rewrites }} {{ rewrites === 1 ? 'entry' : 'entries' }} to match the field.
     </p>
 
     <DiscardDialog
       v-model:open="leaving"
-      :saveable="valid && !migration.missing && !migration.lost"
+      :saveable="valid"
       :loading="saving"
       @save="save()"
       @confirm="discard()"
-    />
-
-    <ConfirmDialog
-      v-model:open="confirming"
-      title="Content does not fit"
-      :description="`${migration.lost} ${migration.lost === 1 ? 'entry loses content' : 'entries lose content'} that the field can no longer hold. This cannot be undone.`"
-      label="Save anyway"
-      @confirm="save()"
     />
 
     <FormLayout>
@@ -240,7 +247,13 @@ function submit(): void {
       </template>
 
       <template #sidebar>
-        <MetaItem label="Key" :value="field" mono />
+        <UFormField
+          label="Key"
+          :description="key === field ? 'How queries and content files name the field.' : `Content moves along. Code that reads ${field} needs ${key}.`"
+          :error="keyError || false"
+        >
+          <UInput v-model="form.key" class="w-full font-mono" />
+        </UFormField>
 
         <USeparator />
 
@@ -252,13 +265,24 @@ function submit(): void {
           <USwitch v-model="form.required" />
         </UFormField>
 
-        <UFormField
-          label="Translated"
-          :description="translatable ? 'Holds a separate value per locale.' : 'Add locales to the schema to translate fields.'"
-        >
+        <UFormField label="Translated">
+          <template #description>
+            <template v-if="translatable">
+              Holds a separate value per locale.
+            </template>
+
+            <template v-else>
+              Add a locale on the <ULink :to="href('schema')" class="text-primary underline">
+                Schema page
+              </ULink> to translate fields.
+            </template>
+          </template>
+
           <USwitch v-model="form.translate" :disabled="!translatable" />
         </UFormField>
       </template>
     </FormLayout>
+
+    <MigrationDialog :review="review" />
   </div>
 </template>

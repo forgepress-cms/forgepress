@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { describeValue } from '../../src/migrate/report'
 import { usePublish } from '../composables/usePublish'
 import { useRouter } from '../composables/useRouter'
 import { useSession } from '../composables/useSession'
@@ -8,7 +9,7 @@ import ErrorAlert from './ErrorAlert.vue'
 
 const open = defineModel<boolean>('open', { required: true })
 
-const { diff, count, publishing, error, conflicts, issues, refresh, publish, resolve } = usePublish()
+const { diff, count, publishing, error, conflicts, issues, left, refresh, publish, resolve } = usePublish()
 const { branch } = useSession()
 const { reload, href } = useRouter()
 
@@ -79,6 +80,24 @@ async function overwrite(): Promise<void> {
           :title="`Published as ${commit.slice(0, 7)}`"
           description="The site rebuilds from this commit, and the header shows when it's live. New media keeps its preview here until then."
         />
+
+        <UAlert
+          v-if="left.length"
+          color="neutral"
+          variant="subtle"
+          icon="i-hugeicons-information-circle"
+          title="The schema changed since these edits"
+        >
+          <template #description>
+            <p>Your edits now match the new schema. These values were left out, because their fields don't exist anymore:</p>
+
+            <ul class="mt-2 flex flex-col gap-1 text-xs">
+              <li v-for="item in left" :key="`${item.collection}/${item.id}/${item.field}`">
+                <span class="font-mono text-highlighted">{{ item.collection }}/{{ item.id }} · {{ item.field }}</span>: {{ describeValue(item.value) }}
+              </li>
+            </ul>
+          </template>
+        </UAlert>
 
         <UAlert
           v-if="conflicts.length"

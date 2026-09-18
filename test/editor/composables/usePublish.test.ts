@@ -82,6 +82,7 @@ function site() {
 
   const listing = new Map([...files.keys()].map(path => [path, `sha:${path}`]))
   const commits: string[] = []
+  const committed = new Map<string, string>()
 
   for (const [path, text] of files)
     blobs.set(`sha:${path}`, text)
@@ -98,6 +99,11 @@ function site() {
     commit: async (changed) => {
       commits.push(changed.map(file => file.path).join(' '))
 
+      for (const file of changed) {
+        if ('data' in file)
+          committed.set(file.path, file.data)
+      }
+
       return 'c2'
     },
     checks: async () => [],
@@ -112,7 +118,19 @@ function site() {
     entry: async (collection, id) => listing.get(defaultPaths.entry(collection, id)),
   })
 
-  return { changes, commits }
+  function upstream(next: ForgePressSchema, collection: string, entry: Entry): void {
+    const entryPath = defaultPaths.entry(collection, entry.id)
+
+    Object.assign(schema, next)
+    content[collection]![entry.id] = entry
+
+    for (const [path, text] of [[defaultPaths.schema, serializeSchema(next)], [entryPath, serializeEntry(collection, entry)]] as const) {
+      listing.set(path, `sha2:${path}`)
+      blobs.set(`sha2:${path}`, text)
+    }
+  }
+
+  return { changes, commits, committed, upstream }
 }
 
 let app: App | undefined
@@ -191,5 +209,43 @@ describe('publishing', () => {
     expect(commits).toEqual(['.forgepress/content/author/author_1.ts .forgepress/content/blog-post/post_1.ts'])
     expect(publisher.issues.value).toEqual([])
     expect(tracked).toEqual(['c2'])
+  })
+
+  it('merges edits made before a schema change instead of reporting conflicts', async () => {
+    const { changes, commits, committed, upstream } = site()
+    const publisher = usePublish()
+
+    await changes.content.writeEntry('author', { ...row('author_1'), name: 'Alice Liddell', colour: 'red' })
+
+    upstream({
+      collections: {
+        author: { fields: { fullName: { type: 'text' } } },
+        blogPost: { fields: { author: { type: 'relation', collection: 'author', optional: true } } },
+      },
+    }, 'author', { ...row('author_1'), fullName: 'Alice' })
+
+    expect(await publisher.publish('rename')).toBe('c2')
+    expect(publisher.conflicts.value).toEqual([])
+    expect(commits).toEqual(['.forgepress/content/author/author_1.ts'])
+    expect(committed.get('.forgepress/content/author/author_1.ts')).toContain('fullName: \'Alice Liddell\',')
+    expect(committed.get('.forgepress/content/author/author_1.ts')).not.toContain('name:')
+  })
+
+  it('still reports a field both sides changed', async () => {
+    const { changes, commits, upstream } = site()
+    const publisher = usePublish()
+
+    await changes.content.writeEntry('author', { ...row('author_1'), name: 'Alice Liddell' })
+
+    upstream({
+      collections: {
+        author: { fields: { name: { type: 'text' } } },
+        blogPost: { fields: { author: { type: 'relation', collection: 'author', optional: true } } },
+      },
+    }, 'author', { ...row('author_1'), name: 'Alice Pleasance' })
+
+    expect(await publisher.publish('rename')).toBeUndefined()
+    expect(publisher.conflicts.value).toEqual([{ path: '.forgepress/content/author/author_1.ts', hash: 'sha2:.forgepress/content/author/author_1.ts' }])
+    expect(commits).toEqual([])
   })
 })

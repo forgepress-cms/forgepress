@@ -19,7 +19,7 @@ interface Context {
   locales: readonly unknown[]
 }
 
-const SCHEMA_KEYS = new Set(['collections', 'locales'])
+const SCHEMA_KEYS = new Set(['collections', 'locales', 'defaultLocale'])
 const COLLECTION_KEYS = new Set(['label', 'description', 'fields'])
 
 export const BASE_OPTIONS: Record<keyof FieldBase, FieldOptionType> = {
@@ -84,6 +84,16 @@ function checkLocales(report: Report, locales: unknown): readonly unknown[] {
   })
 
   return locales
+}
+
+function checkDefaultLocale(report: Report, chosen: unknown, locales: readonly unknown[]): void {
+  if (chosen === undefined)
+    return
+
+  if (typeof chosen !== 'string')
+    report(['defaultLocale'], '"defaultLocale" has to be a locale code')
+  else if (!locales.includes(chosen))
+    report(['defaultLocale'], `The default locale ${quote(chosen)} is not in "locales"`)
 }
 
 function checkReferences(context: Context, path: ValuePath, label: string, targets: readonly string[], listed: boolean): void {
@@ -205,6 +215,8 @@ export function validateSchema(schema: unknown): ValueIssue[] {
   }
 
   const locales = checkLocales(report, schema.locales)
+
+  checkDefaultLocale(report, schema.defaultLocale, locales)
 
   if (!isRecord(schema.collections)) {
     report(schema.collections === undefined ? [] : ['collections'], 'The schema needs "collections" as an object')

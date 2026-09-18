@@ -25,4 +25,6 @@ export default {
       },
     },
   },
+  locales: ['en', 'de'],
+  defaultLocale: 'en',
 } as const satisfies ForgePressSchema

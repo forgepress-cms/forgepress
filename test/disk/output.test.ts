@@ -87,7 +87,7 @@ describe('buildOutput', () => {
     const root = site()
     const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 
-    expect(await buildOutput(root, resolveConfig())).toEqual({ dir: 'public/content', files: 7, commit: head, issues: [] })
+    expect(await buildOutput(root, resolveConfig())).toEqual({ dir: 'public/content', files: 7, commit: head, issues: [], schema: expect.objectContaining({ collections: expect.any(Object) }) })
     expect(hashless(written())).toEqual([
       'author/author_1',
       'author/index',

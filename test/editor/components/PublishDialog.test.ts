@@ -23,6 +23,7 @@ vi.doMock('../../../editor/composables/usePublish', () => ({
     error: ref(''),
     conflicts,
     issues,
+    left: ref([]),
     refresh: async () => {},
     publish: async () => {
       calls.push('publish')

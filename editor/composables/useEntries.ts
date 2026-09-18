@@ -1,6 +1,7 @@
 import type { Entry, EntryRef } from '../../src/entries/types'
 import type { StatusColor } from '../utils/entry'
 import { entryKey, entryReferences } from '../../src/entries/references'
+import { defaultLocale } from '../../src/schema/locales'
 import { entryLabel, statusColor, titleField } from '../utils/entry'
 import { toFields } from '../utils/schema'
 import { useContent } from './useContent'
@@ -23,6 +24,7 @@ export async function useEntries(): Promise<Entries> {
   const { store } = useContent()
   const schema = await store.schema()
   const locales = schema.locales ?? []
+  const chosen = defaultLocale(schema)
 
   const loaded = await Promise.all(Object.entries(schema.collections).map(async ([name, collection]) => ({
     name,
@@ -32,7 +34,7 @@ export async function useEntries(): Promise<Entries> {
 
   const index = new Map(loaded.map(({ name, rows, title }) => [name, rows.map(row => ({
     value: String(row.id),
-    label: entryLabel(row, title, locales[0]),
+    label: entryLabel(row, title, chosen),
     chip: { color: statusColor(row.status) },
   }))]))
 

@@ -1,4 +1,5 @@
 import type { Entry } from '../entries/types'
+import type { ContentIssue } from '../files/issues'
 import type { ForgePressSchema } from '../schema/types'
 
 export interface ContentSource {
@@ -12,10 +13,27 @@ export interface ContentWriter {
   removeEntry: (collection: string, id: string) => Promise<void>
 }
 
-export interface SchemaWriter {
-  writeSchema: (schema: ForgePressSchema) => Promise<void>
-  writeContent: (collection: string, rows: Entry[]) => Promise<void>
-  removeCollection: (collection: string) => Promise<void>
+export interface EntryWrite {
+  collection: string
+  entry: Entry
+}
+
+export interface SchemaChangeset {
+  schema: ForgePressSchema
+  write: readonly EntryWrite[]
+  collections: readonly string[]
+}
+
+export interface MigrationState {
+  outstanding?: ForgePressSchema
+}
+
+export interface SchemaStore {
+  content: () => Promise<Record<string, Entry[]>>
+  issues: () => Promise<ContentIssue[]>
+  state: () => Promise<MigrationState>
+  apply: (changeset: SchemaChangeset) => Promise<void>
+  dismiss: () => Promise<void>
 }
 
 export interface ContentStore extends ContentSource, ContentWriter {}

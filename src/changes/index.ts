@@ -1,14 +1,33 @@
-import type { EntryRef } from '../entries/types'
+import type { Entry, EntryRef } from '../entries/types'
 import type { HashSource } from '../forge/types'
 import type { MediaSource } from '../media/types'
 import type { ContentSource, KeyValueStore } from '../store/types'
-import type { ChangeHashes, Changes, ChangeService, ChangeSummary } from './types'
+import type { ChangeHashes, Changes, ChangeService, ChangeSummary, LeftOut } from './types'
+import { validateEntry } from '../entries/validate'
+import { ContentError } from '../files/issues'
+import { parseFile } from '../files/parse'
 import { once } from '../utils/once'
+import { isRecord, same } from '../utils/value'
 import { createContentChanges } from './content'
 import { diffChanges } from './diff'
+import { stage } from './entries'
 import { changedEntries, toFiles } from './files'
 import { createMediaChanges, localUploads } from './media'
 import { createPreviews } from './previews'
+import { adaptEntry } from './rebase'
+
+function entryOf(text: string, id: string): Entry | undefined {
+  const parsed = parseFile({ path: id, text })
+
+  return 'value' in parsed && isRecord(parsed.value) ? parsed.value as Entry : undefined
+}
+
+function unparsed(error: unknown): undefined {
+  if (error instanceof ContentError)
+    return undefined
+
+  throw error
+}
 
 export function emptyChanges(): Changes {
   return { entries: {}, uploads: {}, removed: [] }
@@ -109,6 +128,54 @@ export function createChanges(base: ContentSource, media: MediaSource, store: Ke
             delete changes.entries[collection]![id]
         }
       })
+    },
+
+    adapt: async (read) => {
+      if (!hashes)
+        return []
+
+      const changes = await ready()
+      const schema = await base.schema()
+      const left: LeftOut[] = []
+      const adapted: { collection: string, id: string, entry: Entry, head: Entry | undefined, hash: string | null }[] = []
+
+      for (const [collection, overlay] of Object.entries(changes.entries)) {
+        for (const [id, row] of Object.entries(overlay)) {
+          const recorded = changes.hashes?.entries[collection]?.[id]
+          const current = await hashes.entry(collection, id) ?? null
+          const moved = recorded !== undefined && recorded !== current
+
+          if (row === null || (moved && (recorded === null || current === null)) || (!moved && validateEntry(schema, collection, row).length === 0))
+            continue
+
+          const original = moved ? entryOf(await read(recorded!), id) : await base.entry(collection, id).catch(unparsed)
+          const head = moved ? entryOf(await read(current!), id) : original
+
+          if (moved && (!original || !head))
+            continue
+
+          const result = adaptEntry(row, schema, collection, original, head)
+
+          if (result.conflicts.length > 0 || (!moved && same(result.entry, row)))
+            continue
+
+          adapted.push({ collection, id, entry: result.entry, head, hash: current })
+          left.push(...result.dropped.map(field => ({ collection, id, field, value: row[field] })))
+        }
+      }
+
+      if (adapted.length > 0) {
+        await mutate((changes) => {
+          const recorded = changes.hashes ??= { entries: {} }
+
+          for (const { collection, id, entry, head, hash } of adapted) {
+            recorded.entries[collection] = { ...recorded.entries[collection], [id]: hash }
+            stage(changes.entries[collection] ??= {}, head, entry)
+          }
+        })
+      }
+
+      return left
     },
 
     published: async () => {

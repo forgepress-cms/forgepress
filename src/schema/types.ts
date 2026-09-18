@@ -9,6 +9,7 @@ export interface Collection {
 export interface ForgePressSchema {
   collections: Record<string, Collection>
   locales?: readonly string[]
+  defaultLocale?: string
 }
 
 export type SchemaLocale<TSchema extends ForgePressSchema>

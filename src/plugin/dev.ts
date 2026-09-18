@@ -5,10 +5,12 @@ import type { OriginPolicy } from './endpoint'
 import { join, sep } from 'node:path'
 import { debounce } from 'perfect-debounce'
 import { buildOutput } from '../disk/output'
+import { createWriter } from '../disk/writer'
 import { ENDPOINT } from '../endpoint/routes'
 import { ContentError } from '../files/issues'
 import { errorMessage } from '../utils/error'
 import { EndpointError, handle, SAME_ORIGIN } from './endpoint'
+import { createMigrations } from './migrations'
 import { syncTypes } from './project'
 
 export interface DevLogger {
@@ -30,16 +32,23 @@ export function createDevContent(root: string, config: ResolvedConfig, logger: D
   const schemaFile = join(root, config.paths.schema)
   const contentDir = join(root, config.paths.content)
 
+  const migrations = createMigrations(createWriter(root, config.paths, config.content))
+
   let reported = ''
+  let latest: readonly ContentIssue[] = []
 
   function report(issues: readonly ContentIssue[]): void {
     const message = issues.length > 0 ? new ContentError(issues).message : ''
 
+    latest = issues
+
     if (message === reported)
       return
 
+    const hint = migrations.state().outstanding ? '; after changing schema.ts by hand, the Schema page of the editor or `forgepress migrate` migrates the content' : ''
+
     if (message)
-      logger.warn(`${message}\n[forgepress] the build fails until ${issues.length === 1 ? 'this problem is' : 'these problems are'} fixed`)
+      logger.warn(`${message}\n[forgepress] the build fails until ${issues.length === 1 ? 'this problem is' : 'these problems are'} fixed${hint}`)
     else
       logger.info('[forgepress] content problems are fixed')
 
@@ -50,7 +59,12 @@ export function createDevContent(root: string, config: ResolvedConfig, logger: D
     syncTypes(root, config)
 
     try {
-      report((await buildOutput(root, config, { dev: true })).issues)
+      const { issues, schema } = await buildOutput(root, config, { dev: true })
+
+      if (schema)
+        migrations.observe(schema)
+
+      report(issues)
     }
     catch (error) {
       if (!(error instanceof ContentError))
@@ -82,9 +96,9 @@ export function createDevContent(root: string, config: ResolvedConfig, logger: D
       if (!handled || !request.url?.startsWith(`${ENDPOINT}/`))
         return next()
 
-      handle(config, root, request, response, origins)
-        .then(() => {
-          if (method !== 'GET')
+      handle(config, root, request, response, { migrations, issues: () => latest }, origins)
+        .then((changed) => {
+          if (changed)
             void rebuild(reload)
         })
         .catch((error: unknown) => {

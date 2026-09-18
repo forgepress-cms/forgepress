@@ -4,7 +4,8 @@ import type { ContentSource } from '../store/types'
 import type { ContentPaths } from './paths'
 import { parseContent } from '../entries/check'
 import { sortByCreation } from '../entries/order'
-import { parseEntry, parseSchema } from './parse'
+import { isRecord } from '../utils/value'
+import { parseEntry, parseFile, parseSchema } from './parse'
 import { isEntryFile, isEntryId, toEntryId, toEntryRef } from './paths'
 
 export interface ContentFiles {
@@ -17,6 +18,21 @@ async function entryFile(files: ContentFiles, content: string, path: string): Pr
   const text = entry && await files.read(path)
 
   return entry && text !== undefined ? [{ ...entry, path, text }] : []
+}
+
+export async function readEntries(files: ContentFiles, paths: ContentPaths): Promise<Record<string, Entry[]>> {
+  const listed = await files.list(paths.content)
+  const entries = await Promise.all(listed.sort().map(path => entryFile(files, paths.content, path)))
+  const found: Record<string, Entry[]> = {}
+
+  for (const file of entries.flat()) {
+    const parsed = parseFile(file)
+
+    if ('value' in parsed && isRecord(parsed.value) && parsed.value.id === file.id)
+      (found[file.collection] ??= []).push(parsed.value as Entry)
+  }
+
+  return Object.fromEntries(Object.entries(found).map(([collection, rows]) => [collection, sortByCreation(rows)]))
 }
 
 export async function readContent(files: ContentFiles, paths: ContentPaths): Promise<ParsedContent> {

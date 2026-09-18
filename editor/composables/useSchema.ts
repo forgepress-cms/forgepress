@@ -1,63 +1,241 @@
-import type { Ref } from 'vue'
-import type { Collection, ForgePressSchema } from '../../src/schema/types'
-import type { SchemaWriter } from '../../src/store/types'
-import { ref, toRaw } from 'vue'
+import type { ComputedRef, Ref, ShallowRef } from 'vue'
+import type { Entry } from '../../src/entries/types'
+import type { SchemaDraft } from '../../src/migrate/schema'
+import type { Fill, Fix, Migration, RenameQuestion, Renames } from '../../src/migrate/types'
+import type { ForgePressSchema } from '../../src/schema/types'
+import type { MigrationState, SchemaStore } from '../../src/store/types'
+import { computed, reactive, ref, shallowRef, toRaw } from 'vue'
+import { planMigration } from '../../src/migrate/plan'
+import { renameQuestions } from '../../src/migrate/questions'
 import { validateSchema } from '../../src/schema/validate'
 import { useContent } from './useContent'
 import { useSave } from './useSave'
 
-export interface SchemaDraft {
-  collections: Record<string, Collection>
-  locales?: readonly string[]
+export const REMOVE = '-'
+
+export interface Choices {
+  answers: Record<string, string>
+  fills: Record<string, Record<string, Fill>>
+  fixes: Record<string, Record<string, Fix>>
+  create: Record<string, string[]>
+}
+
+export interface Review {
+  before: ForgePressSchema
+  after: ForgePressSchema
+  choices: Choices
+  questions: ComputedRef<RenameQuestion[]>
+  renames: ComputedRef<Renames>
+  undecided: ComputedRef<Migration>
+  migration: ComputedRef<Migration>
+  ready: ComputedRef<boolean>
+  saving: Ref<boolean>
+  error: Ref<string>
+  apply: () => Promise<void>
+  cancel: () => void
 }
 
 export interface SchemaEditor {
-  schema: Ref<SchemaDraft>
+  schema: Ref<ForgePressSchema>
+  state: Ref<MigrationState>
   saving: Ref<boolean>
   error: Ref<string>
-  write: (mutate: (draft: SchemaDraft) => void, apply?: (writer: SchemaWriter) => Promise<void>) => Promise<boolean>
+  review: ShallowRef<Review | undefined>
+  change: (mutate: (draft: SchemaDraft) => void, renames?: Renames) => Promise<boolean>
+  content: () => Promise<Record<string, Entry[]>>
+  mismatch: () => Promise<number>
+  repair: () => Promise<boolean>
+  dismiss: () => Promise<void>
 }
 
-function clone(schema: SchemaDraft | ForgePressSchema): SchemaDraft {
-  return structuredClone(toRaw(schema)) as SchemaDraft
+interface Opened extends Review {
+  result: Promise<boolean>
 }
 
-async function writable(): Promise<SchemaWriter> {
-  const writer = await useContent().schemaWriter()
+const review = shallowRef<Review>()
 
-  if (!writer)
+function clone<TValue>(value: TValue): TValue {
+  return structuredClone(toRaw(value))
+}
+
+export function questionKey(question: RenameQuestion): string {
+  return [question.kind, question.collection ?? '', question.from].join('/')
+}
+
+function answered(base: Renames, questions: readonly RenameQuestion[], answers: Readonly<Record<string, string>>): Renames {
+  const collections = { ...base.collections }
+  const fields = Object.fromEntries(Object.entries(base.fields ?? {}).map(([collection, renamed]) => [collection, { ...renamed }]))
+  const locales = { ...base.locales }
+
+  for (const question of questions) {
+    const answer = answers[questionKey(question)]
+
+    if (answer === undefined || answer === REMOVE)
+      continue
+
+    if (question.kind === 'collection')
+      collections[question.from] = answer
+    else if (question.kind === 'locale')
+      locales[question.from] = answer
+    else
+      (fields[question.collection!] ??= {})[question.from] = answer
+  }
+
+  return { collections, fields, locales }
+}
+
+function open(store: SchemaStore, before: ForgePressSchema, after: ForgePressSchema, content: Record<string, Entry[]>, base: Renames, repair: boolean): Opened {
+  const choices = reactive<Choices>({ answers: {}, fills: {}, fixes: {}, create: {} })
+  const input = { before, after, content, repair }
+  const { saving, error, save } = useSave()
+
+  let settle: (applied: boolean) => void = () => {}
+
+  const result = new Promise<boolean>((resolve) => {
+    settle = resolve
+  })
+
+  const questions = computed(() => {
+    if (!repair)
+      return []
+
+    const collections = renameQuestions({ ...input, renames: base }).filter(question => question.kind === 'collection')
+    const named = answered(base, collections, choices.answers)
+    const fields = renameQuestions({ ...input, renames: named }).filter(question => question.kind === 'field')
+    const moved = answered(named, fields, choices.answers)
+    const locales = renameQuestions({ ...input, renames: moved }).filter(question => question.kind === 'locale')
+
+    return [...collections, ...fields, ...locales]
+  })
+
+  const renames = computed(() => answered(base, questions.value, choices.answers))
+  const undecided = computed(() => planMigration({ ...input, renames: renames.value }))
+  const migration = computed(() => planMigration({ ...input, renames: renames.value, decisions: choices }))
+  const ready = computed(() => migration.value.blocked.length === 0 && questions.value.every(question => choices.answers[questionKey(question)] !== undefined))
+
+  return {
+    before,
+    after,
+    choices,
+    questions,
+    renames,
+    undecided,
+    migration,
+    ready,
+    saving,
+    error,
+    result,
+
+    apply: async () => {
+      if (!ready.value || saving.value)
+        return
+
+      if (await save(() => store.apply(migration.value.changeset))) {
+        review.value = undefined
+        settle(true)
+      }
+    },
+
+    cancel: () => {
+      if (saving.value)
+        return
+
+      review.value = undefined
+      settle(false)
+    },
+  }
+}
+
+function needsReview(opened: Review): boolean {
+  const { blocked, effects } = opened.undecided.value
+
+  return opened.questions.value.length > 0 || blocked.length > 0 || effects.some(effect => effect.kind !== 'converted')
+}
+
+async function writable(): Promise<SchemaStore> {
+  const store = await useContent().schemaStore()
+
+  if (!store)
     throw new Error('[forgepress] the schema can only be edited in development, since the site build depends on it')
 
-  return writer
+  return store
 }
 
 export async function useSchema(): Promise<SchemaEditor> {
   const { store } = useContent()
-  const writer = await writable()
-  const schema = ref<SchemaDraft>(clone(await store.schema()))
+  const target = await writable()
+  const [current, found] = await Promise.all([store.schema(), target.state()])
+  const schema = ref<ForgePressSchema>(clone(current))
+  const state = ref<MigrationState>(found)
 
   const { saving, error, save } = useSave()
 
-  async function write(mutate: (draft: SchemaDraft) => void, apply?: (writer: SchemaWriter) => Promise<void>): Promise<boolean> {
-    const next = clone(schema.value)
-
-    const written = await save(async () => {
-      mutate(next)
-
-      const issues = validateSchema(next)
-
-      if (issues.length > 0)
-        throw new Error(issues.map(issue => issue.message).join('\n'))
-
-      await apply?.(writer)
-      await writer.writeSchema(next as unknown as ForgePressSchema)
-    })
-
-    if (written)
-      schema.value = next
-
-    return written
+  async function content(): Promise<Record<string, Entry[]>> {
+    return target.content()
   }
 
-  return { schema, saving, error, write }
+  async function start(before: ForgePressSchema, after: ForgePressSchema, renames: Renames, repair: boolean): Promise<boolean> {
+    let loaded: Record<string, Entry[]> = {}
+
+    if (!await save(async () => {
+      loaded = await content()
+    })) {
+      return false
+    }
+
+    const opened = open(target, before, after, loaded, renames, repair)
+
+    const applied = needsReview(opened)
+      ? await (review.value = opened).result
+      : await save(() => target.apply(opened.migration.value.changeset))
+
+    if (applied)
+      schema.value = clone(after)
+
+    return applied
+  }
+
+  return {
+    schema,
+    state,
+    saving,
+    error,
+    review,
+    content,
+
+    change: async (mutate, renames = {}) => {
+      const draft = clone(schema.value) as SchemaDraft
+
+      mutate(draft)
+
+      const issues = validateSchema(draft)
+
+      if (issues.length > 0) {
+        error.value = issues.map(issue => issue.message).join('\n')
+
+        return false
+      }
+
+      return start(clone(schema.value), draft as ForgePressSchema, renames, false)
+    },
+
+    mismatch: async () => {
+      const opened = open(target, clone(state.value.outstanding ?? schema.value), clone(schema.value), await content(), {}, true)
+      const count = new Set(opened.migration.value.effects.map(effect => `${effect.collection}/${effect.id}`)).size
+
+      if (count === 0 && state.value.outstanding) {
+        await target.dismiss()
+        state.value = await target.state()
+      }
+
+      return count
+    },
+
+    repair: () => start(clone(state.value.outstanding ?? schema.value), clone(schema.value), {}, true),
+
+    dismiss: async () => {
+      await target.dismiss()
+      state.value = await target.state()
+    },
+  }
 }

@@ -39,6 +39,13 @@ export interface FileDiff {
   after?: MediaAsset
 }
 
+export interface LeftOut {
+  collection: string
+  id: string
+  field: string
+  value: unknown
+}
+
 export interface ChangeService {
   content: ContentStore
   media: MediaClient
@@ -46,6 +53,7 @@ export interface ChangeService {
   files: (target: RepoTarget) => Promise<FileChange[]>
   diff: (target: RepoTarget) => Promise<FileDiff[]>
   resolve: (conflicts: readonly Conflict[], target: RepoTarget, keep: Resolution) => Promise<void>
+  adapt: (read: (sha: string) => Promise<string>) => Promise<LeftOut[]>
   published: () => Promise<void>
   discard: () => Promise<void>
   subscribe: (listener: () => void) => () => void

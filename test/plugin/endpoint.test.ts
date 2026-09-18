@@ -26,10 +26,12 @@ const files: Record<string, string> = {
 }
 
 const reloads: unknown[] = []
+const watchers: ((file: string) => void)[] = []
 let server: Server
 let base = ''
 let reader: Endpoint['reader']
 let writer: Endpoint['writer']
+let store: Endpoint['schema']
 
 interface Answer {
   status: number
@@ -52,6 +54,11 @@ function call(method: string, path: string, options: { headers?: Record<string, 
 
 function exists(path: string): boolean {
   return existsSync(join(scratch, path))
+}
+
+async function reloaded(): Promise<void> {
+  for (let attempt = 0; attempt < 100 && reloads.length === 0; attempt += 1)
+    await new Promise(resolve => setTimeout(resolve, 20))
 }
 
 function author(id: string): string {
@@ -78,7 +85,10 @@ beforeAll(async () => {
   await vite.configureServer({
     config: { logger: { info: () => {}, warn: () => {}, error: () => {} } },
     moduleGraph: { getModuleById: () => undefined, invalidateModule: () => {} },
-    watcher: { add: () => {}, on: () => {} },
+    watcher: {
+      add: () => {},
+      on: (event: string, handler: (file: string) => void) => event === 'change' && watchers.push(handler),
+    },
     ws: { send: (payload: unknown) => reloads.push(payload) },
     middlewares: {
       use: (handler: Middleware) => {
@@ -95,7 +105,7 @@ beforeAll(async () => {
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
 
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
-  ;({ reader, writer } = createEndpoint(base))
+  ;({ reader, writer, schema: store } = createEndpoint(base))
 })
 
 beforeEach(() => {
@@ -136,11 +146,59 @@ describe('dev endpoint', () => {
 
     await writer.writeEntry('author', { id: 'author_3', status: 'unpublished', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', name: 'Carol' })
 
-    for (let attempt = 0; attempt < 100 && reloads.length === 0; attempt += 1)
-      await new Promise(resolve => setTimeout(resolve, 20))
+    await reloaded()
 
     expect(reloads).toEqual([{ type: 'full-reload' }])
     expect((await reader.entry('author', 'author_3'))?.name).toBe('Carol')
+  })
+
+  it('gives the editor every entry and the problems of the last build', async () => {
+    expect(Object.keys(await store.content())).toEqual(['author'])
+    expect(await store.issues()).toEqual([])
+  })
+
+  it('applies a schema change with its content', async () => {
+    const schema = { collections: { author: { fields: { title: { type: 'text' } } } } } as const
+
+    await store.apply({ schema, write: [{ collection: 'author', entry: { ...JSON.parse(author('author_1')), name: undefined, title: 'Alice' } }], collections: [] })
+    await reloaded()
+
+    expect(reloads).toEqual([{ type: 'full-reload' }])
+    expect(await reader.schema()).toEqual(schema)
+    expect((await reader.entry('author', 'author_1'))?.title).toBe('Alice')
+    expect(await store.state()).toEqual({})
+
+    writeFileSync(join(scratch, '.forgepress/schema.ts'), files['.forgepress/schema.ts']!)
+    writeFileSync(join(scratch, '.forgepress/content/author/author_1.ts'), entry('author_1', 'published', 'Alice'))
+    watchers.forEach(changed => changed(join(scratch, '.forgepress/schema.ts')))
+
+    for (let attempt = 0; attempt < 100 && !(await store.state()).outstanding; attempt += 1)
+      await new Promise(resolve => setTimeout(resolve, 20))
+
+    await store.dismiss()
+  })
+
+  it('notices a schema changed by hand, until it is dismissed', async () => {
+    const path = join(scratch, '.forgepress/schema.ts')
+    const previous = await reader.schema()
+
+    writeFileSync(path, 'export default { collections: { author: { fields: { title: { type: \'text\' } } } } }\n')
+    watchers.forEach(changed => changed(path))
+
+    for (let attempt = 0; attempt < 100 && !(await store.state()).outstanding; attempt += 1)
+      await new Promise(resolve => setTimeout(resolve, 20))
+
+    expect(await store.state()).toEqual({ outstanding: previous })
+    expect((await store.issues()).map(issue => issue.message)).toContain('"name" is not a field of collection "author"')
+
+    reloads.length = 0
+    await store.dismiss()
+
+    expect(await store.state()).toEqual({})
+    expect(reloads).toEqual([])
+
+    writeFileSync(path, files['.forgepress/schema.ts']!)
+    watchers.forEach(changed => changed(path))
   })
 })
 
@@ -153,6 +211,7 @@ describe('dev endpoint protection', () => {
       expect((await call('DELETE', '/entry/author/author_1', { headers })).status).toBe(403)
       expect((await call('GET', '/content/author', { headers })).status).toBe(403)
       expect((await call('POST', '/media/photo.png', { headers, body: 'png' })).status).toBe(403)
+      expect((await call('POST', '/migration', { headers, body: JSON.stringify({ schema: { collections: {} }, write: [], collections: [] }) })).status).toBe(403)
     }
 
     expect(exists('.forgepress/content/author/author_7.ts')).toBe(false)
@@ -174,10 +233,9 @@ describe('dev endpoint protection', () => {
       ['POST', '/entry/author/x', JSON.stringify({ id: '../../../escaped' })],
       ['POST', `/entry/author/${escape}`, JSON.stringify({ id: '../../../escaped' })],
       ['POST', `/entry/${encodeURIComponent('../..')}/escaped`, author('escaped')],
-      ['POST', `/content/${encodeURIComponent('../..')}`, '[]'],
-      ['POST', '/content/author', JSON.stringify([JSON.parse(author('author_1')), { id: '../../../escaped' }])],
+      ['POST', '/migration', JSON.stringify({ schema: { collections: {} }, write: [], collections: ['../..'] })],
+      ['POST', '/migration', JSON.stringify({ schema: { collections: {} }, write: [{ collection: 'author', entry: { id: '../../../escaped' } }], collections: [] })],
       ['DELETE', `/entry/author/${encodeURIComponent('../../schema')}`],
-      ['DELETE', `/content/${encodeURIComponent('../..')}`],
       ['DELETE', `/media/${encodeURIComponent('../../package.json')}`],
       ['POST', '/media/notes.txt', 'text'],
     ]
@@ -195,9 +253,9 @@ describe('dev endpoint protection', () => {
   it('refuses bodies that are not entries and a schema that does not validate', async () => {
     expect((await call('POST', '/entry/author/author_8', { body: author('author_9') })).status).toBe(400)
     expect((await call('POST', '/entry/author/author_8', { body: '{"id":' })).status).toBe(400)
-    expect((await call('POST', '/content/author', { body: author('author_8') })).status).toBe(400)
+    expect((await call('POST', '/migration', { body: author('author_8') })).status).toBe(400)
 
-    const refused = await call('POST', '/schema', { body: JSON.stringify({ collections: { 'Bad Name': { fields: {} } } }) })
+    const refused = await call('POST', '/migration', { body: JSON.stringify({ schema: { collections: { 'Bad Name': { fields: {} } } }, write: [], collections: [] }) })
 
     expect(refused).toMatchObject({ status: 400, text: expect.stringContaining('has to start with a lowercase letter') })
     expect(readFileSync(join(scratch, '.forgepress/schema.ts'), 'utf8')).toBe(files['.forgepress/schema.ts'])

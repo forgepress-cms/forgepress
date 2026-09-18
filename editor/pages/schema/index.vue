@@ -3,17 +3,23 @@ import type { Column } from '../../utils/table'
 import { computed, ref } from 'vue'
 
 import { isCollectionName } from '../../../src/files/paths'
-import ConfirmDialog from '../../components/ConfirmDialog.vue'
+import { removeCollection, removeLocale, renameLocale, setDefaultLocale } from '../../../src/migrate/schema'
+import { defaultLocale } from '../../../src/schema/locales'
+import { LOCALE_CODE } from '../../../src/schema/validate'
 import CreateDialog from '../../components/CreateDialog.vue'
 import DataTable from '../../components/DataTable.vue'
 import DragHandle from '../../components/DragHandle.vue'
 import ErrorAlert from '../../components/ErrorAlert.vue'
 import PageHeader from '../../components/layout/PageHeader.vue'
+import LocaleDialog from '../../components/LocaleDialog.vue'
+import MigrationDialog from '../../components/MigrationDialog.vue'
+import MigrationNotice from '../../components/MigrationNotice.vue'
 import { useDragOrder } from '../../composables/useDragOrder'
 import { useRouter } from '../../composables/useRouter'
 import { useSchema } from '../../composables/useSchema'
 import { clamp } from '../../utils/cells'
-import { moveKey } from '../../utils/order'
+import { localeName } from '../../utils/locale'
+import { moveItem, moveKey } from '../../utils/order'
 import { actionsColumn, dragColumn } from '../../utils/table'
 
 interface CollectionRow {
@@ -23,9 +29,15 @@ interface CollectionRow {
   fields: number
 }
 
+interface LocaleRow {
+  code: string
+  name: string
+}
+
 const { navigate } = useRouter()
 
-const { schema, saving, error, write } = await useSchema()
+const editor = await useSchema()
+const { schema, saving, error, review, change } = editor
 
 const collections = computed<CollectionRow[]>(() => Object.entries(schema.value.collections).map(([key, collection]) => ({
   key,
@@ -34,7 +46,11 @@ const collections = computed<CollectionRow[]>(() => Object.entries(schema.value.
   fields: Object.keys(collection.fields).length,
 })))
 
+const locales = computed<LocaleRow[]>(() => (schema.value.locales ?? []).map(code => ({ code, name: localeName(code) ?? '' })))
+const chosen = computed(() => defaultLocale(schema.value))
+
 const order = useDragOrder(move)
+const localeOrder = useDragOrder(moveLocale)
 
 const columns: Column<CollectionRow>[] = [
   dragColumn<CollectionRow>(),
@@ -48,8 +64,16 @@ const columns: Column<CollectionRow>[] = [
   actionsColumn(),
 ]
 
+const localeColumns: Column<LocaleRow>[] = [
+  dragColumn<LocaleRow>(),
+  { accessorKey: 'code', header: 'Locale' },
+  { accessorKey: 'name', header: 'Language' },
+  actionsColumn(),
+]
+
 const creating = ref(false)
-const removing = ref('')
+const adding = ref(false)
+const editing = ref('')
 
 function invalid(key: string): string {
   if (!key)
@@ -64,38 +88,78 @@ function invalid(key: string): string {
   return ''
 }
 
+function invalidLocale(code: string, current?: string): string {
+  if (!code)
+    return 'A code is required'
+
+  if (!LOCALE_CODE.test(code))
+    return 'A code has to start with a letter and hold only letters, digits, "-" and "_"'
+
+  if (code !== current && schema.value.locales?.includes(code))
+    return `${code} is already a locale`
+
+  return ''
+}
+
 async function create(label: string, key: string): Promise<void> {
-  const written = await write((draft) => {
+  creating.value = false
+
+  const written = await change((draft) => {
     draft.collections[key] = { label: label || key, fields: {} }
   })
 
-  if (written) {
-    creating.value = false
+  if (written)
     navigate(`schema/${key}`)
-  }
 }
 
-const references = computed(() => Object.entries(schema.value.collections)
-  .filter(([key, collection]) => key !== removing.value && Object.values(collection.fields).some(config =>
-    ('collection' in config && config.collection === removing.value)
-    || ('collections' in config && config.collections?.includes(removing.value)),
-  ))
-  .map(([key, collection]) => collection.label ?? key))
-
-async function remove(): Promise<void> {
-  const key = removing.value
-
-  const written = await write((draft) => {
-    delete draft.collections[key]
-  }, writer => writer.removeCollection(key))
-
-  if (written)
-    removing.value = ''
+function remove(row: CollectionRow): Promise<boolean> {
+  return change(draft => removeCollection(draft, row.key))
 }
 
 function move(key: string, offset: number): Promise<boolean> {
-  return write((draft) => {
+  return change((draft) => {
     draft.collections = moveKey(draft.collections, key, offset)
+  })
+}
+
+async function addLocale(code: string, primary: boolean): Promise<void> {
+  adding.value = false
+
+  await change((draft) => {
+    draft.locales = [...draft.locales ?? [], code]
+    setDefaultLocale(draft, primary ? code : chosen.value ?? code)
+  })
+}
+
+async function edit(code: string, primary: boolean): Promise<void> {
+  const from = editing.value
+  const renamed = from !== code
+  const promoted = primary && chosen.value !== from
+
+  editing.value = ''
+
+  if (!renamed && !promoted)
+    return
+
+  await change((draft) => {
+    if (renamed)
+      renameLocale(draft, from, code)
+
+    if (promoted)
+      setDefaultLocale(draft, code)
+  }, renamed ? { locales: { [from]: code } } : {})
+}
+
+function removeLanguage(code: string): Promise<boolean> {
+  return change(draft => removeLocale(draft, code))
+}
+
+function moveLocale(code: string, offset: number): Promise<boolean> {
+  return change((draft) => {
+    const current = [...draft.locales ?? []]
+
+    draft.locales = moveItem(current, current.indexOf(code), offset)
+    setDefaultLocale(draft, chosen.value!)
   })
 }
 </script>
@@ -107,6 +171,8 @@ function move(key: string, offset: number): Promise<boolean> {
         <UButton label="New collection" icon="i-hugeicons-plus-sign" :loading="saving" @click="creating = true" />
       </template>
     </PageHeader>
+
+    <MigrationNotice :editor="editor" />
 
     <ErrorAlert title="The schema could not be saved" :error="error" />
 
@@ -130,11 +196,68 @@ function move(key: string, offset: number): Promise<boolean> {
             variant="ghost"
             class="text-default hover:text-error focus-visible:text-error"
             :aria-label="`Delete ${row.original.name}`"
-            @click.stop="removing = row.original.key"
+            @click.stop="remove(row.original)"
           />
         </div>
       </template>
     </DataTable>
+
+    <section class="grid gap-4">
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div class="grid min-w-0 gap-1">
+          <h2 class="font-display text-xl font-bold tracking-[-0.02em] text-highlighted">
+            Locales
+          </h2>
+
+          <p class="text-sm text-muted">
+            The languages translated fields hold a value for. The default one is what the editor shows first.
+          </p>
+        </div>
+
+        <UButton label="Add locale" icon="i-hugeicons-plus-sign" color="neutral" variant="outline" :loading="saving" @click="adding = true" />
+      </div>
+
+      <DataTable
+        :data="locales"
+        :columns="localeColumns"
+        :row-id="row => row.code"
+        :row-class="row => localeOrder.rowClass(row.index, row.original.code)"
+        empty="No locales yet. Add one to translate fields."
+      >
+        <template #drag-cell="{ row }">
+          <DragHandle @pointerdown="localeOrder.start(row.original.code, row.index, $event)" />
+        </template>
+
+        <template #code-cell="{ row }">
+          <span class="flex items-center gap-2">
+            <span class="font-mono text-highlighted">{{ row.original.code }}</span>
+
+            <UBadge v-if="row.original.code === chosen" label="Default" color="neutral" variant="soft" size="sm" />
+          </span>
+        </template>
+
+        <template #actions-cell="{ row }">
+          <div class="flex items-center justify-end">
+            <UButton
+              icon="i-hugeicons-pencil-edit-02"
+              color="neutral"
+              variant="ghost"
+              :aria-label="`Edit ${row.original.code}`"
+              @click.stop="editing = row.original.code"
+            />
+
+            <UButton
+              icon="i-hugeicons-delete-02"
+              color="error"
+              variant="ghost"
+              class="text-default hover:text-error focus-visible:text-error"
+              :aria-label="`Delete ${row.original.code}`"
+              @click.stop="removeLanguage(row.original.code)"
+            />
+          </div>
+        </template>
+      </DataTable>
+    </section>
 
     <CreateDialog
       v-model:open="creating"
@@ -146,15 +269,30 @@ function move(key: string, offset: number): Promise<boolean> {
       @create="create"
     />
 
-    <ConfirmDialog
-      :open="!!removing"
-      title="Delete collection"
-      :description="references.length
-        ? `${removing} can't be deleted while ${references.join(', ')} still reference it. Remove those references first.`
-        : `${removing} and its content file are removed. This cannot be undone.`"
-      :disabled="references.length > 0"
-      @update:open="removing = ''"
-      @confirm="remove()"
+    <LocaleDialog
+      v-model:open="adding"
+      title="Add locale"
+      description="Translated fields get a value for every locale."
+      label="Add"
+      :primary="!locales.length"
+      :loading="saving"
+      :validate="code => invalidLocale(code)"
+      @save="addLocale"
     />
+
+    <LocaleDialog
+      :open="!!editing"
+      title="Edit locale"
+      description="Edit the locale code and default status."
+      label="Save"
+      :code="editing"
+      :primary="chosen === editing"
+      :loading="saving"
+      :validate="code => invalidLocale(code, editing)"
+      @update:open="value => !value && (editing = '')"
+      @save="edit"
+    />
+
+    <MigrationDialog :review="review" />
   </div>
 </template>

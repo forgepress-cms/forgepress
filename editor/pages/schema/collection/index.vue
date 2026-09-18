@@ -1,20 +1,23 @@
 <script setup lang="ts">
-import type { Entry } from '../../../../src/entries/types'
 import type { Field } from '../../../../src/schema/fields'
+import type { CollectionValues } from '../../../components/CollectionDialog.vue'
 import type { FormField } from '../../../utils/schema'
 import type { Column } from '../../../utils/table'
 
 import { computed, ref } from 'vue'
 
+import { isCollectionName } from '../../../../src/files/paths'
+import { renameCollection } from '../../../../src/migrate/schema'
 import { fieldTypeNames } from '../../../../src/schema/fields'
 import { RESERVED_FIELDS } from '../../../../src/schema/validate'
-import ConfirmDialog from '../../../components/ConfirmDialog.vue'
+import CollectionDialog from '../../../components/CollectionDialog.vue'
 import CreateDialog from '../../../components/CreateDialog.vue'
 import DataTable from '../../../components/DataTable.vue'
 import DragHandle from '../../../components/DragHandle.vue'
 import ErrorAlert from '../../../components/ErrorAlert.vue'
 import PageHeader from '../../../components/layout/PageHeader.vue'
-import { useContent } from '../../../composables/useContent'
+import MigrationDialog from '../../../components/MigrationDialog.vue'
+import MigrationNotice from '../../../components/MigrationNotice.vue'
 import { useDragOrder } from '../../../composables/useDragOrder'
 import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
@@ -25,11 +28,10 @@ import { actionsColumn, dragColumn } from '../../../utils/table'
 
 const { navigate, href } = useRouter()
 
-const { store } = useContent()
-
 const name = useParam('collection')
 
-const { schema, saving, error, write } = await useSchema()
+const editor = await useSchema()
+const { schema, saving, error, review, change } = editor
 
 if (!schema.value.collections[name]) {
   throw new Error(`[forgepress] ${name} is not in the schema`)
@@ -51,7 +53,7 @@ const columns: Column<FormField>[] = [
 ]
 
 const creating = ref(false)
-const removing = ref('')
+const editing = ref(false)
 const type = ref<Field['type']>(fieldTypeNames[0]!)
 
 function invalid(key: string): string {
@@ -75,37 +77,58 @@ function open(): void {
   creating.value = true
 }
 
+function invalidCollection(key: string): string {
+  if (!key)
+    return 'A key is required'
+
+  if (!isCollectionName(key))
+    return 'A key has to start with a lowercase letter and hold only letters and digits'
+
+  if (Object.hasOwn(schema.value.collections, key))
+    return `${key} already exists`
+
+  return ''
+}
+
 async function create(label: string, key: string): Promise<void> {
-  const written = await write((draft) => {
+  creating.value = false
+
+  const written = await change((draft) => {
     const target = draft.collections[name]!.fields as Record<string, unknown>
 
     target[key] = { ...seedField(type.value, Object.keys(draft.collections)), label: label || key, optional: true }
   })
 
-  if (written) {
-    creating.value = false
+  if (written)
     navigate(`schema/${name}/${key}`)
-  }
 }
 
-async function remove(): Promise<void> {
-  const key = removing.value
-  const rows = await store.list(name)
-  const stripped = rows.map(({ [key]: _, ...rest }) => rest as Entry)
+async function edit(values: CollectionValues): Promise<void> {
+  const renamed = values.key !== name
 
-  const written = await write((draft) => {
-    delete draft.collections[name]!.fields[key]
-  }, async (writer) => {
-    if (rows.some(row => key in row))
-      await writer.writeContent(name, stripped)
+  editing.value = false
+
+  const written = await change((draft) => {
+    const { fields } = draft.collections[name]!
+
+    draft.collections[name] = { ...values.label ? { label: values.label } : {}, ...values.description ? { description: values.description } : {}, fields }
+
+    if (renamed)
+      renameCollection(draft, name, values.key)
+  }, renamed ? { collections: { [name]: values.key } } : {})
+
+  if (written && renamed)
+    navigate(`schema/${values.key}`)
+}
+
+function remove(field: FormField): Promise<boolean> {
+  return change((draft) => {
+    delete draft.collections[name]!.fields[field.key]
   })
-
-  if (written)
-    removing.value = ''
 }
 
 function move(key: string, offset: number): Promise<boolean> {
-  return write((draft) => {
+  return change((draft) => {
     draft.collections[name]!.fields = moveKey(draft.collections[name]!.fields, key, offset)
   })
 }
@@ -119,9 +142,13 @@ function move(key: string, offset: number): Promise<boolean> {
       :breadcrumb="[{ label: 'Schema', to: href('schema') }]"
     >
       <template #actions>
+        <UButton label="Edit" icon="i-hugeicons-pencil-edit-02" color="neutral" variant="outline" @click="editing = true" />
+
         <UButton label="New field" icon="i-hugeicons-plus-sign" :loading="saving" @click="open()" />
       </template>
     </PageHeader>
+
+    <MigrationNotice :editor="editor" />
 
     <ErrorAlert title="The schema could not be saved" :error="error" />
 
@@ -175,7 +202,7 @@ function move(key: string, offset: number): Promise<boolean> {
             variant="ghost"
             class="text-default hover:text-error focus-visible:text-error"
             :aria-label="`Delete ${row.original.key}`"
-            @click.stop="removing = row.original.key"
+            @click.stop="remove(row.original)"
           />
         </div>
       </template>
@@ -195,12 +222,16 @@ function move(key: string, offset: number): Promise<boolean> {
       </UFormField>
     </CreateDialog>
 
-    <ConfirmDialog
-      :open="!!removing"
-      title="Delete field"
-      :description="`${removing} is removed from ${collection.label ?? name}, along with its content.`"
-      @update:open="removing = ''"
-      @confirm="remove()"
+    <CollectionDialog
+      v-model:open="editing"
+      :name="name"
+      :label="collection.label ?? ''"
+      :description="collection.description ?? ''"
+      :loading="saving"
+      :validate="invalidCollection"
+      @save="edit"
     />
+
+    <MigrationDialog :review="review" />
   </div>
 </template>

@@ -2,6 +2,7 @@ import type { Entry, EntryStatus } from '../../src/entries/types'
 import type { EntryValues } from '../utils/entry'
 import type { LocalizedField } from '../utils/schema'
 import { reactive } from 'vue'
+import { defaultLocale } from '../../src/schema/locales'
 import { plain } from '../../src/utils/value'
 import { entryLabel, missingFields, newEntry, titleField, toLocalizedFields, toRow, toValues } from '../utils/entry'
 import { useContent } from './useContent'
@@ -111,7 +112,7 @@ export async function useNestedEntries(): Promise<NestedEntries> {
 
     missing: () => Object.values(drafts).filter(pending).flatMap(entry =>
       missingFields(entry.fields, entry.values).map(field => entry.linked
-        ? `${field.label} of ${entryLabel(entry.row, titleField(entry.fields), locales[0])}`
+        ? `${field.label} of ${entryLabel(entry.row, titleField(entry.fields), defaultLocale(schema))}`
         : `${field.label} of the new ${entry.collection}`),
     ),
 

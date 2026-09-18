@@ -10,7 +10,13 @@ import { compilePattern } from '../schema/fields/text'
 import { isRecord, quote } from '../utils/value'
 import { ENTRY_STATUSES, META_KEYS } from './meta'
 
-type Report = (path: ValuePath, message: string) => void
+export type IssueKind = 'missing' | 'type' | 'constraint'
+
+export interface FieldIssue extends ValueIssue {
+  kind: IssueKind
+}
+
+type Report = (path: ValuePath, message: string, kind?: IssueKind) => void
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))?$/
 const MEDIA_OPTIONS: Record<string, readonly [kind: string, fits: (value: unknown) => boolean]> = {
@@ -104,17 +110,17 @@ function checkPattern(report: Report, path: ValuePath, label: string, field: Tex
   const pattern = field.validation === undefined ? undefined : compilePattern(field.validation)
 
   if (pattern instanceof RegExp && !pattern.test(value))
-    report(path, `Field ${label} has to match the pattern ${field.validation}`)
+    report(path, `Field ${label} has to match the pattern ${field.validation}`, 'constraint')
 }
 
 function checkRange(report: Report, path: ValuePath, label: string, field: NumberField, value: number): void {
   const { min, max, step } = field
 
   if (min !== undefined && value < min)
-    report(path, `Field ${label} has to be at least ${min}`)
+    report(path, `Field ${label} has to be at least ${min}`, 'constraint')
 
   if (max !== undefined && value > max)
-    report(path, `Field ${label} has to be at most ${max}`)
+    report(path, `Field ${label} has to be at most ${max}`, 'constraint')
 
   if (step === undefined || step <= 0)
     return
@@ -129,7 +135,7 @@ function checkRange(report: Report, path: ValuePath, label: string, field: Numbe
     .map(count => Number((base + count * step).toPrecision(12)))
     .filter(candidate => (min === undefined || candidate >= min) && (max === undefined || candidate <= max))
 
-  report(path, `Field ${label} has to be in steps of ${step}${base === 0 ? '' : ` from ${base}`}${nearest.length > 0 ? `, such as ${nearest.join(' or ')}` : ''}`)
+  report(path, `Field ${label} has to be in steps of ${step}${base === 0 ? '' : ` from ${base}`}${nearest.length > 0 ? `, such as ${nearest.join(' or ')}` : ''}`, 'constraint')
 }
 
 function checkValue(report: Report, path: ValuePath, label: string, field: Field, value: unknown): void {
@@ -187,7 +193,28 @@ function checkTranslations(report: Report, key: string, field: Field, value: unk
   const missing = field.optional ? [] : locales.filter(locale => value[locale] === undefined)
 
   if (missing.length > 0)
-    report([key], `Field ${quote(key)} is missing its ${missing.join(', ')} ${missing.length === 1 ? 'translation' : 'translations'}`)
+    report([key], `Field ${quote(key)} is missing its ${missing.join(', ')} ${missing.length === 1 ? 'translation' : 'translations'}`, 'missing')
+}
+
+function checkField(report: Report, key: string, field: Field, value: unknown, locales: readonly string[]): void {
+  if (value === undefined) {
+    if (!field.optional)
+      report([], `Field ${quote(key)} is required`, 'missing')
+  }
+  else if (isTranslated(field, locales)) {
+    checkTranslations(report, key, field, value, locales)
+  }
+  else {
+    checkValue(report, [key], quote(key), field, value)
+  }
+}
+
+export function validateField(key: string, field: Field, value: unknown, locales: readonly string[]): FieldIssue[] {
+  const issues: FieldIssue[] = []
+
+  checkField((path, message, kind = 'type') => issues.push({ path, message, kind }), key, field, value, locales)
+
+  return issues
 }
 
 export function validateEntry(schema: ForgePressSchema, collection: string, entry: unknown): ValueIssue[] {
@@ -215,20 +242,8 @@ export function validateEntry(schema: ForgePressSchema, collection: string, entr
       report([key], `${quote(key)} is not a field of collection ${quote(collection)}`)
   }
 
-  for (const [key, field] of Object.entries(definition.fields)) {
-    const value = entry[key]
-
-    if (value === undefined) {
-      if (!field.optional)
-        report([], `Field ${quote(key)} is required`)
-    }
-    else if (isTranslated(field, locales)) {
-      checkTranslations(report, key, field, value, locales)
-    }
-    else {
-      checkValue(report, [key], quote(key), field, value)
-    }
-  }
+  for (const [key, field] of Object.entries(definition.fields))
+    checkField(report, key, field, entry[key], locales)
 
   return issues
 }

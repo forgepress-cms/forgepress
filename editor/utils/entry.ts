@@ -2,8 +2,8 @@ import type { CollectionEntry } from '../../src/entries/references'
 import type { Entry, EntryStatus } from '../../src/entries/types'
 import type { Collection } from '../../src/schema/types'
 import type { FormField, LocalizedField } from './schema'
+import { entryId } from '../../src/entries/id'
 import { entryKey } from '../../src/entries/references'
-import { toHex } from '../../src/utils/encoding'
 import { filled, isRecord } from '../../src/utils/value'
 import { markdownLines } from './markdown'
 import { chips, localized } from './preview'
@@ -37,10 +37,6 @@ export function statusLabel(status: unknown): string {
 
 export function localeItems(locales: readonly string[]): { label: string, value: string }[] {
   return locales.map(value => ({ label: value.toUpperCase(), value }))
-}
-
-export function entryId(collection: string): string {
-  return `${collection}_${toHex(crypto.getRandomValues(new Uint8Array(6)))}`
 }
 
 export function newEntry(collection: string): Entry {

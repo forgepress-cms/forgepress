@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref } from 'vue'
-import type { ChangeService, ChangeSummary, FileDiff, Resolution } from '../../src/changes/types'
+import type { ChangeService, ChangeSummary, FileDiff, LeftOut, Resolution } from '../../src/changes/types'
 import type { Conflict } from '../../src/forge/types'
 import type { FileIssues } from '../utils/issues'
 import { computed, ref, shallowRef } from 'vue'
@@ -19,6 +19,7 @@ export interface Publisher {
   error: Ref<string>
   conflicts: Ref<readonly Conflict[]>
   issues: Ref<readonly FileIssues[]>
+  left: Ref<readonly LeftOut[]>
   refresh: () => Promise<void>
   publish: (name: string) => Promise<string | undefined>
   resolve: (keep: Resolution) => Promise<boolean>
@@ -34,6 +35,7 @@ const publishing = ref(false)
 const error = ref('')
 const conflicts = shallowRef<readonly Conflict[]>([])
 const issues = shallowRef<readonly FileIssues[]>([])
+const left = shallowRef<readonly LeftOut[]>([])
 const followed = new WeakSet<ChangeService>()
 
 const count = computed(() => {
@@ -74,6 +76,10 @@ export function usePublish(): Publisher {
 
     follow(changes)
 
+    const adapted = await changes.adapt(content.read).catch(() => [])
+    const known = new Set(left.value.map(item => `${item.collection}/${item.id}/${item.field}`))
+
+    left.value = [...left.value, ...adapted.filter(item => !known.has(`${item.collection}/${item.id}/${item.field}`))]
     summary.value = await changes.summary()
     diff.value = await changes.diff(await content.target())
   }
@@ -81,6 +87,81 @@ export function usePublish(): Publisher {
   async function stop(commit: string): Promise<void> {
     await content.pin(commit)
     await refresh()
+  }
+
+  async function run(name: string, again: boolean): Promise<string | undefined> {
+    const changes = await content.changes()
+
+    if (!changes) {
+      error.value = 'Publishing is only available in a deployed editor.'
+
+      return undefined
+    }
+
+    const forge = session.forge()
+
+    if (!forge) {
+      error.value = 'Sign in before publishing.'
+
+      return undefined
+    }
+
+    const target = await content.target()
+
+    publishing.value = true
+    error.value = ''
+    issues.value = []
+
+    try {
+      const files = await changes.files(target)
+
+      if (files.length === 0) {
+        error.value = 'There is nothing to publish.'
+
+        return undefined
+      }
+
+      const message = commitMessage(session.provider.value?.commitMessage, name)
+      const commit = await publishFiles(forge, files, message, target, listing => checkResult(listing, files, content.read, target))
+
+      conflicts.value = []
+      left.value = []
+
+      await content.published(commit)
+      await build.track(commit)
+      await refresh()
+
+      return commit
+    }
+    catch (cause) {
+      const failed = (failure: unknown): void => {
+        error.value = errorMessage(failure)
+      }
+
+      if (cause instanceof ConflictError) {
+        await stop(cause.commit).catch(failed)
+
+        const pending = await changes.files(target)
+        const open = cause.conflicts.filter(conflict => pending.some(file => file.path === conflict.path && file.replaces !== conflict.hash))
+
+        if (open.length === 0 && again)
+          return run(name, false)
+
+        conflicts.value = open
+      }
+      else if (cause instanceof InvalidContentError) {
+        await stop(cause.commit).catch(failed)
+        issues.value = fileIssues(cause.issues, target)
+      }
+      else {
+        failed(cause)
+      }
+
+      return undefined
+    }
+    finally {
+      publishing.value = false
+    }
   }
 
   return {
@@ -91,74 +172,10 @@ export function usePublish(): Publisher {
     error,
     conflicts,
     issues,
+    left,
     refresh,
 
-    publish: async (name) => {
-      const changes = await content.changes()
-
-      if (!changes) {
-        error.value = 'Publishing is only available in a deployed editor.'
-
-        return undefined
-      }
-
-      const forge = session.forge()
-
-      if (!forge) {
-        error.value = 'Sign in before publishing.'
-
-        return undefined
-      }
-
-      const target = await content.target()
-
-      publishing.value = true
-      error.value = ''
-      issues.value = []
-
-      try {
-        const files = await changes.files(target)
-
-        if (files.length === 0) {
-          error.value = 'There is nothing to publish.'
-
-          return undefined
-        }
-
-        const message = commitMessage(session.provider.value?.commitMessage, name)
-        const commit = await publishFiles(forge, files, message, target, listing => checkResult(listing, files, content.read, target))
-
-        conflicts.value = []
-
-        await content.published(commit)
-        await build.track(commit)
-        await refresh()
-
-        return commit
-      }
-      catch (cause) {
-        const failed = (failure: unknown): void => {
-          error.value = errorMessage(failure)
-        }
-
-        if (cause instanceof ConflictError) {
-          conflicts.value = cause.conflicts
-          await stop(cause.commit).catch(failed)
-        }
-        else if (cause instanceof InvalidContentError) {
-          await stop(cause.commit).catch(failed)
-          issues.value = fileIssues(cause.issues, target)
-        }
-        else {
-          failed(cause)
-        }
-
-        return undefined
-      }
-      finally {
-        publishing.value = false
-      }
-    },
+    publish: name => run(name, true),
 
     resolve: async (keep) => {
       const changes = await content.changes()

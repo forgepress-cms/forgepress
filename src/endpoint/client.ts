@@ -1,12 +1,14 @@
 import type { Entry } from '../entries/types'
+import type { ContentIssue } from '../files/issues'
 import type { MediaAsset, MediaClient } from '../media/types'
 import type { ForgePressSchema } from '../schema/types'
-import type { ContentSource, ContentWriter, SchemaWriter } from '../store/types'
+import type { ContentSource, ContentWriter, MigrationState, SchemaStore } from '../store/types'
 import { ENDPOINT, route, ROUTES } from './routes'
 
 export interface Endpoint {
   reader: ContentSource
-  writer: ContentWriter & SchemaWriter
+  writer: ContentWriter
+  schema: SchemaStore
   media: MediaClient
 }
 
@@ -42,11 +44,16 @@ export function createEndpoint(server: string): Endpoint {
     },
 
     writer: {
-      writeSchema: schema => send('POST', ROUTES.schema, json(schema)),
       writeEntry: (collection, row) => send('POST', route(ROUTES.entry, collection, row.id), json(row)),
       removeEntry: (collection, id) => send('DELETE', route(ROUTES.entry, collection, id)),
-      writeContent: (collection, rows) => send('POST', route(ROUTES.content, collection), json(rows)),
-      removeCollection: collection => send('DELETE', route(ROUTES.content, collection)),
+    },
+
+    schema: {
+      content: async () => await (await request('GET', ROUTES.content)).json() as Record<string, Entry[]>,
+      issues: async () => await (await request('GET', ROUTES.issues)).json() as ContentIssue[],
+      state: async () => await (await request('GET', ROUTES.migration)).json() as MigrationState,
+      apply: changeset => send('POST', ROUTES.migration, json(changeset)),
+      dismiss: () => send('DELETE', ROUTES.migration),
     },
 
     media: {

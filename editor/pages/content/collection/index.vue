@@ -13,6 +13,7 @@ import { useCollection } from '../../../composables/useCollection'
 import { useColumnVisibility } from '../../../composables/useColumnVisibility'
 import { useContent } from '../../../composables/useContent'
 import { useEntries } from '../../../composables/useEntries'
+import { useIssues } from '../../../composables/useIssues'
 import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
 import { useSave } from '../../../composables/useSave'
@@ -27,14 +28,15 @@ const { store } = useContent()
 
 const name = useParam('collection')
 
-const { collection, locales, fields } = await useCollection(name)
+const { collection, chosen, fields } = await useCollection(name)
 
 const rows = ref(await store.list(name))
-const locale = locales[0]
+const locale = chosen
 
 const primary = titleField(fields)
 
 const entries = await useEntries()
+const issues = await useIssues()
 
 function label(row: Entry): string {
   return entryLabel(row, primary, locale)
@@ -47,7 +49,16 @@ const columns: Column<Entry>[] = [
   {
     id: 'entry',
     header: 'Entry',
-    cell: ({ row }) => clamp(label(row.original)),
+    cell: ({ row }) => {
+      const problems = issues.of(name, row.original.id)
+
+      return problems.length === 0
+        ? clamp(label(row.original))
+        : h('span', { class: 'flex items-center gap-2' }, [
+            h(UBadge, { 'icon': 'i-hugeicons-alert-02', 'color': 'warning', 'variant': 'soft', 'size': 'sm', 'aria-label': 'Has problems', 'title': problems.join('\n') }),
+            clamp(label(row.original)),
+          ])
+    },
     meta: { class: { td: 'font-medium text-highlighted' } },
   },
   {

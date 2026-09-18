@@ -1,5 +1,6 @@
 import type { Entry } from '../../src/entries/types'
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
+import type { SchemaChangeset } from '../../src/store/types'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -20,6 +21,10 @@ function row(id: string): Entry {
   return { id, status: 'published', createdAt: '', updatedAt: '' }
 }
 
+function change(parts: Partial<SchemaChangeset>): SchemaChangeset {
+  return { schema: { collections: { author: { fields: {} } } }, write: [], collections: [], ...parts }
+}
+
 afterEach(() => {
   for (const root of roots.splice(0))
     rmSync(root, { recursive: true, force: true })
@@ -35,18 +40,13 @@ describe('node writer', () => {
     expect(readdirSync(join(root, defaultPaths.collection('blogPost'))).sort()).toEqual(['a.ts', 'b.ts'])
   })
 
-  it('removes entries and whole collections', async () => {
+  it('removes entries', async () => {
     const { root, writer } = project()
 
     await writer.writeEntry('hero', row('a'))
     await writer.removeEntry('hero', 'a')
 
     expect(existsSync(join(root, defaultPaths.entry('hero', 'a')))).toBe(false)
-
-    await writer.writeEntry('hero', row('b'))
-    await writer.removeCollection('hero')
-
-    expect(existsSync(join(root, defaultPaths.collection('hero')))).toBe(false)
   })
 
   it('refuses collection names and ids that would leave the content folder', async () => {
@@ -54,22 +54,32 @@ describe('node writer', () => {
 
     await writer.writeEntry('hero', row('a'))
 
-    await expect(writer.removeCollection('../..')).rejects.toThrow('"../.." is not a collection name')
+    await expect(writer.apply(change({ collections: ['../..'] }))).rejects.toThrow('"../.." is not a collection name')
     await expect(writer.removeEntry('hero', '../../schema')).rejects.toThrow('"../../schema" is not an entry id')
     await expect(writer.writeEntry('Hero', row('b'))).rejects.toThrow('"Hero" is not a collection name')
     await expect(writer.writeEntry('hero', row('../../../escaped'))).rejects.toThrow('is not an entry id')
-    await expect(writer.writeContent('hero', [row('b'), row('../c')])).rejects.toThrow('"../c" is not an entry id')
+    await expect(writer.apply(change({ write: [{ collection: 'hero', entry: row('b') }, { collection: 'hero', entry: row('../c') }] }))).rejects.toThrow('"../c" is not an entry id')
 
     expect(readdirSync(join(root, defaultPaths.collection('hero')))).toEqual(['a.ts'])
     expect(readdirSync(root)).toEqual(['.forgepress'])
   })
 
-  it('replaces a collection, deleting entries that are gone', async () => {
+  it('applies a schema change with its content and says what it wrote', async () => {
     const { root, writer } = project()
 
-    await writer.writeEntry('hero', row('a'))
-    await writer.writeContent('hero', [row('b')])
+    await writer.writeEntry('writer', row('a'))
+    await writer.writeEntry('writer', row('b'))
 
-    expect(readdirSync(join(root, defaultPaths.collection('hero')))).toEqual(['b.ts'])
+    const files = await writer.apply(change({ collections: ['writer'], write: [{ collection: 'author', entry: row('a') }] }))
+
+    expect(files).toEqual([
+      '.forgepress/content/writer/a.ts',
+      '.forgepress/content/writer/b.ts',
+      '.forgepress/content/author/a.ts',
+      '.forgepress/schema.ts',
+    ])
+    expect(existsSync(join(root, defaultPaths.collection('writer')))).toBe(false)
+    expect(readdirSync(join(root, defaultPaths.collection('author')))).toEqual(['a.ts'])
+    expect(readFileSync(join(root, defaultPaths.schema), 'utf8')).toContain('author: {')
   })
 })

@@ -14,6 +14,7 @@ import { useCollection } from '../../../composables/useCollection'
 import { useContent } from '../../../composables/useContent'
 import { useEntries } from '../../../composables/useEntries'
 import { useEntryDraft } from '../../../composables/useEntryDraft'
+import { useIssues } from '../../../composables/useIssues'
 import { useNestedEntries } from '../../../composables/useNestedEntries'
 import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
@@ -47,6 +48,7 @@ const fields = reactive(toLocalizedFields(collection, locales))
 
 const entries = await useEntries()
 const nested = await useNestedEntries()
+const problems = creating ? [] : (await useIssues()).of(name, row.id)
 
 const { values, status, draft, dirty, leaving, commit, cancel, discard, proceed } = useEntryDraft(row, fields, locales, back, next => nested.rows(next.status))
 
@@ -139,6 +141,22 @@ async function submit(linkedStatus?: EntryStatus): Promise<void> {
         />
       </template>
     </PageHeader>
+
+    <UAlert
+      v-if="problems.length"
+      color="warning"
+      variant="subtle"
+      icon="i-hugeicons-alert-02"
+      title="The site doesn't build with this entry"
+    >
+      <template #description>
+        <ul class="mt-1 list-disc pl-4">
+          <li v-for="problem in problems" :key="problem">
+            {{ problem }}
+          </li>
+        </ul>
+      </template>
+    </UAlert>
 
     <ErrorAlert title="The entry could not be saved" :error="error" />
 

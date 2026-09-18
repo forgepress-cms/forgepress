@@ -62,6 +62,12 @@ describe('validateSchema', () => {
     ])
   })
 
+  it('wants the default locale to be one of the locales', () => {
+    expect(issues({ locales: ['en', 'de'], defaultLocale: 'de', collections: {} })).toEqual([])
+    expect(issues({ locales: ['en', 'de'], defaultLocale: 'fr', collections: {} })).toEqual([{ path: ['defaultLocale'], message: 'The default locale "fr" is not in "locales"' }])
+    expect(issues({ locales: ['en'], defaultLocale: 3, collections: {} })).toEqual([{ path: ['defaultLocale'], message: '"defaultLocale" has to be a locale code' }])
+  })
+
   it.each(['blog-post', 'BlogPost', 'blog_post', '2posts', 'post$'])('rejects the collection name %j', (name) => {
     expect(issues({ collections: { [name]: { fields: {} } } })).toEqual([
       { path: ['collections', name], message: `Collection "${name}" has to start with a lowercase letter and contain only letters and digits` },
