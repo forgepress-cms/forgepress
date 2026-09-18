@@ -13,6 +13,7 @@ import { findRoot } from '../disk/root'
 import { readContent } from '../files/content'
 import { ContentError, formatIssue } from '../files/issues'
 import { errorMessage } from '../utils/error'
+import { DEFAULT_PORT, edit } from './edit'
 import { migrate } from './migrate'
 
 function fail(message: string): void {
@@ -67,8 +68,27 @@ export function createCli(cwd: string, ask: Ask | undefined = process.stdin.isTT
     }),
   })
 
+  const editor = defineCommand({
+    meta: { name: 'edit', description: 'Serve the editor on its own, without a site or a bundler' },
+    args: {
+      port: { type: 'string', description: `Port to serve the editor on (${DEFAULT_PORT} by default)` },
+    },
+
+    run: ({ args }) => inProject(cwd, async (root) => {
+      const chosen = args.port === undefined ? undefined : Number(args.port)
+
+      if (chosen !== undefined && (!Number.isInteger(chosen) || chosen < 1 || chosen > 65535))
+        throw new Error(`[forgepress] ${JSON.stringify(args.port)} is not a port`)
+
+      const config = resolveConfig(await loadConfig(root))
+      const { url } = await edit(root, config, { port: chosen, fixed: chosen !== undefined, log: message => console.log(message) })
+
+      console.log(`The editor is at ${url}`)
+    }),
+  })
+
   const migration = defineCommand({
-    meta: { name: 'migrate', description: 'Migrate the content to the schema after changing schema.ts by hand or merging a branch' },
+    meta: { name: 'migrate', description: 'Migrate the content to the schema after changing schema.ts' },
     args: {
       yes: { type: 'boolean', description: 'Migrate without asking for confirmation' },
     },
@@ -79,7 +99,7 @@ export function createCli(cwd: string, ask: Ask | undefined = process.stdin.isTT
   })
 
   return defineCommand({
-    meta: { name: 'forgepress', version, description: 'Check, migrate and build the content of a ForgePress project' },
-    subCommands: { check, migrate: migration, build },
+    meta: { name: 'forgepress', version, description: 'Check, edit, migrate and build the content of a ForgePress project' },
+    subCommands: { check, edit: editor, migrate: migration, build },
   })
 }

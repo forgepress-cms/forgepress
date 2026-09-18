@@ -74,7 +74,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "obuild && pnpm run build:editor",
-    "build:editor": "vite build --config editor/vite.config.mjs",
+    "build:editor": "vite build --config editor/vite.config.mjs && vite build --config editor/vite.vue.config.mjs",
     "dev": "node scripts/dev.mjs",
     "dev:nuxt": "node scripts/dev.mjs playground-nuxt",
     "dev:next": "node scripts/dev.mjs playground-next",
