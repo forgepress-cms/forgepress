@@ -1,5 +1,5 @@
 import type { ValueIssue, ValuePath } from '../files/issues'
-import type { FieldBase, FieldOptionType } from './fields/types'
+import type { FieldBase, FieldOptionType, FieldTypeDefinition } from './fields/types'
 import { META_KEYS } from '../entries/meta'
 import { isCollectionName } from '../files/paths'
 import { isRecord, quote } from '../utils/value'
@@ -63,7 +63,9 @@ function fits(kind: FieldOptionType, value: unknown): boolean {
 function optionKinds(type: FieldType): Record<string, FieldOptionType> {
   const options = Object.entries(fieldTypes[type].options).map(([option, spec]) => [option, spec.type] as const)
 
-  return { ...BASE_OPTIONS, ...Object.fromEntries(options) }
+  const base = Object.entries(BASE_OPTIONS).filter(([option]) => !(fieldTypes[type] as FieldTypeDefinition).without?.includes(option as keyof FieldBase))
+
+  return { ...Object.fromEntries(base), ...Object.fromEntries(options) }
 }
 
 function checkLocales(report: Report, locales: unknown): readonly unknown[] {

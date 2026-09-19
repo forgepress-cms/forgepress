@@ -45,6 +45,9 @@ export function fieldCell(field: FormField, value: unknown, entries: Entries): V
   if (config.type === 'image' || config.type === 'video')
     return thumbnails(toList(value), config.type)
 
+  if (config.type === 'boolean')
+    return h('span', { class: value === true ? 'text-highlighted' : 'text-dimmed' }, value === true ? 'Yes' : value === false ? 'No' : '—')
+
   if (config.type === 'richtext')
     return clampMarkdown(String(value ?? ''))
 

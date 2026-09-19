@@ -76,6 +76,9 @@ function empty(field: FormField): unknown {
   if (config.type === 'number')
     return null
 
+  if (config.type === 'boolean')
+    return config.default ?? false
+
   if (config.type === 'dynamic')
     return []
 

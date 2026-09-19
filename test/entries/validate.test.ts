@@ -24,6 +24,7 @@ const schema = {
     },
     author: { fields: {} },
     hero: { fields: {} },
+    flag: { fields: { featured: { type: 'boolean' } } },
   },
 } as const satisfies ForgePressSchema
 
@@ -130,6 +131,18 @@ describe('validateEntry', () => {
     ])
 
     expect(issues({ ...post, rating: Number.NaN })).toHaveLength(1)
+  })
+
+  it('checks booleans', () => {
+    const flag = { id: 'flag_1', status: 'published', createdAt: post.createdAt, updatedAt: post.updatedAt }
+
+    expect(issues({ ...flag, featured: false }, 'flag')).toEqual([])
+    expect(issues({ ...flag, featured: 'yes' }, 'flag')).toEqual([
+      { path: ['featured'], message: 'Field "featured" has to be true or false' },
+    ])
+    expect(issues(flag, 'flag')).toEqual([
+      { path: [], message: 'Field "featured" is required' },
+    ])
   })
 
   it('wants text to match the pattern of its field', () => {

@@ -21,6 +21,7 @@ const schema = {
         title: { type: 'text', translate: true, index: true },
         body: { type: 'richtext', translate: true },
         views: { type: 'number', optional: true },
+        featured: { type: 'boolean' },
         cover: { type: 'image', optional: true },
         author: { type: 'relation', collection: 'author', index: true },
         editor: { type: 'relation', collection: 'author', optional: true },
@@ -55,6 +56,8 @@ const ids: string[] = posts.map(post => post.id)`,
   .where('title', 'in', ['Hello', 'Hi'])
   .where('views', 'gte', 10)
   .where('views', 'in', [1, 2])
+  .where('featured', true)
+  .where('featured', 'ne', false)
   .where('createdAt', 'lt', '2024-01-01')
   .where('id', 'ne', 'post_1')
   .where('author', 'author_1')
@@ -63,6 +66,7 @@ const ids: string[] = posts.map(post => post.id)`,
   .where('blocks', 'contains', 'hero_1')
   .sort('views', 'desc')
   .sort('author')
+  .sort('featured')
   .offset(1)
   .limit(5)`,
   },
@@ -95,6 +99,7 @@ const rejected: Case[] = [
   { name: 'a range on text', code: `await query('post').locale('en').where('title', 'gt', 'A')` },
   { name: 'contains on a number', code: `await query('post').locale('en').where('views', 'contains', 1)` },
   { name: 'a value of the wrong type', code: `await query('post').locale('en').where('views', '10')` },
+  { name: 'a range on a boolean', code: `await query('post').locale('en').where('featured', 'gt', false)` },
   { name: 'a relation compared with something else than an id', code: `await query('post').locale('en').where('author', 'eq', 1)` },
   { name: 'equality on a list of links', code: `await query('post').locale('en').where('related', 'post_1')` },
   { name: 'filtering by media', code: `await query('post').locale('en').where('cover', 'eq', 'a.png')` },

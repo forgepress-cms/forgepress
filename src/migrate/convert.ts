@@ -6,6 +6,8 @@ import { isTranslated } from '../schema/fields'
 import { filled, isRecord } from '../utils/value'
 
 const ADDRESS = /^(?:\/|https?:\/\/)\S+$/
+const TRUE = ['true', 'yes', 'on', '1']
+const FALSE = ['false', 'no', 'off', '0']
 
 export interface Links {
   collection: (name: string) => string
@@ -29,7 +31,7 @@ export interface Conversion {
   locales: LocaleMap
 }
 
-type Kind = 'text' | 'number' | 'media' | 'relation' | 'block' | 'other'
+type Kind = 'text' | 'number' | 'boolean' | 'media' | 'relation' | 'block' | 'other'
 
 export function isMedia(value: unknown): value is Record<string, unknown> & { url: string } {
   return isRecord(value) && typeof value.url === 'string'
@@ -54,6 +56,9 @@ function fits(item: unknown, field: Field): boolean {
     case 'number':
       return typeof item === 'number' && Number.isFinite(item)
 
+    case 'boolean':
+      return typeof item === 'boolean'
+
     case 'image':
     case 'video':
       return isMedia(item)
@@ -75,6 +80,9 @@ function kindOf(item: unknown, before: Field | undefined): Kind {
 
   if (typeof item === 'number' && Number.isFinite(item))
     return 'number'
+
+  if (typeof item === 'boolean')
+    return 'boolean'
 
   if (isEntryRef(item))
     return 'block'
@@ -103,12 +111,15 @@ function toText(item: unknown, kind: Kind, before: Field | undefined, links: Lin
   if (kind === 'text')
     return item as string
 
-  return kind === 'number' ? String(item) : undefined
+  return kind === 'number' || kind === 'boolean' ? String(item) : undefined
 }
 
 function toNumber(item: unknown, kind: Kind): number | undefined {
   if (kind === 'number')
     return item as number
+
+  if (kind === 'boolean')
+    return item ? 1 : 0
 
   if (kind !== 'text')
     return undefined
@@ -117,6 +128,21 @@ function toNumber(item: unknown, kind: Kind): number | undefined {
   const parsed = Number(text)
 
   return text !== '' && Number.isFinite(parsed) ? parsed : undefined
+}
+
+function toBoolean(item: unknown, kind: Kind): boolean | undefined {
+  if (kind === 'boolean')
+    return item as boolean
+
+  if (kind === 'number')
+    return item === 1 ? true : item === 0 ? false : undefined
+
+  if (kind !== 'text')
+    return undefined
+
+  const text = (item as string).trim().toLowerCase()
+
+  return TRUE.includes(text) ? true : FALSE.includes(text) ? false : undefined
 }
 
 function toMedia(item: unknown, kind: Kind): Record<string, unknown> | undefined {
@@ -182,6 +208,9 @@ function convertItem(item: unknown, before: Field | undefined, after: Field, lin
 
     case 'number':
       return toNumber(item, kind)
+
+    case 'boolean':
+      return toBoolean(item, kind)
 
     case 'image':
     case 'video':

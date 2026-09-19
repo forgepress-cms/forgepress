@@ -83,6 +83,7 @@ describe('types', () => {
   const text = { type: 'text', optional: true } as Field
   const richtext = { type: 'richtext', optional: true } as Field
   const number = { type: 'number', optional: true } as Field
+  const boolean = { type: 'boolean', optional: true } as Field
   const image = { type: 'image', optional: true } as Field
   const video = { type: 'video', optional: true } as Field
 
@@ -93,6 +94,19 @@ describe('types', () => {
   it('reads a number out of text and back', () => {
     expect(field(text, number, ' 42 ').row.cover).toBe(42)
     expect(field(number, text, 42).row.cover).toBe('42')
+  })
+
+  it('reads a boolean out of text and numbers and back', () => {
+    expect(field(text, boolean, ' Yes ').row.cover).toBe(true)
+    expect(field(text, boolean, 'false').row.cover).toBe(false)
+    expect(field(number, boolean, 1).row.cover).toBe(true)
+    expect(field(boolean, text, false).row.cover).toBe('false')
+    expect(field(boolean, number, true).row.cover).toBe(1)
+  })
+
+  it('drops text and numbers that are not a boolean', () => {
+    expect(field(text, boolean, 'maybe').kinds).toEqual(['lost'])
+    expect(field(number, boolean, 2).kinds).toEqual(['lost'])
   })
 
   it('drops text that is not a number', () => {
@@ -404,6 +418,26 @@ describe('required values', () => {
     expect(fills({ type: 'value', value: 'draft' })).toEqual(['draft', 'draft'])
     expect(fills({ type: 'field', field: 'title' })).toEqual(['Hello World', 'Über uns'])
     expect(fills({ type: 'slug', field: 'title' })).toEqual(['hello-world', 'uber-uns'])
+  })
+
+  it('fills a new boolean with its default without asking', () => {
+    const write = (field: object) => plan({
+      before: schema({ title: required }),
+      after: schema({ title: required, featured: field as Field }),
+      content: rows,
+    })
+
+    expect(write({ type: 'boolean' }).changeset.write.map(entry => entry.entry.featured)).toEqual([false, false])
+    expect(write({ type: 'boolean', default: true }).changeset.write.map(entry => entry.entry.featured)).toEqual([true, true])
+    expect(write({ type: 'boolean' }).effects.filter(effect => effect.kind === 'missing')).toEqual([])
+
+    const kept = plan({
+      before: schema({ title: required, featured: { type: 'boolean' } as Field }),
+      after: schema({ title: required, featured: { type: 'boolean', default: true } as Field }),
+      content: { post: [entry('post_1', { title: 'A', featured: false })] },
+    })
+
+    expect(kept.changeset.write).toEqual([])
   })
 
   it('leaves values empty when asked to', () => {

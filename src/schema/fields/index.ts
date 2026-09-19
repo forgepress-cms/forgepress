@@ -1,3 +1,4 @@
+import type { BooleanField, BooleanFieldContent } from './boolean'
 import type { DynamicField, DynamicFieldContent } from './dynamic'
 import type { ImageField, ImageFieldContent } from './image'
 import type { NumberField, NumberFieldContent } from './number'
@@ -5,6 +6,7 @@ import type { RelationField, RelationFieldContent } from './relation'
 import type { RichTextField, RichTextFieldContent } from './rich-text'
 import type { TextField, TextFieldContent } from './text'
 import type { VideoField, VideoFieldContent } from './video'
+import boolean from './boolean'
 import dynamic from './dynamic'
 import image from './image'
 import number from './number'
@@ -13,9 +15,9 @@ import richtext from './rich-text'
 import text from './text'
 import video from './video'
 
-export const fieldTypes = { text, richtext, number, image, video, relation, dynamic }
+export const fieldTypes = { text, richtext, number, boolean, image, video, relation, dynamic }
 
-export type Field = TextField | RichTextField | NumberField | ImageField | VideoField | RelationField | DynamicField
+export type Field = TextField | RichTextField | NumberField | BooleanField | ImageField | VideoField | RelationField | DynamicField
 
 export type FieldContent<TField extends Field>
   = TField extends DynamicField
@@ -30,9 +32,11 @@ export type FieldContent<TField extends Field>
             ? TextFieldContent
             : TField extends NumberField
               ? NumberFieldContent
-              : TField extends RichTextField
-                ? RichTextFieldContent
-                : never
+              : TField extends BooleanField
+                ? BooleanFieldContent
+                : TField extends RichTextField
+                  ? RichTextFieldContent
+                  : never
 
 export const fieldTypeNames = Object.keys(fieldTypes) as Field['type'][]
 

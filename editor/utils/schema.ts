@@ -7,6 +7,7 @@ export const FIELD_ICONS: Record<string, string> = {
   text: 'i-hugeicons-text',
   richtext: 'i-hugeicons-text-align-left',
   number: 'i-hugeicons-hashtag',
+  boolean: 'i-hugeicons-toggle-on',
   image: 'i-hugeicons-image-01',
   video: 'i-hugeicons-video-02',
   relation: 'i-hugeicons-link-01',

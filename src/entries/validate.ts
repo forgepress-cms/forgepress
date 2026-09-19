@@ -159,6 +159,11 @@ function checkValue(report: Report, path: ValuePath, label: string, field: Field
         checkRange(report, path, label, field, value)
       return
 
+    case 'boolean':
+      if (typeof value !== 'boolean')
+        report(path, `Field ${label} has to be true or false`)
+      return
+
     case 'image':
     case 'video':
       if (field.multiple)

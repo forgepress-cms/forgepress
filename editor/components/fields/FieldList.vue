@@ -28,7 +28,7 @@ const localeTabs = localeItems(props.locales)
     :key="field.key"
     :label="field.label"
     :description="field.description"
-    :required="!field.optional"
+    :required="!field.optional && field.type !== 'boolean'"
     :ui="{ container: 'mt-2' }"
   >
     <template #hint>
@@ -52,6 +52,11 @@ const localeTabs = localeItems(props.locales)
       v-else-if="field.type === 'number'"
       v-model="values[field.key]![field.locale]"
       class="w-full"
+    />
+
+    <USwitch
+      v-else-if="field.type === 'boolean'"
+      v-model="values[field.key]![field.locale]"
     />
 
     <MediaInput

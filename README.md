@@ -207,6 +207,7 @@ Available fields include:
 - `text`: single-line text input
 - `richtext`: rich text editor
 - `number`: numeric input
+- `boolean`: on/off switch
 - `image`: image upload
 - `video`: video upload
 - `relation`: link to another collection's entry

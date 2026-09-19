@@ -56,7 +56,7 @@ function constraints(key: string, field: Field | undefined, value: unknown, loca
   if (!field || value === undefined)
     return []
 
-  return validateField(key, { ...field, optional: true }, value, locales).filter(issue => issue.kind === 'constraint')
+  return validateField(key, { ...field, optional: true } as Field, value, locales).filter(issue => issue.kind === 'constraint')
 }
 
 export function planMigration(input: MigrationInput): Migration {
@@ -311,7 +311,9 @@ export function planMigration(input: MigrationInput): Migration {
       const complete = was === undefined || gaps(raw, was, locales.before).length === 0
       const valid = constraints(from, was, raw, locales.before).length === 0
 
-      if (complete)
+      if (field.type === 'boolean')
+        applyFill(next, collection, key, field, { type: 'value', value: String(field.default ?? false) }, fields)
+      else if (complete)
         applyFill(next, collection, key, field, decisions.fills?.[collection]?.[key], fields)
 
       applyFix(next, key, field, valid ? decisions.fixes?.[collection]?.[key] ?? 'keep' : 'keep', valid ? note : undefined)
@@ -405,7 +407,7 @@ export function planMigration(input: MigrationInput): Migration {
 
   for (const { collection, entry } of write) {
     for (const [key, field] of Object.entries(after.collections[collection]?.fields ?? {})) {
-      for (const issue of validateField(key, { ...field, optional: true }, entry[key], locales.after)) {
+      for (const issue of validateField(key, { ...field, optional: true } as Field, entry[key], locales.after)) {
         if (issue.kind === 'type')
           blocked.push(`${collection}/${entry.id}: ${issue.message}`)
       }

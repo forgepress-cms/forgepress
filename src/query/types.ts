@@ -33,15 +33,17 @@ type Simplify<TValue> = { [TKey in keyof TValue]: TValue[TKey] } & {}
 
 type Kind<TField> = TField extends { type: 'number' }
   ? 'number'
-  : TField extends { type: 'text' | 'richtext' }
-    ? 'text'
-    : TField extends { type: 'relation', multiple: true }
-      ? 'links'
-      : TField extends { type: 'relation' }
-        ? 'link'
-        : TField extends { type: 'dynamic' }
-          ? 'links'
-          : 'none'
+  : TField extends { type: 'boolean' }
+    ? 'boolean'
+    : TField extends { type: 'text' | 'richtext' }
+      ? 'text'
+      : TField extends { type: 'relation', multiple: true }
+        ? 'links'
+        : TField extends { type: 'relation' }
+          ? 'link'
+          : TField extends { type: 'dynamic' }
+            ? 'links'
+            : 'none'
 
 type KindOf<TSchema extends ForgePressSchema, TName extends CollectionName<TSchema>, TKey> = TKey extends 'id'
   ? 'text'
@@ -54,6 +56,7 @@ type KindOf<TSchema extends ForgePressSchema, TName extends CollectionName<TSche
 export interface Operands {
   text: { eq: string, ne: string, in: readonly string[], contains: string }
   number: { eq: number, ne: number, gt: number, gte: number, lt: number, lte: number, in: readonly number[] }
+  boolean: { eq: boolean, ne: boolean }
   date: { eq: string, ne: string, gt: string, gte: string, lt: string, lte: string, in: readonly string[] }
   link: { eq: string, ne: string, in: readonly string[] }
   links: { contains: string }
@@ -77,7 +80,7 @@ type Comparable<TSchema extends ForgePressSchema, TName extends CollectionName<T
 }[Keys<TSchema, TName>]
 
 type Sortable<TSchema extends ForgePressSchema, TName extends CollectionName<TSchema>> = {
-  [TKey in Keys<TSchema, TName>]: KindOf<TSchema, TName, TKey> extends 'text' | 'number' | 'date' | 'link' ? TKey : never
+  [TKey in Keys<TSchema, TName>]: KindOf<TSchema, TName, TKey> extends 'text' | 'number' | 'boolean' | 'date' | 'link' ? TKey : never
 }[Keys<TSchema, TName>]
 
 type Linkable<TSchema extends ForgePressSchema, TName extends CollectionName<TSchema>> = {

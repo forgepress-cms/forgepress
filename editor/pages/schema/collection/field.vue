@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SchemaDraft } from '../../../../src/migrate/schema'
 import type { Field } from '../../../../src/schema/fields'
+import type { FieldTypeDefinition } from '../../../../src/schema/fields/types'
 import type { ForgePressSchema } from '../../../../src/schema/types'
 import { computed, reactive, watch } from 'vue'
 
@@ -59,6 +60,7 @@ const options = reactive<Record<string, unknown>>(
 )
 
 const definition = computed(() => fieldTypes[form.type])
+const optionable = computed(() => !(definition.value as FieldTypeDefinition).without?.includes('optional'))
 
 const collectionItems = Object.entries(schema.value.collections).map(([value, entry]) => ({
   label: entry.label ?? value,
@@ -110,7 +112,7 @@ function next(): Field {
   if (form.description)
     config.description = form.description
 
-  if (!form.required)
+  if (!form.required && optionable.value)
     config.optional = true
 
   if (form.translate)
@@ -261,7 +263,7 @@ async function save(): Promise<void> {
           <USelect v-model="form.type" :items="FIELD_TYPE_ITEMS" value-key="value" class="w-full" />
         </UFormField>
 
-        <UFormField label="Required" description="Content cannot be saved while a required field is empty.">
+        <UFormField v-if="optionable" label="Required" description="Content cannot be saved while a required field is empty.">
           <USwitch v-model="form.required" />
         </UFormField>
 
