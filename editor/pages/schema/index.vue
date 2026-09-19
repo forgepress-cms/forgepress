@@ -202,10 +202,10 @@ function moveLocale(code: string, offset: number): Promise<boolean> {
       </template>
     </DataTable>
 
-    <section class="grid gap-4">
-      <div class="flex flex-wrap items-end justify-between gap-4">
+    <section class="mt-6 grid gap-4">
+      <div class="flex flex-wrap items-end justify-between gap-4 mb-4">
         <div class="grid min-w-0 gap-1">
-          <h2 class="font-display text-xl font-bold tracking-[-0.02em] text-highlighted">
+          <h2 class="font-display text-3xl font-bold tracking-[-0.02em] text-highlighted">
             Locales
           </h2>
 

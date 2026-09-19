@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { mountEditor } from 'forgepress/editor'
 
+definePageMeta({
+  layout: false,
+  i18n: false,
+})
+
 const host = useTemplateRef('host')
 
 onMounted(() => {

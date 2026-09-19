@@ -1,28 +1,29 @@
+<script setup lang="ts">
+import * as locales from '@nuxt/ui/locale'
+
+const { locale, t } = useI18n()
+
+const head = useLocaleHead()
+
+useHead({
+  htmlAttrs: {
+    lang: () => head.value.htmlAttrs.lang,
+    dir: () => head.value.htmlAttrs.dir,
+  },
+  link: () => head.value.link ?? [],
+  meta: () => head.value.meta ?? [],
+})
+
+useSeoMeta({
+  titleTemplate: title => title ? `${title} · ${t('site.title')}` : t('site.title'),
+  description: () => t('site.description'),
+})
+</script>
+
 <template>
-  <NuxtRouteAnnouncer />
-  <NuxtPage />
+  <UApp :locale="locales[locale]">
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
+  </UApp>
 </template>
-
-<style>
-body {
-  margin: 0;
-  color: #13110e;
-  background: #fffcf8;
-  font: 17px/1.6 ui-sans-serif, system-ui, sans-serif;
-}
-
-a {
-  color: #a34f00;
-}
-
-code {
-  font: 0.9em/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-pre {
-  overflow-x: auto;
-  padding: 1rem 1.25rem;
-  border-radius: 0.5rem;
-  background: #f3ede4;
-}
-</style>

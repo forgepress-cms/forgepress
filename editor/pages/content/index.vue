@@ -35,7 +35,13 @@ const collections: CollectionRow[] = await Promise.all(Object.entries(schema.col
 })))
 
 const columns: Column<CollectionRow>[] = [
-  { accessorKey: 'name', header: 'Collection' },
+  {
+    accessorKey: 'name',
+    header: 'Collection',
+    meta: {
+      class: { td: 'leading-8' },
+    },
+  },
   {
     accessorKey: 'description',
     header: 'Description',

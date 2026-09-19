@@ -1,0 +1,21 @@
+{
+  "site": {
+    "title": "ForgePress",
+    "description": "Ein CMS, das in deinem Repository lebt."
+  },
+  "nav": {
+    "github": "GitHub",
+    "editor": "Editor öffnen"
+  },
+  "footer": {
+    "copyright": "ForgePress · MIT-Lizenz",
+    "editor": "Editor"
+  },
+  "hero": {
+    "eyebrow": "Git-basiertes CMS",
+    "title": "Hallo Welt",
+    "description": "Ein CMS, das in deinem Repository lebt.",
+    "editor": "Editor öffnen",
+    "github": "Auf GitHub ansehen"
+  }
+}

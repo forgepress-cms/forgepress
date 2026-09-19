@@ -87,6 +87,11 @@ export default defineConfig({
         switch: { slots: { base: 'rounded-md', thumb: 'rounded-xs' } },
         modal: { slots: { title: 'font-display text-lg', footer: 'flex-wrap' } },
         pageCard: { slots: { title: 'font-display text-lg' } },
+        button: {
+          compoundVariants: [
+            { color: 'neutral', variant: ['ghost', 'outline'], class: 'hover:bg-accented active:bg-accented dark:hover:bg-elevated dark:active:bg-elevated' },
+          ],
+        },
       },
     }),
     Types(),

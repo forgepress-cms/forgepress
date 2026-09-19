@@ -16,6 +16,9 @@ const editable = await useContent().mode() === 'development'
       description="Browse and edit the entries of every collection."
       icon="i-hugeicons-file-text"
       :to="href('content')"
+      :ui="{
+        root: 'hover:bg-neutral-200',
+      }"
     />
 
     <UPageCard
@@ -26,6 +29,9 @@ const editable = await useContent().mode() === 'development'
       description="Inspect the collections and fields the project defines."
       icon="i-hugeicons-layout-table-01"
       :to="href('schema')"
+      :ui="{
+        root: 'hover:bg-neutral-200',
+      }"
     />
 
     <UPageCard
@@ -35,6 +41,9 @@ const editable = await useContent().mode() === 'development'
       description="Manage the files the content references."
       icon="i-hugeicons-image-01"
       :to="href('assets')"
+      :ui="{
+        root: 'hover:bg-neutral-200',
+      }"
     />
   </UPageGrid>
 </template>

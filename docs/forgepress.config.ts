@@ -14,6 +14,6 @@ export default {
 
     base: 'docs',
 
-    commitMessage: 'docs: {name}',
+    commitMessage: 'chore(docs): {name}',
   },
 } satisfies ForgePressConfig
