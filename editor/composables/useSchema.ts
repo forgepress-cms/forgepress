@@ -4,10 +4,11 @@ import type { SchemaDraft } from '../../src/migrate/schema'
 import type { Fill, Fix, Migration, RenameQuestion, Renames } from '../../src/migrate/types'
 import type { ForgePressSchema } from '../../src/schema/types'
 import type { MigrationState, SchemaStore } from '../../src/store/types'
-import { computed, reactive, ref, shallowRef, toRaw } from 'vue'
+import { computed, reactive, ref, shallowRef } from 'vue'
 import { planMigration } from '../../src/migrate/plan'
 import { renameQuestions } from '../../src/migrate/questions'
 import { validateSchema } from '../../src/schema/validate'
+import { plain } from '../../src/utils/value'
 import { useContent } from './useContent'
 import { useSave } from './useSave'
 
@@ -54,18 +55,16 @@ interface Opened extends Review {
 
 const review = shallowRef<Review>()
 
-function clone<TValue>(value: TValue): TValue {
-  return structuredClone(toRaw(value))
-}
-
 export function questionKey(question: RenameQuestion): string {
-  return [question.kind, question.collection ?? '', question.from].join('/')
+  return [question.kind, question.collection ?? question.component ?? '', question.from].join('/')
 }
 
 function answered(base: Renames, questions: readonly RenameQuestion[], answers: Readonly<Record<string, string>>): Renames {
   const collections = { ...base.collections }
   const fields = Object.fromEntries(Object.entries(base.fields ?? {}).map(([collection, renamed]) => [collection, { ...renamed }]))
   const locales = { ...base.locales }
+  const components = { ...base.components }
+  const componentFields = Object.fromEntries(Object.entries(base.componentFields ?? {}).map(([component, renamed]) => [component, { ...renamed }]))
 
   for (const question of questions) {
     const answer = answers[questionKey(question)]
@@ -75,13 +74,17 @@ function answered(base: Renames, questions: readonly RenameQuestion[], answers: 
 
     if (question.kind === 'collection')
       collections[question.from] = answer
+    else if (question.kind === 'component')
+      components[question.from] = answer
     else if (question.kind === 'locale')
       locales[question.from] = answer
+    else if (question.component !== undefined)
+      (componentFields[question.component] ??= {})[question.from] = answer
     else
       (fields[question.collection!] ??= {})[question.from] = answer
   }
 
-  return { collections, fields, locales }
+  return { collections, fields, locales, components, componentFields }
 }
 
 function open(store: SchemaStore, before: ForgePressSchema, after: ForgePressSchema, content: Record<string, Entry[]>, base: Renames, repair: boolean): Opened {
@@ -99,7 +102,7 @@ function open(store: SchemaStore, before: ForgePressSchema, after: ForgePressSch
     if (!repair)
       return []
 
-    const collections = renameQuestions({ ...input, renames: base }).filter(question => question.kind === 'collection')
+    const collections = renameQuestions({ ...input, renames: base }).filter(question => question.kind === 'collection' || question.kind === 'component')
     const named = answered(base, collections, choices.answers)
     const fields = renameQuestions({ ...input, renames: named }).filter(question => question.kind === 'field')
     const moved = answered(named, fields, choices.answers)
@@ -165,7 +168,7 @@ export async function useSchema(): Promise<SchemaEditor> {
   const { store } = useContent()
   const target = await writable()
   const [current, found] = await Promise.all([store.schema(), target.state()])
-  const schema = ref<ForgePressSchema>(clone(current))
+  const schema = ref<ForgePressSchema>(plain(current))
   const state = ref<MigrationState>(found)
 
   const { saving, error, save } = useSave()
@@ -190,7 +193,7 @@ export async function useSchema(): Promise<SchemaEditor> {
       : await save(() => target.apply(opened.migration.value.changeset))
 
     if (applied)
-      schema.value = clone(after)
+      schema.value = plain(after)
 
     return applied
   }
@@ -204,7 +207,7 @@ export async function useSchema(): Promise<SchemaEditor> {
     content,
 
     change: async (mutate, renames = {}) => {
-      const draft = clone(schema.value) as SchemaDraft
+      const draft = plain(schema.value) as SchemaDraft
 
       mutate(draft)
 
@@ -216,11 +219,11 @@ export async function useSchema(): Promise<SchemaEditor> {
         return false
       }
 
-      return start(clone(schema.value), draft as ForgePressSchema, renames, false)
+      return start(plain(schema.value), draft as ForgePressSchema, renames, false)
     },
 
     mismatch: async () => {
-      const opened = open(target, clone(state.value.outstanding ?? schema.value), clone(schema.value), await content(), {}, true)
+      const opened = open(target, plain(state.value.outstanding ?? schema.value), plain(schema.value), await content(), {}, true)
       const count = new Set(opened.migration.value.effects.map(effect => `${effect.collection}/${effect.id}`)).size
 
       if (count === 0 && state.value.outstanding) {
@@ -231,7 +234,7 @@ export async function useSchema(): Promise<SchemaEditor> {
       return count
     },
 
-    repair: () => start(clone(state.value.outstanding ?? schema.value), clone(schema.value), {}, true),
+    repair: () => start(plain(state.value.outstanding ?? schema.value), plain(schema.value), {}, true),
 
     dismiss: async () => {
       await target.dismiss()

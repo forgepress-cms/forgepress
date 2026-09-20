@@ -1,6 +1,7 @@
 import type { SchemaDraft } from '../../src/migrate/schema'
+import type { ForgePressSchema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
-import { linksTo, removeCollection, removeLocale, renameCollection, renameField, renameLocale, setDefaultLocale } from '../../src/migrate/schema'
+import { removeCollection, removeLocale, renameCollection, renameField, renameLocale, setDefaultLocale, uses } from '../../src/migrate/schema'
 
 function draft(): SchemaDraft {
   return {
@@ -10,8 +11,8 @@ function draft(): SchemaDraft {
       post: {
         fields: {
           title: { type: 'text', translate: true },
-          by: { type: 'relation', collection: 'author' },
-          blocks: { type: 'dynamic', collections: ['author', 'hero'] },
+          by: { type: 'collection', collections: ['author'] },
+          blocks: { type: 'collection', collections: ['author', 'hero'], multiple: true },
         },
       },
       hero: { fields: {} },
@@ -26,18 +27,18 @@ describe('schema changes', () => {
     renameCollection(schema, 'author', 'writer')
 
     expect(Object.keys(schema.collections)).toEqual(['writer', 'post', 'hero'])
-    expect(schema.collections.post!.fields).toMatchObject({ by: { collection: 'writer' }, blocks: { collections: ['writer', 'hero'] } })
+    expect(schema.collections.post!.fields).toMatchObject({ by: { collections: ['writer'] }, blocks: { collections: ['writer', 'hero'] } })
   })
 
   it('removes a collection together with the links to it', () => {
     const schema = draft()
 
-    expect(linksTo(schema, 'author')).toEqual([{ collection: 'post', field: 'by' }, { collection: 'post', field: 'blocks' }])
+    expect(uses(schema as ForgePressSchema, 'collections', 'author')).toEqual([{ kind: 'collection', holder: 'post', field: 'by' }, { kind: 'collection', holder: 'post', field: 'blocks' }])
 
     removeCollection(schema, 'author')
 
     expect(Object.keys(schema.collections)).toEqual(['post', 'hero'])
-    expect(schema.collections.post!.fields).toEqual({ title: { type: 'text', translate: true }, blocks: { type: 'dynamic', collections: ['hero'] } })
+    expect(schema.collections.post!.fields).toEqual({ title: { type: 'text', translate: true }, blocks: { type: 'collection', collections: ['hero'], multiple: true } })
   })
 
   it('renames a field where it stands', () => {

@@ -15,7 +15,7 @@ type Middleware = (request: IncomingMessage, response: ServerResponse, next: () 
 
 const scratch = fileURLToPath(new URL('../../node_modules/.forgepress-plugin-test', import.meta.url))
 
-const schema = 'export default { collections: { author: { fields: { name: { type: \'text\', index: true }, mentor: { type: \'relation\', collection: \'author\', optional: true } } } } }\n'
+const schema = 'export default { collections: { author: { fields: { name: { type: \'text\', index: true }, mentor: { type: \'collection\', collections: [\'author\'], optional: true } } } } }\n'
 
 function author(id: string, fields = `name: '${id}'`): string {
   return `export default { id: '${id}', status: 'published', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', ${fields} }\n`
@@ -111,7 +111,7 @@ describe('dev server', () => {
     project()
     await serve()
 
-    expect(index()).toMatchObject({ version: 1, commit: null, dev: true })
+    expect(index()).toMatchObject({ version: 3, commit: null, dev: true })
     expect(manifestIds()).toEqual(['alice'])
     expect(process.env.FORGEPRESS_OUTPUT).toBe(join(scratch, 'public/content'))
   })
@@ -207,7 +207,7 @@ describe('build', () => {
     project()
     await create('build').buildStart()
 
-    expect(index()).toMatchObject({ version: 1, commit: expect.stringMatching(/^[\da-f]{40}$/) })
+    expect(index()).toMatchObject({ version: 3, commit: expect.stringMatching(/^[\da-f]{40}$/) })
     expect(index().dev).toBeUndefined()
     expect(existsSync(join(scratch, '.forgepress/forgepress.d.ts'))).toBe(true)
     expect(process.env.FORGEPRESS_OUTPUT).toBe(join(scratch, 'public/content'))
@@ -218,7 +218,7 @@ describe('build', () => {
     write('package.json', '{}\n')
     await create('build').buildStart()
 
-    expect(index()).toMatchObject({ version: 1, collections: {} })
+    expect(index()).toMatchObject({ version: 3, collections: {} })
     expect(existsSync(join(scratch, '.forgepress'))).toBe(false)
   })
 

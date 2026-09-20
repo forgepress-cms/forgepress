@@ -5,7 +5,7 @@ export interface FieldBase {
   translate?: boolean
 }
 
-export type FieldOptionType = 'text' | 'number' | 'boolean' | 'collection' | 'collections'
+export type FieldOptionType = 'text' | 'number' | 'boolean' | 'collections' | 'components' | 'strings'
 
 export interface FieldOption {
   label: string
@@ -25,7 +25,7 @@ type OptionContent<TOption extends FieldOption> = TOption['type'] extends 'numbe
   ? number
   : TOption['type'] extends 'boolean'
     ? boolean
-    : TOption['type'] extends 'collections'
+    : TOption['type'] extends 'collections' | 'components' | 'strings'
       ? readonly string[]
       : string
 

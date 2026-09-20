@@ -37,7 +37,7 @@ export async function useNestedEntries(): Promise<NestedEntries> {
   const opened = new Map<string, string>()
 
   function add(collection: string, row: Entry, linked: boolean, values?: EntryValues): NestedDraft {
-    const fields = toLocalizedFields(schema.collections[collection] ?? { fields: {} }, locales)
+    const fields = toLocalizedFields(schema.collections[collection] ?? { fields: {} }, locales, schema.components)
 
     drafts[row.id] = {
       id: row.id,
@@ -111,7 +111,7 @@ export async function useNestedEntries(): Promise<NestedEntries> {
     },
 
     missing: () => Object.values(drafts).filter(pending).flatMap(entry =>
-      missingFields(entry.fields, entry.values).map(field => entry.linked
+      missingFields(entry.fields, entry.values, locales).map(field => entry.linked
         ? `${field.label} of ${entryLabel(entry.row, titleField(entry.fields), defaultLocale(schema))}`
         : `${field.label} of the new ${entry.collection}`),
     ),

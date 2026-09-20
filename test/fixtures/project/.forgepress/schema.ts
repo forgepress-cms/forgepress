@@ -15,7 +15,7 @@ export default {
       label: 'Blog Post',
       fields: {
         title: { type: 'text', label: 'Title', translate: true },
-        author: { type: 'relation', label: 'Author', collection: 'author' },
+        author: { type: 'collection', label: 'Author', collections: ['author'] },
       },
     },
   },

@@ -1,15 +1,19 @@
 import type { CollectionEntry } from '../../src/entries/references'
 import type { Entry, EntryStatus } from '../../src/entries/types'
-import type { Collection } from '../../src/schema/types'
-import type { FormField, LocalizedField } from './schema'
+import type { Collection, Component } from '../../src/schema/types'
+import type { ComponentForm, FormField, LocalizedField } from './schema'
 import { entryId } from '../../src/entries/id'
 import { entryKey } from '../../src/entries/references'
-import { filled, isRecord } from '../../src/utils/value'
+import { itemComponent } from '../../src/schema/fields/component'
+import { onlyName } from '../../src/schema/fields/picked'
+import { asList, filled, isRecord } from '../../src/utils/value'
 import { markdownLines } from './markdown'
 import { chips, localized } from './preview'
 import { toFields } from './schema'
 
 export const SINGLE = ''
+
+export const NESTED_DEPTH = 3
 
 export type StatusColor = 'neutral' | 'success' | 'warning'
 
@@ -66,12 +70,15 @@ export function fieldLocale(field: FormField, locales: readonly string[]): strin
   return field.translated ? locales[0] ?? SINGLE : SINGLE
 }
 
-export function toLocalizedFields(collection: Collection, locales: readonly string[]): LocalizedField[] {
-  return toFields(collection, locales).map(field => ({ ...field, locale: fieldLocale(field, locales) }))
+export function toLocalizedFields(collection: Collection, locales: readonly string[], components: Readonly<Record<string, Component>> = {}): LocalizedField[] {
+  return toFields(collection, locales, components).map(field => ({ ...field, locale: fieldLocale(field, locales) }))
 }
 
-function empty(field: FormField): unknown {
+export function empty(field: FormField): unknown {
   const config = field.config
+
+  if (config.type === 'component')
+    return config.multiple ? [] : null
 
   if (config.type === 'number')
     return null
@@ -79,11 +86,11 @@ function empty(field: FormField): unknown {
   if (config.type === 'boolean')
     return config.default ?? false
 
-  if (config.type === 'dynamic')
-    return []
-
-  if (config.type === 'relation')
+  if (config.type === 'list')
     return config.multiple ? [] : ''
+
+  if (config.type === 'collection')
+    return config.multiple ? [] : onlyName(config.collections) === undefined ? null : ''
 
   if (config.type === 'image' || config.type === 'video')
     return config.multiple ? [] : null
@@ -130,16 +137,53 @@ export function toRow(fields: readonly FormField[], values: EntryValues, row: En
   return next
 }
 
-export function missingFields<TField extends FormField>(fields: TField[], values: EntryValues): TField[] {
-  return fields.filter((field) => {
-    if (field.optional)
-      return false
+export function picked(value: unknown): string[] {
+  return asList(value).filter(item => typeof item === 'string')
+}
 
+export function itemValues(fields: readonly FormField[], item: unknown, locales: readonly string[] = []): EntryValues {
+  return toValues([...fields], (isRecord(item) ? item : {}) as Entry, locales)
+}
+
+export function fromItem(fields: readonly FormField[], values: EntryValues): Record<string, unknown> {
+  return Object.fromEntries(fields.flatMap((field) => {
+    const value = fromValues(field, values)
+
+    return value === undefined ? [] : [[field.key, value]]
+  }))
+}
+
+function itemsOf(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : value === null || value === undefined ? [] : [value]
+}
+
+export function componentForm(field: FormField, item: unknown): ComponentForm | undefined {
+  if (field.config.type !== 'component')
+    return undefined
+
+  const name = itemComponent(field.config, item)
+
+  return field.components?.find(form => form.name === name)
+}
+
+function incomplete(field: FormField, value: unknown, locales: readonly string[]): boolean {
+  if (!filled(value))
+    return !field.optional
+
+  return itemsOf(value).some((item) => {
+    const form = componentForm(field, item)
+
+    return form !== undefined && missingFields(form.fields, itemValues(form.fields, item, locales), locales).length > 0
+  })
+}
+
+export function missingFields<TField extends FormField>(fields: TField[], values: EntryValues, locales: readonly string[] = []): TField[] {
+  return fields.filter((field) => {
     const value = values[field.key]!
 
     return field.translated
-      ? Object.values(value).some(translation => !filled(translation))
-      : !filled(value[SINGLE])
+      ? Object.values(value).some(translation => incomplete(field, translation, locales))
+      : incomplete(field, value[SINGLE], locales)
   })
 }
 

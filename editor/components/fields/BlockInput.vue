@@ -1,33 +1,50 @@
 <script setup lang="ts">
 import type { EntryRef } from '../../../src/entries/types'
-import type { DynamicBlock } from '../../../src/schema/fields/dynamic'
 import type { Entries } from '../../composables/useEntries'
 import type { NestedEntries } from '../../composables/useNestedEntries'
-import { ref, watchEffect } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
+import { isEntryRef } from '../../../src/entries/references'
 import { useDragOrder } from '../../composables/useDragOrder'
 import { useRouter } from '../../composables/useRouter'
+import { NESTED_DEPTH } from '../../utils/entry'
 import { moveItem } from '../../utils/order'
 import DragHandle from '../DragHandle.vue'
 import FieldList from './FieldList.vue'
 
 const props = defineProps<{
   collections: readonly string[]
+  multiple?: boolean | undefined
   entries: Entries
   nested: NestedEntries
   locales: readonly string[]
   trail: readonly EntryRef[]
 }>()
 
-const model = defineModel<DynamicBlock[]>({ required: true })
+const model = defineModel<unknown>({ required: true })
+
+const blocks = computed<EntryRef[]>(() => {
+  const value = model.value
+
+  if (props.multiple)
+    return Array.isArray(value) ? value as EntryRef[] : []
+
+  return isEntryRef(value) ? [{ collection: value.collection, id: value.id }] : []
+})
+
+function replace(next: EntryRef[]): void {
+  model.value = props.multiple ? next : next[0] ?? null
+}
 
 const { href } = useRouter()
 
 const order = useDragOrder((key, offset) => {
-  model.value = moveItem(model.value, Number(key), offset)
+  replace(moveItem(blocks.value, Number(key), offset))
 })
 
 const picking = ref(false)
 const linking = ref<number>()
+
+const deep = computed(() => props.trail.length > NESTED_DEPTH)
 
 function owner(): EntryRef {
   return props.trail[props.trail.length - 1]!
@@ -37,23 +54,23 @@ function same(left: EntryRef, right: EntryRef): boolean {
   return left.collection === right.collection && left.id === right.id
 }
 
-function repeated(block: DynamicBlock): boolean {
+function repeated(block: EntryRef): boolean {
   return props.trail.some(entry => same(entry, block))
 }
 
-function created(block: DynamicBlock): boolean {
+function created(block: EntryRef): boolean {
   return props.nested.drafts[block.id]?.linked === false
 }
 
-function linked(block: DynamicBlock): boolean {
+function linked(block: EntryRef): boolean {
   return !created(block) && block.id !== '' && props.entries.row(block.collection, block.id) !== undefined
 }
 
-function others(block: DynamicBlock): number {
+function others(block: EntryRef): number {
   return linked(block) ? props.entries.usedBy(block.collection, block.id).filter(entry => !same(entry, owner())).length : 0
 }
 
-function chain(block: DynamicBlock): string {
+function chain(block: EntryRef): string {
   if (!linked(block))
     return 'Link an existing entry instead'
 
@@ -63,8 +80,17 @@ function chain(block: DynamicBlock): string {
   return count ? `${label}, also used in ${count} other ${count === 1 ? 'entry' : 'entries'}` : label
 }
 
+function prompt(block: EntryRef): string {
+  const state = block.id ? `${block.id} does not exist anymore.` : 'No entry is linked yet.'
+
+  return `${state} Link one with the chain icon${deep.value ? '' : ' or start with new content'}.`
+}
+
 watchEffect(() => {
-  for (const block of model.value) {
+  if (deep.value)
+    return
+
+  for (const block of blocks.value) {
     const row = linked(block) && !repeated(block) ? props.entries.row(block.collection, block.id) : undefined
 
     if (row && !props.nested.drafts[block.id])
@@ -73,20 +99,20 @@ watchEffect(() => {
 })
 
 function reassign(index: number, id: string): void {
-  model.value = model.value.map((block, position) => position === index ? { ...block, id } : block)
+  replace(blocks.value.map((block, position) => position === index ? { ...block, id } : block))
 }
 
 function add(collection: string): void {
-  model.value = [...model.value, { collection, id: props.nested.create(collection, owner().id) }]
+  replace([...blocks.value, { collection, id: deep.value ? '' : props.nested.create(collection, owner().id) }])
   picking.value = false
 }
 
 function start(index: number): void {
-  reassign(index, props.nested.create(model.value[index]!.collection, owner().id))
+  reassign(index, props.nested.create(blocks.value[index]!.collection, owner().id))
 }
 
 function choose(index: number, id: string): void {
-  const block = model.value[index]!
+  const block = blocks.value[index]!
 
   if (created(block))
     props.nested.discard(block.id)
@@ -96,7 +122,7 @@ function choose(index: number, id: string): void {
 }
 
 function unlink(index: number): void {
-  const block = model.value[index]!
+  const block = blocks.value[index]!
   const copy = props.nested.copy(block.id, owner().id)
 
   props.nested.discard(block.id)
@@ -105,15 +131,15 @@ function unlink(index: number): void {
 }
 
 function remove(index: number): void {
-  const block = model.value[index]!
+  const block = blocks.value[index]!
 
   if (created(block))
     props.nested.discard(block.id)
 
-  model.value = model.value.filter((_, position) => position !== index)
+  replace(blocks.value.filter((_, position) => position !== index))
 }
 
-function groups(block: DynamicBlock, index: number) {
+function groups(block: EntryRef, index: number) {
   const items = props.entries.options(block.collection)
     .filter(option => !repeated({ collection: block.collection, id: option.value }))
     .map(option => ({
@@ -133,15 +159,15 @@ function groups(block: DynamicBlock, index: number) {
 
 <template>
   <div class="grid grid-cols-1 gap-3">
-    <div v-if="model.length" data-drag class="grid grid-cols-1 gap-3">
+    <div v-if="blocks.length" data-drag class="grid grid-cols-1 gap-3">
       <div
-        v-for="(block, index) in model"
+        v-for="(block, index) in blocks"
         :key="index"
         class="overflow-hidden rounded-lg border border-default bg-default"
         :class="order.rowClass(index, String(index))"
       >
         <div class="flex items-center gap-1 border-b border-default bg-elevated/50 px-2 py-1.5">
-          <DragHandle class="me-1" @pointerdown="order.start(String(index), index, $event)" />
+          <DragHandle v-if="multiple" class="me-1" @pointerdown="order.start(String(index), index, $event)" />
 
           <span class="flex-1 truncate text-sm font-medium text-highlighted">
             {{ entries.collectionLabel(block.collection) }}
@@ -193,6 +219,10 @@ function groups(block: DynamicBlock, index: number) {
             {{ entries.label(block.collection, block.id) }} is already open above, so it is not shown here again.
           </p>
 
+          <p v-else-if="linked(block) && deep" class="text-sm text-muted">
+            {{ entries.label(block.collection, block.id) }} is nested too deeply to edit here, so open it with the arrow above.
+          </p>
+
           <FieldList
             v-else-if="nested.drafts[block.id]"
             :fields="nested.drafts[block.id]!.fields"
@@ -205,11 +235,11 @@ function groups(block: DynamicBlock, index: number) {
 
           <div v-else class="flex flex-wrap items-center justify-between gap-2">
             <p class="text-sm text-muted">
-              {{ block.id ? `${block.id} does not exist anymore.` : 'No entry is linked yet.' }}
-              Link one with the chain icon or start with new content.
+              {{ prompt(block) }}
             </p>
 
             <UButton
+              v-if="!deep"
               label="New content"
               icon="i-hugeicons-plus-sign"
               color="neutral"
@@ -223,7 +253,8 @@ function groups(block: DynamicBlock, index: number) {
     </div>
 
     <UButton
-      label="Add a block"
+      v-if="multiple || !blocks.length"
+      :label="multiple ? 'Add a block' : 'Choose a collection'"
       icon="i-hugeicons-add-circle"
       color="neutral"
       variant="outline"

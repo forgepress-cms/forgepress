@@ -7,7 +7,7 @@ import type { Column } from '../../../utils/table'
 import { computed, ref } from 'vue'
 
 import { isCollectionName } from '../../../../src/files/paths'
-import { renameCollection } from '../../../../src/migrate/schema'
+import { renameCollection, renameComponent } from '../../../../src/migrate/schema'
 import { fieldTypeNames } from '../../../../src/schema/fields'
 import { RESERVED_FIELDS } from '../../../../src/schema/validate'
 import CollectionDialog from '../../../components/CollectionDialog.vue'
@@ -19,25 +19,26 @@ import PageHeader from '../../../components/layout/PageHeader.vue'
 import MigrationDialog from '../../../components/MigrationDialog.vue'
 import MigrationNotice from '../../../components/MigrationNotice.vue'
 import { useDragOrder } from '../../../composables/useDragOrder'
-import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
 import { useSchema } from '../../../composables/useSchema'
+import { groupOf, groupPath, useSchemaGroup } from '../../../composables/useSchemaGroup'
 import { moveKey } from '../../../utils/order'
-import { FIELD_TYPE_ITEMS, KEY_PATTERN, seedField, toFields } from '../../../utils/schema'
+import { allowsOptional, FIELD_TYPE_ITEMS, KEY_PATTERN, seedField, toFields } from '../../../utils/schema'
 import { actionsColumn, dragColumn } from '../../../utils/table'
 
 const { navigate, href } = useRouter()
 
-const name = useParam('collection')
+const group = useSchemaGroup()
+const { name, kind } = group
 
 const editor = await useSchema()
 const { schema, saving, error, review, change } = editor
 
-if (!schema.value.collections[name]) {
+if (!group.definition(schema.value)) {
   throw new Error(`[forgepress] ${name} is not in the schema`)
 }
 
-const collection = computed(() => schema.value.collections[name]!)
+const collection = computed(() => group.definition(schema.value)!)
 const fields = computed(() => toFields(collection.value, schema.value.locales ?? []))
 
 const order = useDragOrder(move)
@@ -84,7 +85,7 @@ function invalidCollection(key: string): string {
   if (!isCollectionName(key))
     return 'A key has to start with a lowercase letter and hold only letters and digits'
 
-  if (Object.hasOwn(schema.value.collections, key))
+  if (Object.hasOwn(groupOf(schema.value, kind), key))
     return `${key} already exists`
 
   return ''
@@ -94,13 +95,14 @@ async function create(label: string, key: string): Promise<void> {
   creating.value = false
 
   const written = await change((draft) => {
-    const target = draft.collections[name]!.fields as Record<string, unknown>
+    const target = group.holder(draft).fields as Record<string, unknown>
+    const components = Object.keys(draft.components ?? {}).filter(item => kind === 'collections' || item !== name)
 
-    target[key] = { ...seedField(type.value, Object.keys(draft.collections)), label: label || key, optional: true }
+    target[key] = { ...seedField(type.value, Object.keys(draft.collections), components), label: label || key, ...allowsOptional(type.value) ? { optional: true } : {} }
   })
 
   if (written)
-    navigate(`schema/${name}/${key}`)
+    navigate(group.path(key))
 }
 
 async function edit(values: CollectionValues): Promise<void> {
@@ -109,27 +111,31 @@ async function edit(values: CollectionValues): Promise<void> {
   editing.value = false
 
   const written = await change((draft) => {
-    const { fields } = draft.collections[name]!
+    const { fields } = group.holder(draft)
 
-    draft.collections[name] = { ...values.label ? { label: values.label } : {}, ...values.description ? { description: values.description } : {}, fields }
+    groupOf(draft, kind)[name] = { ...values.label ? { label: values.label } : {}, ...values.description ? { description: values.description } : {}, fields }
 
-    if (renamed)
+    if (renamed && kind === 'components')
+      renameComponent(draft, name, values.key)
+    else if (renamed)
       renameCollection(draft, name, values.key)
-  }, renamed ? { collections: { [name]: values.key } } : {})
+  }, renamed ? { [kind]: { [name]: values.key } } : {})
 
   if (written && renamed)
-    navigate(`schema/${values.key}`)
+    navigate(groupPath(kind, values.key))
 }
 
 function remove(field: FormField): Promise<boolean> {
   return change((draft) => {
-    delete draft.collections[name]!.fields[field.key]
+    delete group.holder(draft).fields[field.key]
   })
 }
 
 function move(key: string, offset: number): Promise<boolean> {
   return change((draft) => {
-    draft.collections[name]!.fields = moveKey(draft.collections[name]!.fields, key, offset)
+    const holder = group.holder(draft)
+
+    holder.fields = moveKey(holder.fields, key, offset)
   })
 }
 </script>
@@ -158,7 +164,7 @@ function move(key: string, offset: number): Promise<boolean> {
       :row-id="field => field.key"
       :row-class="row => order.rowClass(row.index, row.original.key)"
       :empty="`${collection.label ?? name} has no fields`"
-      @select="field => navigate(`schema/${name}/${field.key}`)"
+      @select="field => navigate(group.path(field.key))"
     >
       <template #drag-cell="{ row }">
         <DragHandle @pointerdown="order.start(row.original.key, row.index, $event)" />
@@ -193,7 +199,7 @@ function move(key: string, offset: number): Promise<boolean> {
             color="neutral"
             variant="ghost"
             :aria-label="`Edit ${row.original.key}`"
-            @click.stop="navigate(`schema/${name}/${row.original.key}`)"
+            @click.stop="navigate(group.path(row.original.key))"
           />
 
           <UButton

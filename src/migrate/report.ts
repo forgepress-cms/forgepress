@@ -59,6 +59,10 @@ export function collectionLabel(name: string, ...schemas: ForgePressSchema[]): s
   return schemas.map(schema => schema.collections[name]?.label).find(label => label !== undefined) ?? name
 }
 
+export function componentLabel(name: string, ...schemas: ForgePressSchema[]): string {
+  return schemas.map(schema => schema.components?.[name]?.label).find(label => label !== undefined) ?? name
+}
+
 export function groupTitle(group: EffectGroup, ...schemas: ForgePressSchema[]): string {
   const collection = collectionLabel(group.collection, ...schemas)
   const name = group.field === undefined ? collection : `${collection} · ${group.label ?? group.field}`
@@ -89,6 +93,12 @@ export function questionText(question: RenameQuestion, ...schemas: ForgePressSch
   if (question.kind === 'collection')
     return `Entries are stored for ${question.from}, which isn't a collection anymore.`
 
+  if (question.kind === 'component')
+    return `Entries hold ${question.from} items, which isn't a component anymore.`
+
+  if (question.kind === 'field' && question.component !== undefined)
+    return `${componentLabel(question.component, ...schemas)} items hold ${question.from}, which isn't a field anymore.`
+
   if (question.kind === 'field')
     return `${collectionLabel(question.collection!, ...schemas)} entries hold ${question.from}, which isn't a field anymore.`
 
@@ -98,6 +108,9 @@ export function questionText(question: RenameQuestion, ...schemas: ForgePressSch
 export function fillOptions(schema: ForgePressSchema, group: EffectGroup): FillOptions {
   const fields = schema.collections[group.collection]?.fields ?? {}
   const field = group.field === undefined ? undefined : fields[group.field]
+
+  if (group.field !== undefined && field === undefined)
+    return { types: [{ label: 'Leave empty, fill in later', value: 'empty' }], fields: [], texts: [], locales: [] }
   const locales = schema.locales ?? []
   const others = Object.entries(fields).filter(([key]) => key !== group.field)
   const choice = ([key, item]: [string, { label?: string }]): Choice<string> => ({ label: item.label ?? key, value: key })
@@ -109,7 +122,7 @@ export function fillOptions(schema: ForgePressSchema, group: EffectGroup): FillO
     locales: field && isTranslated(field, locales) ? locales.filter(locale => !group.locales.includes(locale)).map(locale => ({ label: locale.toUpperCase(), value: locale })) : [],
   }
 
-  if (field?.type === 'text' || field?.type === 'richtext' || field?.type === 'number')
+  if (field?.type === 'text' || field?.type === 'richtext' || field?.type === 'number' || field?.type === 'list')
     options.types.push({ label: 'Use the same value', value: 'value' })
 
   if (options.locales.length > 0)
@@ -164,5 +177,6 @@ export function renameHints(renames: Renames): string[] {
     ...Object.entries(renames.collections ?? {}).map(([from, to]) => `query('${from}') becomes query('${to}')`),
     ...Object.entries(renames.fields ?? {}).flatMap(([collection, fields]) => Object.entries(fields).map(([from, to]) => `${collection}.${from} becomes ${collection}.${to}`)),
     ...Object.entries(renames.locales ?? {}).map(([from, to]) => `.locale('${from}') becomes .locale('${to}')`),
+    ...Object.entries(renames.componentFields ?? {}).flatMap(([component, fields]) => Object.entries(fields).map(([from, to]) => `${component} items: ${from} becomes ${to}`)),
   ]
 }

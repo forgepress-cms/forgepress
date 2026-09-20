@@ -23,14 +23,14 @@ describe('validateSchema', () => {
             age: { type: 'number', min: 0, max: 120, step: 1, optional: true, index: false },
             portrait: { type: 'image', multiple: false },
             intro: { type: 'video', multiple: true },
-            posts: { type: 'relation', collection: 'blogPost2', multiple: true },
+            posts: { type: 'collection', collections: ['blogPost2'], multiple: true },
           },
         },
         blogPost2: {
           fields: {
-            author: { type: 'relation', collection: 'author', index: true },
-            blocks: { type: 'dynamic', collections: ['author', 'blogPost2'] },
-            empty: { type: 'dynamic', collections: [] },
+            author: { type: 'collection', collections: ['author'], index: true },
+            blocks: { type: 'collection', collections: ['author', 'blogPost2'], multiple: true },
+            single: { type: 'collection', collections: ['author'], optional: true },
           },
         },
       },
@@ -106,7 +106,7 @@ describe('validateSchema', () => {
     ])
 
     expect(issues(withField({ type: 'colour' }))).toEqual([
-      { path: ['collections', 'post', 'fields', 'field', 'type'], message: 'Field "post.field" has unknown type "colour"; use one of text, richtext, number, boolean, image, video, relation, dynamic' },
+      { path: ['collections', 'post', 'fields', 'field', 'type'], message: 'Field "post.field" has unknown type "colour"; use one of text, richtext, number, boolean, list, image, video, collection, component' },
     ])
   })
 
@@ -125,16 +125,12 @@ describe('validateSchema', () => {
     ])
   })
 
-  it('indexes only text, number, boolean and relation fields', () => {
+  it('indexes only text, number, boolean, list and collection fields', () => {
     for (const type of ['richtext', 'image', 'video']) {
       expect(issues(withField({ type, index: true }))).toEqual([
-        { path: ['collections', 'post', 'fields', 'field', 'index'], message: 'Field "post.field" can\'t be indexed; only text, number, boolean and relation fields can' },
+        { path: ['collections', 'post', 'fields', 'field', 'index'], message: 'Field "post.field" can\'t be indexed; only text, number, boolean, list and collection fields can' },
       ])
     }
-
-    expect(issues(withField({ type: 'dynamic', collections: [], index: true }))).toEqual([
-      { path: ['collections', 'post', 'fields', 'field', 'index'], message: 'Field "post.field" can\'t be indexed; only text, number, boolean and relation fields can' },
-    ])
 
     expect(issues(withField({ type: 'text', index: 'yes' }))).toEqual([
       { path: ['collections', 'post', 'fields', 'field', 'index'], message: '"index" of field "post.field" has to be true or false' },
@@ -148,7 +144,7 @@ describe('validateSchema', () => {
       { path: ['collections', 'post', 'fields', 'field', 'label'], message: '"label" of field "post.field" has to be a string' },
     ])
 
-    expect(issues(withField({ type: 'dynamic', collections: 'author' }))).toEqual([
+    expect(issues(withField({ type: 'collection', collections: 'author' }))).toEqual([
       { path: ['collections', 'post', 'fields', 'field', 'collections'], message: '"collections" of field "post.field" has to be a list of collection names' },
     ])
   })
@@ -171,28 +167,32 @@ describe('validateSchema', () => {
   })
 
   it('wants the required options', () => {
-    expect(issues(withField({ type: 'relation' }))).toEqual([
-      { path: ['collections', 'post', 'fields', 'field'], message: 'Field "post.field" needs "collection"' },
+    expect(issues(withField({ type: 'collection' }))).toEqual([
+      { path: ['collections', 'post', 'fields', 'field'], message: 'Field "post.field" needs "collections"' },
     ])
 
-    expect(issues(withField({ type: 'dynamic' }))).toEqual([
-      { path: ['collections', 'post', 'fields', 'field'], message: 'Field "post.field" needs "collections"' },
+    expect(issues(withField({ type: 'component' }))).toEqual([
+      { path: ['collections', 'post', 'fields', 'field'], message: 'Field "post.field" needs "components"' },
     ])
   })
 
   it('wants references to point at collections in the schema', () => {
-    expect(issues(withField({ type: 'relation', collection: 'autor' }))).toEqual([
-      { path: ['collections', 'post', 'fields', 'field', 'collection'], message: 'Field "post.field" references unknown collection "autor"' },
+    expect(issues(withField({ type: 'collection', collections: ['autor'] }))).toEqual([
+      { path: ['collections', 'post', 'fields', 'field', 'collections', 0], message: 'Field "post.field" references unknown collection "autor"' },
     ])
 
-    expect(issues(withField({ type: 'dynamic', collections: ['author', 'hero', 'author'] }))).toEqual([
+    expect(issues(withField({ type: 'collection', collections: [] }))).toEqual([
+      { path: ['collections', 'post', 'fields', 'field', 'collections'], message: 'Field "post.field" needs at least one collection' },
+    ])
+
+    expect(issues(withField({ type: 'collection', collections: ['author', 'hero', 'author'], multiple: true }))).toEqual([
       { path: ['collections', 'post', 'fields', 'field', 'collections', 1], message: 'Field "post.field" references unknown collection "hero"' },
       { path: ['collections', 'post', 'fields', 'field', 'collections', 2], message: 'Field "post.field" lists collection "author" twice' },
     ])
   })
 
   it('lets a collection reference itself', () => {
-    expect(issues(withField({ type: 'relation', collection: 'post' }))).toEqual([])
+    expect(issues(withField({ type: 'collection', collections: ['post'] }))).toEqual([])
   })
 
   it('wants locales before a field can be translated', () => {
@@ -211,7 +211,7 @@ describe('validateSchema', () => {
       locales: ['en', 'en'],
       collections: {
         'post': { fields: { title: { type: 'txt' } } },
-        'bad-name': { fields: { link: { type: 'relation', collection: 'nowhere' } } },
+        'bad-name': { fields: { link: { type: 'collection', collections: ['nowhere'] } } },
       },
     })).toHaveLength(4)
   })

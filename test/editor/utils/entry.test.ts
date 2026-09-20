@@ -1,7 +1,8 @@
 import type { FormField } from '../../../editor/utils/schema'
 import type { Field } from '../../../src/schema/fields'
 import { describe, expect, it } from 'vitest'
-import { entryLabel, fieldLocale, fromValues, missingFields, newEntry, SINGLE, statusLabel, titleField, toLocalizedFields, toRow, toValues, withPublished } from '../../../editor/utils/entry'
+import { entryLabel, fieldLocale, fromItem, fromValues, itemValues, missingFields, newEntry, SINGLE, statusLabel, titleField, toLocalizedFields, toRow, toValues, withPublished } from '../../../editor/utils/entry'
+import { toFields } from '../../../editor/utils/schema'
 
 const locales = ['en', 'de']
 
@@ -207,5 +208,30 @@ describe('withPublished', () => {
       { collection: 'page', entry: page },
     ])
     expect(author.status).toBe('unpublished')
+  })
+})
+
+describe('component items', () => {
+  const components = {
+    card: { label: 'Card', fields: { title: { type: 'text' }, wide: { type: 'boolean', default: true } } },
+  } as const
+  const [cards] = toFields({ fields: { cards: { type: 'component', components: ['card'], multiple: true, optional: true } } }, [], components)
+
+  it('resolve the fields of their component', () => {
+    expect(cards!.components).toMatchObject([{ name: 'card', label: 'Card' }])
+    expect(cards!.components![0]!.fields.map(item => item.key)).toEqual(['title', 'wide'])
+  })
+
+  it('turn items into form values and back, keeping defaults', () => {
+    const fields = cards!.components![0]!.fields
+
+    expect(fromItem(fields, itemValues(fields, { title: 'One' }))).toEqual({ title: 'One', wide: true })
+    expect(fromItem(fields, itemValues(fields, {}))).toEqual({ wide: true })
+  })
+
+  it('count a field as missing while one of its items misses a required value', () => {
+    expect(missingFields([cards!], { cards: { [SINGLE]: [{ title: 'One', wide: true }] } })).toEqual([])
+    expect(missingFields([cards!], { cards: { [SINGLE]: [] } })).toEqual([])
+    expect(missingFields([cards!], { cards: { [SINGLE]: [{ title: 'One' }, { wide: false }] } })).toEqual([cards])
   })
 })

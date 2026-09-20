@@ -266,7 +266,7 @@ describe('parseSchema', () => {
       '  collections: {',
       '    post: {',
       '      fields: {',
-      '        author: { type: \'relation\', collection: \'autor\' },',
+      '        author: { type: \'collection\', collections: [\'autor\'] },',
       '        title: { type: \'text\', translate: true },',
       '      },',
       '    },',
@@ -280,7 +280,7 @@ describe('parseSchema', () => {
     }
     catch (error) {
       expect((error as ContentError).issues).toEqual([
-        { file: '.forgepress/schema.ts', line: 5, column: 37, message: 'Field "post.author" references unknown collection "autor"' },
+        { file: '.forgepress/schema.ts', line: 5, column: 53, message: 'Field "post.author" references unknown collection "autor"' },
         { file: '.forgepress/schema.ts', line: 6, column: 32, message: 'Field "post.title" is translated, but the schema has no locales' },
       ])
     }

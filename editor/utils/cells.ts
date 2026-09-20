@@ -5,6 +5,7 @@ import type { Entries } from '../composables/useEntries'
 import type { FormField } from './schema'
 import { h } from 'vue'
 import { isEntryRef } from '../../src/entries/references'
+import { onlyName } from '../../src/schema/fields/picked'
 import { asList } from '../../src/utils/value'
 import MediaPreview from '../components/media/MediaPreview.vue'
 import { markdownInline, markdownText } from './markdown'
@@ -45,17 +46,26 @@ export function fieldCell(field: FormField, value: unknown, entries: Entries): V
   if (config.type === 'image' || config.type === 'video')
     return thumbnails(toList(value), config.type)
 
+  if (config.type === 'component') {
+    const items = toList(value)
+    const label = field.components?.length === 1 ? field.components[0]!.label : field.label
+
+    return items.length ? clamp(config.multiple ? `${items.length} × ${label}` : label) : h('span', { class: 'text-dimmed' }, '—')
+  }
+
   if (config.type === 'boolean')
     return h('span', { class: value === true ? 'text-highlighted' : 'text-dimmed' }, value === true ? 'Yes' : value === false ? 'No' : '—')
 
   if (config.type === 'richtext')
     return clampMarkdown(String(value ?? ''))
 
-  if (config.type === 'relation')
-    return clamp(line(asList(value).map(id => entries.label(config.collection, id))))
+  if (config.type === 'collection') {
+    const only = onlyName(config.collections)
 
-  if (config.type === 'dynamic')
-    return clamp(line(asList(value).filter(isEntryRef).map(block => entries.label(block.collection, block.id))))
+    return clamp(line(only === undefined
+      ? asList(value).filter(isEntryRef).map(block => entries.label(block.collection, block.id))
+      : asList(value).map(id => entries.label(only, id))))
+  }
 
   return clamp(line(value))
 }

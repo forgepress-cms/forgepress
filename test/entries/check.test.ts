@@ -18,7 +18,7 @@ export default {
     blogPost: {
       fields: {
         title: { type: 'text', translate: true },
-        author: { type: 'relation', collection: 'author' },
+        author: { type: 'collection', collections: ['author'] },
       },
     },
   },
@@ -90,9 +90,9 @@ describe('checking content', () => {
   it('stops at schema problems, since entries cannot be checked against a broken schema', () => {
     expect(problems(
       [{ collection: 'author', id: 'author_1', path: '.forgepress/content/author/author_1.ts', text: 'export default nonsense\n' }],
-      { ...schema, text: schema.text.replace('collection: \'author\'', 'collection: \'autor\'') },
+      { ...schema, text: schema.text.replace('collections: [\'author\']', 'collections: [\'autor\']') },
     )).toEqual([
-      '.forgepress/schema.ts:14:37 Field "blogPost.author" references unknown collection "autor"',
+      '.forgepress/schema.ts:14:53 Field "blogPost.author" references unknown collection "autor"',
     ])
   })
 
@@ -126,7 +126,7 @@ describe('parseContent', () => {
   })
 
   it('has no schema when the schema has problems', () => {
-    const parsed = parseContent({ ...schema, text: schema.text.replace('collection: \'author\'', 'collection: \'autor\'') }, [])
+    const parsed = parseContent({ ...schema, text: schema.text.replace('collections: [\'author\']', 'collections: [\'autor\']') }, [])
 
     expect(parsed.schema).toBeUndefined()
     expect(parsed.issues).toHaveLength(1)

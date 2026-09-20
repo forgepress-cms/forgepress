@@ -39,7 +39,7 @@ function committedSchema(root: string, path: string): ForgePressSchema | undefin
 }
 
 function questionKey(question: RenameQuestion): string {
-  return [question.kind, question.collection ?? '', question.from].join('/')
+  return [question.kind, question.collection ?? question.component ?? '', question.from].join('/')
 }
 
 async function fill(ask: Ask, schema: ForgePressSchema, group: EffectGroup, title: string): Promise<Fill> {
@@ -91,7 +91,7 @@ export async function migrate(root: string, config: ResolvedConfig, { ask, yes, 
   const after = await createFileSource(files, config.paths).schema()
   const content = await readEntries(files, config.paths)
   const before = committedSchema(root, config.paths.schema) ?? after
-  const renames = { collections: {} as Record<string, string>, fields: {} as Record<string, Record<string, string>>, locales: {} as Record<string, string> }
+  const renames = { collections: {} as Record<string, string>, fields: {} as Record<string, Record<string, string>>, locales: {} as Record<string, string>, components: {} as Record<string, string>, componentFields: {} as Record<string, Record<string, string>> }
   const answered = new Set<string>()
 
   for (;;) {
@@ -115,8 +115,12 @@ export async function migrate(root: string, config: ResolvedConfig, { ask, yes, 
 
     if (question.kind === 'collection')
       renames.collections[question.from] = answer
+    else if (question.kind === 'component')
+      renames.components[question.from] = answer
     else if (question.kind === 'locale')
       renames.locales[question.from] = answer
+    else if (question.component !== undefined)
+      (renames.componentFields[question.component] ??= {})[question.from] = answer
     else
       (renames.fields[question.collection!] ??= {})[question.from] = answer
   }

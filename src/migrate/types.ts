@@ -6,6 +6,8 @@ export interface Renames {
   collections?: Readonly<Record<string, string>>
   fields?: Readonly<Record<string, Readonly<Record<string, string>>>>
   locales?: Readonly<Record<string, string>>
+  components?: Readonly<Record<string, string>>
+  componentFields?: Readonly<Record<string, Readonly<Record<string, string>>>>
 }
 
 export type Fill
@@ -58,8 +60,9 @@ export interface Migration {
 }
 
 export interface RenameQuestion {
-  kind: 'collection' | 'field' | 'locale'
+  kind: 'collection' | 'component' | 'field' | 'locale'
   collection?: string
+  component?: string
   from: string
   to: string[]
 }

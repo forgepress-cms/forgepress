@@ -1,6 +1,8 @@
 import type { Entry } from '../entries/types'
+import type { Field } from '../schema/fields'
 import type { ForgePressSchema } from '../schema/types'
 import type { Content, RenameQuestion, Renames } from './types'
+import { componentItems } from '../entries/items'
 import { META_KEYS } from '../entries/meta'
 import { isTranslated } from '../schema/fields'
 import { isTranslations } from './convert'
@@ -16,8 +18,85 @@ export interface QuestionInput {
 
 const META: ReadonlySet<string> = new Set(META_KEYS)
 
-function empty(rows: readonly Record<string, unknown>[], key: string): boolean {
+type Row = Record<string, unknown>
+
+function empty(rows: readonly Row[], key: string): boolean {
   return rows.every(row => leaves(row[key]) === 0)
+}
+
+function collectItems(schema: ForgePressSchema, field: Field | undefined, value: unknown, translated: boolean, found: Map<string, Row[]>): void {
+  if (!field || field.type !== 'component')
+    return
+
+  for (const { name, item } of componentItems(field, value, translated)) {
+    const definition = schema.components?.[name]
+
+    if (!definition)
+      continue
+
+    found.set(name, [...found.get(name) ?? [], item])
+
+    for (const [key, inner] of Object.entries(definition.fields))
+      collectItems(schema, inner, item[key], isTranslated(inner, schema.locales ?? []), found)
+  }
+}
+
+function itemsByComponent(schema: ForgePressSchema, content: Content): Map<string, Row[]> {
+  const found = new Map<string, Row[]>()
+
+  for (const [collection, definition] of Object.entries(schema.collections)) {
+    for (const row of content[collection] ?? []) {
+      for (const [key, field] of Object.entries(definition.fields))
+        collectItems(schema, field, row[key], isTranslated(field, schema.locales ?? []), found)
+    }
+  }
+
+  return found
+}
+
+function componentQuestions(before: ForgePressSchema, after: ForgePressSchema, content: Content, renames: Renames): RenameQuestion[] {
+  const questions: RenameQuestion[] = []
+  const items = itemsByComponent(before, content)
+  const componentRenames = renames.components ?? {}
+  const componentSources = invert(componentRenames)
+  const takenComponents = new Set(Object.values(componentRenames))
+  const previous = before.components ?? {}
+  const current = after.components ?? {}
+
+  for (const from of Object.keys(previous)) {
+    if (from in componentRenames || current[from] || (items.get(from) ?? []).length === 0)
+      continue
+
+    const to = Object.keys(current).filter(name => !takenComponents.has(name) && !previous[name])
+
+    if (to.length > 0)
+      questions.push({ kind: 'component', from, to })
+  }
+
+  for (const [target, definition] of Object.entries(current)) {
+    const source = componentSources[target] ?? target
+    const fields = previous[source]?.fields
+
+    if (!fields)
+      continue
+
+    const fieldRenames = renames.componentFields?.[target] ?? {}
+    const taken = new Set(Object.values(fieldRenames))
+    const rows = items.get(source) ?? []
+
+    for (const from of Object.keys(fields)) {
+      if (from in fieldRenames || definition.fields[from])
+        continue
+
+      const holders = rows.filter(row => leaves(row[from]) > 0)
+      const to = Object.keys(definition.fields).filter(key => !taken.has(key) && !(key in fieldRenames) && empty(holders, key))
+
+      if (holders.length > 0 && to.length > 0)
+        questions.push({ kind: 'field', component: target, from, to })
+    }
+  }
+
+  return questions
 }
 
 export function renameQuestions({ before, after, content, renames = {}, repair = false }: QuestionInput): RenameQuestion[] {
@@ -37,6 +116,8 @@ export function renameQuestions({ before, after, content, renames = {}, repair =
     if (to.length > 0)
       questions.push({ kind: 'collection', from, to })
   }
+
+  questions.push(...componentQuestions(before, after, content, renames))
 
   const records: Record<string, unknown>[] = []
 

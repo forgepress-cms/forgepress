@@ -1,4 +1,5 @@
 import type { MediaContent } from '../../media/types'
+import type { Listed } from './picked'
 import type { FieldOf, FieldTypeDefinition } from './types'
 
 const image = {
@@ -11,6 +12,6 @@ const image = {
 
 export type ImageField = FieldOf<typeof image>
 
-export type ImageFieldContent<TField extends ImageField> = TField['multiple'] extends true ? MediaContent[] : MediaContent
+export type ImageFieldContent<TField extends ImageField> = Listed<TField, MediaContent>
 
 export default image

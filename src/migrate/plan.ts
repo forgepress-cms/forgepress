@@ -1,16 +1,19 @@
 import type { Entry } from '../entries/types'
 import type { Field } from '../schema/fields'
-import type { Collection } from '../schema/types'
+import type { Collection, Component } from '../schema/types'
 import type { EntryWrite } from '../store/types'
-import type { Conversion, Links, LocaleMap } from './convert'
+import type { ComponentMap, Conversion, Links, LocaleMap } from './convert'
 import type { Effect, Fill, Fix, Migration, MigrationInput } from './types'
 import { entryId } from '../entries/id'
+import { componentItems } from '../entries/items'
 import { META_KEYS } from '../entries/meta'
+import { isEntryRef } from '../entries/references'
 import { validateField } from '../entries/validate'
 import { isTranslated } from '../schema/fields'
+import { COMPONENT_KEY } from '../schema/fields/picked'
 import { defaultLocale } from '../schema/locales'
 import { filled, isRecord, same } from '../utils/value'
-import { convertField, isTranslations, single } from './convert'
+import { convertField, hasTranslations, isTranslations, single } from './convert'
 import { nearest, slugify } from './fill'
 import { entryTitle, normalize, textOf, titleKey } from './lookup'
 
@@ -27,6 +30,19 @@ const META: ReadonlySet<string> = new Set(META_KEYS)
 
 export function invert(record: Readonly<Record<string, string>> = {}): Record<string, string> {
   return Object.fromEntries(Object.entries(record).map(([from, to]) => [to, from]))
+}
+
+function identity(value: unknown): string {
+  if (typeof value === 'string')
+    return `id:${value}`
+
+  if (isEntryRef(value))
+    return `id:${value.id}`
+
+  if (isRecord(value))
+    return `item:${JSON.stringify(Object.entries(value).filter(([key]) => key !== COMPONENT_KEY).sort())}`
+
+  return `value:${JSON.stringify(value)}`
 }
 
 export function leaves(value: unknown): number {
@@ -52,6 +68,30 @@ function gaps(value: unknown, field: Field, locales: readonly string[]): (string
   return isRecord(value) ? locales.filter(locale => value[locale] === undefined) : []
 }
 
+function itemGaps(field: Field | undefined, value: unknown, components: Readonly<Record<string, Component>>, locales: readonly string[], path: string, label: string, found = new Map<string, string>()): Map<string, string> {
+  if (!field || field.type !== 'component')
+    return found
+
+  for (const { name: component, item } of componentItems(field, value, isTranslated(field, locales))) {
+    const definition = components[component]
+
+    if (!definition)
+      continue
+
+    for (const [key, inner] of Object.entries(definition.fields)) {
+      const at = `${path}.${key}`
+      const name = `${label} › ${inner.label ?? key}`
+
+      if (gaps(item[key], inner, locales).length > 0)
+        found.set(at, name)
+      else
+        itemGaps(inner, item[key], components, locales, at, name, found)
+    }
+  }
+
+  return found
+}
+
 function constraints(key: string, field: Field | undefined, value: unknown, locales: readonly string[]): { path: readonly (string | number)[], message: string }[] {
   if (!field || value === undefined)
     return []
@@ -72,6 +112,15 @@ export function planMigration(input: MigrationInput): Migration {
   const rename = (name: string): string => collectionRenames[name] ?? name
   const localeRenames = renames.locales ?? {}
   const localeSources = invert(localeRenames)
+
+  const componentRenames = renames.components ?? {}
+
+  const components: ComponentMap = {
+    before: before.components ?? {},
+    after: after.components ?? {},
+    rename: name => componentRenames[name] ?? name,
+    fields: name => renames.componentFields?.[name] ?? {},
+  }
 
   const locales: LocaleMap = {
     before: before.locales ?? [],
@@ -171,13 +220,15 @@ export function planMigration(input: MigrationInput): Migration {
   }
 
   function conversion(collection: string, field: string, holder: Row, unmatched: string[] = []): Conversion {
-    return { links: links(collection, field, holder, unmatched), locales }
+    return { links: links(collection, field, holder, unmatched), locales, components }
   }
 
-  function record(note: Note, key: string, renamed: boolean, field: Field, value: unknown, converted: unknown, unmatched: boolean): void {
+  function record(note: Note, key: string, renamed: boolean, was: Field | undefined, field: Field, value: unknown, converted: unknown, unmatched: boolean): void {
     const label = field.label ?? key
+    const from = hasTranslations(value, was, field, locales)
+    const into = field.type === 'component' ? isTranslated(field, locales.after) && isRecord(converted) : isTranslations(converted)
 
-    if (isTranslations(value) && !isTranslations(converted) && !isTranslated(field, locales.after)) {
+    if (from && !into && !isTranslated(field, locales.after)) {
       const kept = [locales.source(locales.defaults.after ?? ''), locales.defaults.before ?? '', ...Object.keys(value)].find(locale => filled(value[locale]))
 
       for (const [locale, item] of Object.entries(value)) {
@@ -192,7 +243,7 @@ export function planMigration(input: MigrationInput): Migration {
       return
     }
 
-    if (isTranslations(value) && isTranslations(converted)) {
+    if (from && into && isRecord(converted)) {
       for (const [locale, item] of Object.entries(value)) {
         const kept = converted[locales.rename(locale)]
 
@@ -206,9 +257,9 @@ export function planMigration(input: MigrationInput): Migration {
     }
 
     if (leaves(converted) < leaves(value)) {
-      const kept: unknown[] = Array.isArray(converted) ? converted : [converted]
+      const kept = (Array.isArray(converted) ? converted : [converted]).map(identity)
       const items: unknown[] = Array.isArray(value) ? value : []
-      const dropped = items.filter(item => !kept.some(other => same(other, item)))
+      const dropped = items.filter(item => !kept.includes(identity(item)))
 
       note({ kind: unmatched ? 'unmatched' : 'lost', field: key, label, before: dropped.length > 0 && dropped.length < items.length ? dropped : value, after: converted })
     }
@@ -323,6 +374,13 @@ export function planMigration(input: MigrationInput): Migration {
 
       for (const locale of gaps(next[key], field, locales.after))
         note({ kind: 'missing', field: key, label: field.label ?? key, ...locale === undefined ? {} : { locale } })
+
+      const known = itemGaps(was, raw, components.before, locales.before, key, field.label ?? key)
+
+      for (const [path, label] of itemGaps(field, next[key], components.after, locales.after, key, field.label ?? key)) {
+        if (!known.has(path))
+          note({ kind: 'missing', field: path, label })
+      }
     }
   }
 
@@ -349,7 +407,7 @@ export function planMigration(input: MigrationInput): Migration {
         if (converted !== undefined)
           next[renamed] = converted
 
-        record(note, renamed, renamed !== key, field, value, converted, unmatched.length > 0)
+        record(note, renamed, renamed !== key, previous[key], field, value, converted, unmatched.length > 0)
       }
       else if (previous[key] || repair || fields[key]) {
         if (leaves(value) > 0)
@@ -407,7 +465,7 @@ export function planMigration(input: MigrationInput): Migration {
 
   for (const { collection, entry } of write) {
     for (const [key, field] of Object.entries(after.collections[collection]?.fields ?? {})) {
-      for (const issue of validateField(key, { ...field, optional: true } as Field, entry[key], locales.after)) {
+      for (const issue of validateField(key, { ...field, optional: true } as Field, entry[key], locales.after, components.after)) {
         if (issue.kind === 'type')
           blocked.push(`${collection}/${entry.id}: ${issue.message}`)
       }

@@ -6,7 +6,10 @@ export interface Collection {
   fields: Record<string, Field>
 }
 
+export type Component = Collection
+
 export interface ForgePressSchema {
+  components?: Record<string, Component>
   collections: Record<string, Collection>
   locales?: readonly string[]
   defaultLocale?: string

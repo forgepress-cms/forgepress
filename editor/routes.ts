@@ -18,8 +18,10 @@ export const routes: EditorRoutes = {
   'content/:collection/:id': contentCollectionId,
 
   'schema': schema,
-  'schema/:collection': schemaCollection,
-  'schema/:collection/:field': schemaCollectionField,
+  'schema/collections/:collection': schemaCollection,
+  'schema/collections/:collection/:field': schemaCollectionField,
+  'schema/components/:component': schemaCollection,
+  'schema/components/:component/:field': schemaCollectionField,
 
   'assets': assets,
 }

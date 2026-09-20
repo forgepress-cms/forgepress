@@ -1,6 +1,6 @@
 import type { Field } from '../../src/schema/fields'
-import type { FieldOption } from '../../src/schema/fields/types'
-import type { Collection } from '../../src/schema/types'
+import type { FieldOption, FieldTypeDefinition } from '../../src/schema/fields/types'
+import type { Collection, Component } from '../../src/schema/types'
 import { fieldTypeNames, fieldTypes, isTranslated } from '../../src/schema/fields'
 
 export const FIELD_ICONS: Record<string, string> = {
@@ -8,10 +8,11 @@ export const FIELD_ICONS: Record<string, string> = {
   richtext: 'i-hugeicons-text-align-left',
   number: 'i-hugeicons-hashtag',
   boolean: 'i-hugeicons-toggle-on',
+  list: 'i-hugeicons-left-to-right-list-bullet',
   image: 'i-hugeicons-image-01',
   video: 'i-hugeicons-video-02',
-  relation: 'i-hugeicons-link-01',
-  dynamic: 'i-hugeicons-dashboard-square-01',
+  collection: 'i-hugeicons-link-01',
+  component: 'i-hugeicons-layers-01',
 }
 
 export const FIELD_TYPE_ITEMS = fieldTypeNames.map(type => ({ label: fieldTypes[type].label, value: type }))
@@ -26,14 +27,21 @@ export interface FormField {
   config: Field
   translated: boolean
   optional: boolean
+  components?: ComponentForm[]
+}
+
+export interface ComponentForm {
+  name: string
+  label: string
+  fields: FormField[]
 }
 
 export interface LocalizedField extends FormField {
   locale: string
 }
 
-export function toFields(collection: Collection, locales: readonly string[] = []): FormField[] {
-  return Object.entries(collection.fields).map(([key, config]) => ({
+function fieldsOf(holder: Collection | Component, locales: readonly string[], forms: Readonly<Record<string, ComponentForm>>): FormField[] {
+  return Object.entries(holder.fields).map(([key, config]) => ({
     key,
     label: config.label ?? key,
     description: config.description ?? '',
@@ -43,7 +51,26 @@ export function toFields(collection: Collection, locales: readonly string[] = []
     config,
     translated: isTranslated(config, locales),
     optional: config.optional ?? false,
+    ...config.type === 'component' ? { components: config.components.flatMap(name => forms[name] ?? []) } : {},
   }))
+}
+
+export function componentForms(components: Readonly<Record<string, Component>>, locales: readonly string[] = []): Record<string, ComponentForm> {
+  const forms: Record<string, ComponentForm> = Object.fromEntries(Object.entries(components)
+    .map(([name, definition]) => [name, { name, label: definition.label ?? name, fields: [] }]))
+
+  for (const [name, definition] of Object.entries(components))
+    forms[name]!.fields = fieldsOf(definition, locales, forms)
+
+  return forms
+}
+
+export function toFields(collection: Collection, locales: readonly string[] = [], components: Readonly<Record<string, Component>> = {}): FormField[] {
+  return fieldsOf(collection, locales, componentForms(components, locales))
+}
+
+export function allowsOptional(type: Field['type']): boolean {
+  return !(fieldTypes[type] as FieldTypeDefinition).without?.includes('optional')
 }
 
 export const KEY_PATTERN = /^[a-z_$][\w$]*$/i
@@ -60,15 +87,28 @@ export function toKey(value: string): string {
 }
 
 export function seedOption(option: FieldOption): unknown {
-  return option.type === 'boolean' ? false : option.type === 'collections' ? [] : option.type === 'number' ? null : ''
+  if (option.type === 'boolean')
+    return false
+
+  if (option.type === 'collections' || option.type === 'components' || option.type === 'strings')
+    return []
+
+  return option.type === 'number' ? null : ''
 }
 
-export function seedField(type: Field['type'], collections: string[]): Record<string, unknown> {
+export function seedField(type: Field['type'], collections: string[], components: string[] = []): Record<string, unknown> {
   const config: Record<string, unknown> = { type }
 
   for (const [option, spec] of Object.entries(fieldTypes[type].options)) {
-    if ('required' in spec)
-      config[option] = spec.type === 'collection' ? collections[0] ?? '' : seedOption(spec)
+    if (!('required' in spec))
+      continue
+
+    if (spec.type === 'collections')
+      config[option] = collections.slice(0, 1)
+    else if (spec.type === 'components')
+      config[option] = components.slice(0, 1)
+    else
+      config[option] = seedOption(spec)
   }
 
   return config

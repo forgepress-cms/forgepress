@@ -90,26 +90,26 @@ function field(config: Field): FormField {
 
 describe('fieldCell', () => {
   it('names the entry a relation points at', () => {
-    const cell = fieldCell(field({ type: 'relation', collection: 'author' }), 'author_a1', entries)
+    const cell = fieldCell(field({ type: 'collection', collections: ['author'] }), 'author_a1', entries)
 
     expect(render(() => cell).textContent).toBe('Jane Doe')
   })
 
   it('names every entry of a multiple relation', () => {
-    const config: Field = { type: 'relation', collection: 'author', multiple: true }
+    const config: Field = { type: 'collection', collections: ['author'], multiple: true }
     const cell = fieldCell(field(config), ['author_a1', 'author_b2'], entries)
 
     expect(render(() => cell).textContent).toBe('Jane Doe, John Roe')
   })
 
   it('falls back to the id when the entry is gone', () => {
-    const cell = fieldCell(field({ type: 'relation', collection: 'author' }), 'author_missing', entries)
+    const cell = fieldCell(field({ type: 'collection', collections: ['author'] }), 'author_missing', entries)
 
     expect(render(() => cell).textContent).toBe('author_missing')
   })
 
   it('names the entries behind dynamic blocks', () => {
-    const config: Field = { type: 'dynamic', collections: ['hero', 'textBlock'] }
+    const config: Field = { type: 'collection', collections: ['hero', 'textBlock'], multiple: true }
     const value = [{ collection: 'hero', id: 'hero_c3' }, { collection: 'textBlock', id: 'textBlock_d4' }]
 
     expect(render(() => fieldCell(field(config), value, entries)).textContent).toBe('Welcome to our website, A short body')

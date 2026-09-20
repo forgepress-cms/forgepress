@@ -26,7 +26,7 @@ export default {
     blogPost: {
       fields: {
         title: { type: 'text', translate: true },
-        author: { type: 'relation', collection: 'author' },
+        author: { type: 'collection', collections: ['author'] },
       },
     },
   },
@@ -92,7 +92,7 @@ describe('reading content from disk', () => {
 
     expect(found.locales).toEqual(['en', 'de'])
     expect(Object.keys(found.collections)).toEqual(['author', 'blogPost'])
-    expect(found.collections.blogPost?.fields.author).toEqual({ type: 'relation', label: 'Author', collection: 'author' })
+    expect(found.collections.blogPost?.fields.author).toEqual({ type: 'collection', label: 'Author', collections: ['author'] })
   })
 
   it('resolves a collection to its entry files', async () => {
@@ -128,11 +128,11 @@ describe('reading content from disk', () => {
   })
 
   it('reports schema problems with their position', async () => {
-    project({ '.forgepress/schema.ts': 'export default { collections: { post: { fields: { author: { type: \'relation\', collection: \'autor\' } } } } }\n' })
+    project({ '.forgepress/schema.ts': 'export default { collections: { post: { fields: { author: { type: \'collection\', collections: [\'autor\'] } } } } }\n' })
 
     await expect(source(scratch).schema())
       .rejects
-      .toThrow('[forgepress] .forgepress/schema.ts:1:79 Field "post.author" references unknown collection "autor"')
+      .toThrow('[forgepress] .forgepress/schema.ts:1:95 Field "post.author" references unknown collection "autor"')
   })
 })
 

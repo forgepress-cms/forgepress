@@ -18,8 +18,8 @@ const schema = {
       fields: {
         title: { type: 'text', translate: true, index: true },
         summary: { type: 'text', translate: true, optional: true, index: true },
-        author: { type: 'relation', collection: 'author', index: true },
-        blocks: { type: 'dynamic', collections: ['hero'], optional: true },
+        author: { type: 'collection', collections: ['author'], index: true },
+        blocks: { type: 'collection', collections: ['hero', 'author'], multiple: true, optional: true },
       },
     },
     hero: {
@@ -86,7 +86,7 @@ describe('createOutput', () => {
 
     expect(files.get('index.json')).toBe(`${JSON.stringify(index, null, 2)}\n`)
     expect(index).toEqual({
-      version: 1,
+      version: 3,
       commit: 'b03db8f3643a31d7dfaf48ccf77777a33e5e42ae',
       locales: ['en', 'de'],
       collections: {
@@ -114,7 +114,7 @@ describe('createOutput', () => {
     const authors = read<OutputManifest>(files, (index.collections.author as { manifest: string }).manifest)
 
     expect(english.indexed).toEqual(['title', 'summary', 'author'])
-    expect(english.links).toEqual({ author: 'relation', blocks: 'dynamic' })
+    expect(english.links).toEqual({ author: { collections: ['author'], multiple: false }, blocks: { collections: ['hero', 'author'], multiple: true } })
     expect(english.entries).toEqual([
       { id: 'post_1', createdAt: '2024-02-01T00:00:00Z', updatedAt: '2024-02-05T00:00:00Z', title: 'First', summary: 'Short', author: { collection: 'author', id: 'author_1' } },
       { id: 'post_2', createdAt: '2024-03-01T00:00:00Z', updatedAt: '2024-03-01T00:00:00Z', title: 'Second', author: { collection: 'author', id: 'author_1' } },
@@ -177,7 +177,7 @@ describe('createOutput', () => {
 
     const index = read<OutputIndex>(files, 'index.json')
 
-    expect(index).toEqual({ version: 1, commit: null, dev: true, locales: [], collections: { page: { localized: false, manifest: expect.stringMatching(/^page\/index\.[\da-f]{8}\.json$/) } } })
+    expect(index).toEqual({ version: 3, commit: null, dev: true, locales: [], collections: { page: { localized: false, manifest: expect.stringMatching(/^page\/index\.[\da-f]{8}\.json$/) } } })
     expect(read<OutputManifest>(files, (index.collections.page as { manifest: string }).manifest).entries).toEqual([
       { id: 'page_1', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', title: 'Home' },
     ])

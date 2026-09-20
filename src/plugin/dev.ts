@@ -2,8 +2,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { ResolvedConfig } from '../config/resolve'
 import type { ContentIssue } from '../files/issues'
 import type { OriginPolicy } from './endpoint'
+import { createHash } from 'node:crypto'
 import { join, sep } from 'node:path'
 import { debounce } from 'perfect-debounce'
+import { listFiles, readText } from '../disk/files'
 import { buildOutput } from '../disk/output'
 import { createWriter } from '../disk/writer'
 import { ENDPOINT } from '../endpoint/routes'
@@ -36,6 +38,8 @@ export function createDevContent(root: string, config: ResolvedConfig, logger: D
 
   let reported = ''
   let latest: readonly ContentIssue[] = []
+  let announced = ''
+  let writing = 0
 
   function report(issues: readonly ContentIssue[]): void {
     const message = issues.length > 0 ? new ContentError(issues).message : ''
@@ -53,6 +57,16 @@ export function createDevContent(root: string, config: ResolvedConfig, logger: D
       logger.info('[forgepress] content problems are fixed')
 
     reported = message
+  }
+
+  async function sources(): Promise<string> {
+    const hash = createHash('sha256')
+    const files = [schemaFile, ...(await listFiles(contentDir)).sort().map(file => join(contentDir, file))]
+
+    for (const file of files)
+      hash.update(file).update('\0').update(await readText(file) ?? '').update('\0')
+
+    return hash.digest('hex')
   }
 
   async function write(): Promise<void> {
@@ -74,9 +88,20 @@ export function createDevContent(root: string, config: ResolvedConfig, logger: D
     }
   }
 
-  const rebuild = debounce(async (after?: () => void) => {
+  const rebuild = debounce(async (announce: boolean) => {
+    const digest = await sources()
+
     await write().catch((error: unknown) => logger.error(`[forgepress] could not write the content output: ${errorMessage(error)}`))
-    after?.()
+
+    if (announce && writing > 0)
+      return
+
+    const changed = digest !== announced
+
+    announced = digest
+
+    if (announce && changed)
+      reload()
   }, 100)
 
   return {
@@ -84,10 +109,10 @@ export function createDevContent(root: string, config: ResolvedConfig, logger: D
 
     changed: (file) => {
       if (file === schemaFile || file.startsWith(`${contentDir}${sep}`))
-        void rebuild(reload)
+        void rebuild(true)
     },
 
-    refresh: () => rebuild(),
+    refresh: () => rebuild(false),
 
     endpoint: (request, response, next) => {
       const method = request.method ?? ''
@@ -96,14 +121,19 @@ export function createDevContent(root: string, config: ResolvedConfig, logger: D
       if (!handled || !request.url?.startsWith(`${ENDPOINT}/`))
         return next()
 
+      const writes = method !== 'GET'
+
+      if (writes)
+        writing++
+
       handle(config, root, request, response, { migrations, issues: () => latest }, origins)
-        .then((changed) => {
-          if (changed)
-            void rebuild(reload)
-        })
         .catch((error: unknown) => {
           response.statusCode = error instanceof EndpointError ? error.status : 500
           response.end(errorMessage(error))
+        })
+        .finally(() => {
+          if (writes && --writing === 0)
+            void rebuild(true)
         })
     },
   }

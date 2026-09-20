@@ -8,10 +8,10 @@ const schema = {
   collections: {
     page: {
       fields: {
-        author: { type: 'relation', collection: 'author', optional: true },
-        editors: { type: 'relation', collection: 'author', multiple: true, optional: true },
-        blocks: { type: 'dynamic', collections: ['hero'], optional: true },
-        links: { type: 'relation', collection: 'page', multiple: true, translate: true, optional: true },
+        author: { type: 'collection', collections: ['author'], optional: true },
+        editors: { type: 'collection', collections: ['author'], multiple: true, optional: true },
+        blocks: { type: 'collection', collections: ['hero', 'page'], multiple: true, optional: true },
+        links: { type: 'collection', collections: ['page'], multiple: true, translate: true, optional: true },
       },
     },
     author: { fields: {} },
@@ -98,7 +98,7 @@ describe('entryReferences', () => {
     expect(entryReferences(schema, 'page', entry('page_1', {
       author: 'author_1',
       editors: ['author_2'],
-      blocks: [{ collection: 'hero', id: 'hero_1' }, { collection: 'page', id: 'page_9' }],
+      blocks: [{ collection: 'hero', id: 'hero_1' }, { collection: 'author', id: 'author_9' }],
       links: { en: ['page_2'], de: ['page_3'] },
     }))).toEqual([
       { path: ['author'], collection: 'author', id: 'author_1' },

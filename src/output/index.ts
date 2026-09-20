@@ -8,7 +8,7 @@ import { sortByCreation } from '../entries/order'
 import { toCollectionDir } from '../files/paths'
 import { digest } from '../utils/encoding'
 import { defined, pick } from '../utils/value'
-import { indexedFields, isLocalized, linkFields, toOutputEntry } from './entry'
+import { indexedFields, isLocalized, linkedComponents, linkFields, toOutputEntry } from './entry'
 import { OUTPUT_INDEX, OUTPUT_VERSION } from './types'
 
 export const OUTPUT_DEFAULTS = {
@@ -46,9 +46,13 @@ async function collectionOutput(schema: ForgePressSchema, collection: string, en
   const converted = entries.map(entry => toOutputEntry(schema, collection, entry, locale))
   const files = await Promise.all(converted.map(entry => hashed(folder, entry.id, entry)))
 
+  const links = linkFields(schema, collection)
+  const components = linkedComponents(schema, links)
+
   const manifest: OutputManifest = {
     indexed,
-    links: linkFields(schema, collection),
+    links,
+    ...components === undefined ? {} : { components },
     entries: converted.map(entry => pick(entry, listed) as OutputEntry),
     files: Object.fromEntries(converted.map((entry, index) => [entry.id, files[index]!.path])),
   }

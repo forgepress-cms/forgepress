@@ -210,8 +210,86 @@ Available fields include:
 - `boolean`: on/off switch
 - `image`: image upload
 - `video`: video upload
-- `relation`: link to another collection's entry
-- `dynamic`: link to any predefined collection's entry
+- `list`: one or multiple of a set of values
+- `collection`: one or multiple collections of entries
+- `component`: one or multiple inline items of a component
+
+### Collections and components in fields
+
+A `collection` field points at entries, a `component` field at inline items. Both name what they can hold, and both take `multiple`:
+
+```ts
+const fields = {
+  author: { type: 'collection', collections: ['author'] },
+  tags: { type: 'collection', collections: ['tag'], multiple: true, index: true },
+  content: { type: 'collection', collections: ['banner', 'cards'], multiple: true },
+  hero: { type: 'component', components: ['banner'] },
+  blocks: { type: 'component', components: ['card', 'quote'], multiple: true },
+}
+```
+
+How a value is stored follows from the number of names:
+- One name: the value stands on its own, an entry id for a collection field and a plain item for a component field.
+- Several names: the value says which one it is, `{ collection, id }` for a collection field and a `component` key in the item for a component field.
+
+Adding or removing a name changes that shape, and the migration converts the content when you save.
+Inside a component `component` is reserved, since that is where an item carries its name.
+
+### Components
+
+Components are groups of fields that live inside an entry instead of being entries of their own, such as the cards of a page.
+They are defined next to the collections, and a `component` field holds one item or, with `multiple: true`, a list of them:
+
+```ts
+export default {
+  components: {
+    card: {
+      label: 'Card',
+      fields: {
+        title: { type: 'text' },
+        link: { type: 'text', optional: true },
+      },
+    },
+  },
+  collections: {
+    page: {
+      fields: {
+        cards: { type: 'component', components: ['card'], multiple: true, translate: true },
+      },
+    },
+  },
+} as const satisfies ForgePressSchema
+```
+
+The items are stored in the entry in the order they're listed.
+A component can hold other components as long as it doesn't end up holding itself, and fields inside a component can't be indexed.
+
+Translation happens in one of two places, never both:
+- The field holding the component is translated, so each locale has its own list of items.
+- Fields inside the component are translated, so the list is shared and each value has one per locale.
+
+### Loading what a field links to
+
+`.with()` loads the entries a field points at. On a component field it reaches into the items and replaces the references there:
+
+```ts
+const page = await query('page').locale('en').with('cards').first()
+const author = page?.cards?.[0]?.author
+```
+
+An item keeps its shape, so only the referencing fields change. A field naming one collection becomes the entry, one naming several becomes `{ collection, id, entry }`.
+
+Call it once per field, and name a path to keep going inside an entry it has loaded:
+
+```ts
+const page = await query('page')
+  .locale('en')
+  .with('author.employer')
+  .with('cards.author.posts')
+  .first()
+```
+
+Every field on the way has to link somewhere, and each collection it passes through is one more round of loading, batched per collection. Paths are typed up to four fields deep, which is as far as this is worth going: past that, query the collection again.
 
 ### Migrations
 
@@ -224,12 +302,13 @@ When editing schema files by hand you can run `npx forgepress migrate` to keep y
 - One TypeScript file per entry, under `.forgepress/content/<collection>/<id>.ts`
 - Every entry carries id, status, createdAt and updatedAt
 - Entries are typed against the schema, a wrong field is a type error before it's a build error
-- Relations store the linked entry's id, dynamic fields store a collection and an id
+- A collection field stores entry ids, or a collection and an id once it names more than one collection
 
 ## Editor
 
 - Runs inside your own site at a page you choose, in development and in production
 - Content: entries, drafts, rich text, media and linked blocks
+- Linked entries are edited in place, three levels down; deeper ones are opened in their own tab
 - Schema: collections, fields and locales, with content migrations
 - In development it writes the files to disk, in production it collects changes and publishes them as a commit
 

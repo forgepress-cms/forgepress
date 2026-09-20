@@ -24,7 +24,7 @@ export default {
     blogPost: {
       fields: {
         title: { type: 'text', translate: true },
-        author: { type: 'relation', collection: 'author' },
+        author: { type: 'collection', collections: ['author'] },
       },
     },
   },
@@ -127,7 +127,7 @@ describe('buildOutput', () => {
   })
 
   it('writes nothing in development either while the schema is broken', async () => {
-    const root = site({ '.forgepress/schema.ts': schema.replace('type: \'relation\'', 'type: \'link\'') })
+    const root = site({ '.forgepress/schema.ts': schema.replace('type: \'collection\'', 'type: \'link\'') })
 
     await expect(buildOutput(root, resolveConfig(), { dev: true })).rejects.toBeInstanceOf(ContentError)
     expect(existsSync(out)).toBe(false)

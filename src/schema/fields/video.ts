@@ -1,4 +1,5 @@
 import type { MediaContent } from '../../media/types'
+import type { Listed } from './picked'
 import type { FieldOf, FieldTypeDefinition } from './types'
 
 const video = {
@@ -11,6 +12,6 @@ const video = {
 
 export type VideoField = FieldOf<typeof video>
 
-export type VideoFieldContent<TField extends VideoField> = TField['multiple'] extends true ? MediaContent[] : MediaContent
+export type VideoFieldContent<TField extends VideoField> = Listed<TField, MediaContent>
 
 export default video

@@ -4,7 +4,6 @@ import type { Entries } from '../../../../editor/composables/useEntries'
 import type { NestedEntries } from '../../../../editor/composables/useNestedEntries'
 import type { EditorRouter } from '../../../../editor/plugins/router'
 import type { Entry, EntryRef } from '../../../../src/entries/types'
-import type { DynamicBlock } from '../../../../src/schema/fields/dynamic'
 import type { ForgePressSchema } from '../../../../src/schema/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, nextTick, ref } from 'vue'
@@ -14,7 +13,7 @@ import { settle } from '../../../settle'
 const schema = {
   collections: {
     hero: { fields: { headline: { type: 'text' } } },
-    page: { fields: { content: { type: 'dynamic', collections: ['hero', 'page'] } } },
+    page: { fields: { content: { type: 'collection', collections: ['hero', 'page'], multiple: true } } },
   },
 } as const satisfies ForgePressSchema
 
@@ -22,8 +21,8 @@ vi.doMock('../../../../editor/composables/useContent', () => ({
   useContent: () => ({ store: { schema: async () => schema } }),
 }))
 
-const { default: DynamicInput } = await import('../../../../editor/components/fields/DynamicInput.vue')
-const { default: RelationInput } = await import('../../../../editor/components/fields/RelationInput.vue')
+const { default: BlockInput } = await import('../../../../editor/components/fields/BlockInput.vue')
+const { default: EntrySelect } = await import('../../../../editor/components/fields/EntrySelect.vue')
 const { useNestedEntries } = await import('../../../../editor/composables/useNestedEntries')
 
 const rows: Record<string, Entry> = {
@@ -89,18 +88,19 @@ afterEach(() => {
   app = undefined
 })
 
-async function mount(blocks: DynamicBlock[], trail: EntryRef[] = [{ collection: 'page', id: 'page_1' }]) {
+async function mount(blocks: EntryRef[], trail: EntryRef[] = [{ collection: 'page', id: 'page_1' }]) {
   const container = document.createElement('div')
   const model = ref(blocks)
   let nested: NestedEntries | undefined
 
   app = createApp({
-    render: () => h(DynamicInput, {
+    render: () => h(BlockInput, {
       'modelValue': model.value,
-      'onUpdate:modelValue': (value: DynamicBlock[]) => {
-        model.value = value
+      'onUpdate:modelValue': (value: unknown) => {
+        model.value = value as EntryRef[]
       },
-      'collections': ['hero'],
+      'collections': ['hero', 'page'],
+      'multiple': true,
       entries,
       'nested': nested!,
       'locales': [],
@@ -139,7 +139,7 @@ async function mount(blocks: DynamicBlock[], trail: EntryRef[] = [{ collection: 
   return { container, model, nested: nested!, chain, arrow, click, openChain }
 }
 
-describe('dynamic blocks', () => {
+describe('block fields', () => {
   it('show the linked entry as a form, with a primary chain counting its other uses', async () => {
     const { container, chain, arrow } = await mount([{ collection: 'hero', id: 'hero_1' }])
 
@@ -226,6 +226,32 @@ describe('dynamic blocks', () => {
     expect(container.querySelector('[role=dialog]')!.textContent).toBe('')
   })
 
+  it('stop opening entries below three levels, and link instead of creating there', async () => {
+    const trail = [
+      { collection: 'page', id: 'page_1' },
+      { collection: 'hero', id: 'deep_1' },
+      { collection: 'hero', id: 'deep_2' },
+    ]
+
+    const within = await mount([{ collection: 'hero', id: 'hero_1' }], trail)
+
+    expect(within.container.querySelector('input')!.value).toBe('Welcome')
+
+    const { container, model, nested, click } = await mount([{ collection: 'hero', id: 'hero_1' }], [...trail, { collection: 'hero', id: 'deep_3' }])
+
+    expect(container.textContent).toContain('Welcome is nested too deeply to edit here')
+    expect(container.querySelector('input')).toBeNull()
+    expect(nested.drafts.hero_1).toBeUndefined()
+
+    await click('Add a block')
+    await click('Hero')
+
+    expect(model.value[1]).toEqual({ collection: 'hero', id: '' })
+    expect(Object.keys(nested.drafts)).toEqual([])
+    expect(container.textContent).toContain('No entry is linked yet. Link one with the chain icon.')
+    expect([...container.querySelectorAll('button')].some(button => button.textContent === 'New content')).toBe(false)
+  })
+
   it('offers new content when the linked entry is gone', async () => {
     const { container, model, nested, click } = await mount([{ collection: 'hero', id: 'hero_gone' }])
 
@@ -238,11 +264,11 @@ describe('dynamic blocks', () => {
   })
 })
 
-describe('relation fields', () => {
+describe('entry fields', () => {
   it('open the related entry in a new tab', async () => {
     const container = document.createElement('div')
 
-    app = createApp({ render: () => h(RelationInput, { modelValue: 'hero_1', collection: 'hero', entries }) })
+    app = createApp({ render: () => h(EntrySelect, { modelValue: 'hero_1', collection: 'hero', entries }) })
     app.provide(routerKey, { href: (path?: string) => `/admin?path=/${path ?? ''}` } as unknown as EditorRouter)
 
     for (const [name, component] of Object.entries(stubs))

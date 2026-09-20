@@ -21,19 +21,22 @@ import { useLeaveGuard } from '../../../composables/useLeaveGuard'
 import { useParam } from '../../../composables/useParam'
 import { useRouter } from '../../../composables/useRouter'
 import { useSchema } from '../../../composables/useSchema'
+import { useSchemaGroup } from '../../../composables/useSchemaGroup'
 import { FIELD_TYPE_ITEMS, KEY_PATTERN, seedOption } from '../../../utils/schema'
 
 const BASE_KEYS = new Set(['type', ...Object.keys(BASE_OPTIONS)])
 
 const { navigate, href } = useRouter()
 
-const name = useParam('collection')
+const group = useSchemaGroup()
+const { name, kind } = group
 const field = useParam('field')
+const nested = kind === 'components'
 
 const editor = await useSchema()
 const { schema, saving, error, review, change } = editor
 
-const collection = schema.value.collections[name]
+const collection = group.definition(schema.value)
 const current = collection?.fields[field]
 
 if (!collection || !current) {
@@ -67,6 +70,13 @@ const collectionItems = Object.entries(schema.value.collections).map(([value, en
   value,
 }))
 
+const componentItems = Object.entries(schema.value.components ?? {}).filter(([value]) => !nested || value !== name).map(([value, entry]) => ({
+  label: entry.label ?? value,
+  value,
+}))
+
+const shownOptions = computed(() => Object.fromEntries(Object.entries(definition.value.options).filter(([option]) => !nested || option !== 'index')))
+
 watch(() => form.type, () => {
   for (const [option, spec] of Object.entries(definition.value.options))
     options[option] ??= seedOption(spec)
@@ -77,7 +87,7 @@ function configured(value: unknown): boolean {
 }
 
 function back(): void {
-  navigate(`schema/${name}`)
+  navigate(group.path())
 }
 
 const { dirty, leaving, commit, cancel, discard, proceed } = useLeaveGuard(useDraft(() => ({ form, options }), back))
@@ -118,7 +128,7 @@ function next(): Field {
   if (form.translate)
     config.translate = true
 
-  for (const option of Object.keys(definition.value.options)) {
+  for (const option of Object.keys(shownOptions.value)) {
     if (configured(options[option]))
       config[option] = options[option]
   }
@@ -127,10 +137,10 @@ function next(): Field {
 }
 
 const key = computed(() => form.key.trim())
-const renames = computed(() => key.value === field ? {} : { fields: { [name]: { [field]: key.value } } })
+const renames = computed(() => key.value === field ? {} : group.fieldRenames(field, key.value))
 
 function apply(draft: SchemaDraft): void {
-  const target = draft.collections[name]!
+  const target = group.holder(draft)
   const config = next()
 
   target.fields = Object.fromEntries(Object.entries(target.fields).map(([item, value]) => item === field ? [key.value, config] : [item, value]))
@@ -164,7 +174,7 @@ async function save(): Promise<void> {
       :title="form.label || field"
       :breadcrumb="[
         { label: 'Schema', to: href('schema') },
-        { label: title, to: href(`schema/${name}`) },
+        { label: title, to: href(group.path()) },
       ]"
     >
       <template #actions>
@@ -209,11 +219,11 @@ async function save(): Promise<void> {
         <UTextarea v-model="form.description" :rows="2" class="w-full" />
       </UFormField>
 
-      <template v-if="Object.keys(definition.options).length">
+      <template v-if="Object.keys(shownOptions).length">
         <USeparator :label="`${definition.label} options`" />
 
         <UFormField
-          v-for="(option, optionKey) in definition.options"
+          v-for="(option, optionKey) in shownOptions"
           :key="optionKey"
           :label="option.label"
           :description="'description' in option ? option.description : ''"
@@ -228,19 +238,18 @@ async function save(): Promise<void> {
             class="w-full"
           />
 
-          <USelect
-            v-else-if="option.type === 'collection'"
-            v-model="options[optionKey] as string"
-            :items="collectionItems"
-            value-key="value"
+          <UInputTags
+            v-else-if="option.type === 'strings'"
+            v-model="options[optionKey] as string[]"
+            placeholder="Type a value and press Enter"
             class="w-full"
           />
 
           <ListSelect
-            v-else-if="option.type === 'collections'"
+            v-else-if="option.type === 'collections' || option.type === 'components'"
             v-model="options[optionKey] as string[]"
-            :items="collectionItems"
-            placeholder="Add a collection"
+            :items="option.type === 'collections' ? collectionItems : componentItems"
+            :placeholder="option.type === 'collections' ? 'Add a collection' : 'Add a component'"
             multiple
           />
 

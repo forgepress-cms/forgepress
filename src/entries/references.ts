@@ -1,8 +1,12 @@
 import type { ValueIssue, ValuePath } from '../files/issues'
 import type { Field } from '../schema/fields'
-import type { ForgePressSchema } from '../schema/types'
+import type { CollectionField } from '../schema/fields/collection'
+import type { ComponentField } from '../schema/fields/component'
+import type { Component, ForgePressSchema } from '../schema/types'
 import type { Entry, EntryRef } from './types'
 import { isTranslated } from '../schema/fields'
+import { itemComponent } from '../schema/fields/component'
+import { items, onlyName } from '../schema/fields/picked'
 import { isRecord, quote } from '../utils/value'
 
 export interface EntryIssue extends ValueIssue {
@@ -36,26 +40,39 @@ function localized(value: unknown, path: ValuePath, translated: boolean): [Value
   return isRecord(value) ? Object.entries(value).map(([locale, item]) => [[...path, locale], item]) : []
 }
 
-function references(field: Field, value: unknown, path: ValuePath): Reference[] {
-  if (field.type === 'relation' && !field.multiple)
-    return typeof value === 'string' ? [{ path, collection: field.collection, id: value }] : []
+type Components = Readonly<Record<string, Component>>
 
-  if (!Array.isArray(value))
+function itemReferences(field: ComponentField, item: unknown, path: ValuePath, components: Components, locales: readonly string[]): Reference[] {
+  if (!isRecord(item))
     return []
 
-  if (field.type === 'relation') {
-    return value.flatMap((id, index) => typeof id === 'string'
-      ? [{ path: [...path, index], collection: field.collection, id }]
-      : [])
-  }
+  const name = itemComponent(field, item)
+  const fields = name === undefined ? {} : components[name]?.fields ?? {}
 
-  if (field.type === 'dynamic') {
-    return value.flatMap((block, index) => isEntryRef(block) && field.collections.includes(block.collection)
-      ? [{ path: [...path, index], collection: block.collection, id: block.id }]
-      : [])
-  }
+  return Object.entries(fields).flatMap(([key, inner]) => localized(item[key], [...path, key], isTranslated(inner, locales))
+    .flatMap(([at, value]) => references(inner, value, at, components, locales)))
+}
 
-  return []
+function entryReference(field: CollectionField, value: unknown, path: ValuePath): Reference[] {
+  const only = onlyName(field.collections)
+
+  if (only !== undefined)
+    return typeof value === 'string' ? [{ path, collection: only, id: value }] : []
+
+  return isEntryRef(value) && field.collections.includes(value.collection)
+    ? [{ path, collection: value.collection, id: value.id }]
+    : []
+}
+
+function references(field: Field, value: unknown, path: ValuePath, components: Components, locales: readonly string[]): Reference[] {
+  if (field.type !== 'component' && field.type !== 'collection')
+    return []
+
+  const item = (entry: unknown, at: ValuePath): Reference[] => field.type === 'component'
+    ? itemReferences(field, entry, at, components, locales)
+    : entryReference(field, entry, at)
+
+  return items(value, field.multiple).flatMap((entry, index) => item(entry, field.multiple ? [...path, index] : path))
 }
 
 export function entryReferences(schema: ForgePressSchema, collection: string, row: Entry): Reference[] {
@@ -63,7 +80,7 @@ export function entryReferences(schema: ForgePressSchema, collection: string, ro
 
   return Object.entries(schema.collections[collection]?.fields ?? {}).flatMap(([key, field]) =>
     localized(row[key], [key], isTranslated(field, locales))
-      .flatMap(([path, value]) => references(field, value, path)))
+      .flatMap(([path, value]) => references(field, value, path, schema.components ?? {}, locales)))
 }
 
 export function validateReferences(schema: ForgePressSchema, content: ContentEntries): EntryIssue[] {

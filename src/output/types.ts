@@ -1,10 +1,22 @@
 import type { OutputMeta } from '../entries/types'
 
-export const OUTPUT_VERSION = 1
+export const OUTPUT_VERSION = 3
 
 export const OUTPUT_INDEX = 'index.json'
 
-export type LinkKind = 'relation' | 'dynamic'
+export interface LinkField {
+  collections: string[]
+  multiple: boolean
+}
+
+export interface LinkItems {
+  components: string[]
+  multiple: boolean
+}
+
+export type LinkTarget = LinkField | LinkItems
+
+export type LinkedFields = Record<string, LinkTarget>
 
 export interface OutputFile {
   path: string
@@ -17,7 +29,8 @@ export interface OutputEntry extends OutputMeta {
 
 export interface OutputManifest {
   indexed: string[]
-  links: Record<string, LinkKind>
+  links: LinkedFields
+  components?: Record<string, LinkedFields>
   entries: OutputEntry[]
   files: Record<string, string>
 }

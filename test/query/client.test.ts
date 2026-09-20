@@ -14,7 +14,7 @@ function site(files: Record<string, unknown>) {
 }
 
 const index: OutputIndex = {
-  version: 1,
+  version: 3,
   commit: null,
   locales: ['en'],
   collections: {
@@ -79,8 +79,8 @@ describe('createLoader', () => {
 
   it('explains a missing or unknown content output', async () => {
     await expect(createLoader(site({}).read).run(async () => undefined)).rejects.toThrow('[forgepress] there is no content output yet: index.json is missing')
-    await expect(createLoader(site({ 'index.json': { ...index, version: 2 } }).read).run(async () => undefined))
+    await expect(createLoader(site({ 'index.json': { ...index, version: 1 } }).read).run(async () => undefined))
       .rejects
-      .toThrow('[forgepress] the content output has format version 2, but this version of forgepress reads version 1')
+      .toThrow('[forgepress] the content output has format version 1, but this version of forgepress reads version 3')
   })
 })

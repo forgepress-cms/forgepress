@@ -4,6 +4,7 @@ import { META_KEYS } from '../entries/meta'
 import { isCollectionName } from '../files/paths'
 import { isRecord, quote } from '../utils/value'
 import { fieldTypeNames, fieldTypes } from './fields'
+import { COMPONENT_KEY } from './fields/picked'
 import { compilePattern } from './fields/text'
 
 export const LOCALE_CODE = /^[a-z][\w-]*$/i
@@ -16,10 +17,17 @@ type Report = (path: ValuePath, message: string) => void
 interface Context {
   report: Report
   collections: ReadonlySet<string>
+  components: ReadonlySet<string>
   locales: readonly unknown[]
+  nested: boolean
+  translating: ReadonlySet<string>
 }
 
-const SCHEMA_KEYS = new Set(['collections', 'locales', 'defaultLocale'])
+type Group = 'collections' | 'components'
+
+const GROUP_NAMES: Record<Group, string> = { collections: 'Collection', components: 'Component' }
+
+const SCHEMA_KEYS = new Set(['components', 'collections', 'locales', 'defaultLocale'])
 const COLLECTION_KEYS = new Set(['label', 'description', 'fields'])
 
 export const BASE_OPTIONS: Record<keyof FieldBase, FieldOptionType> = {
@@ -35,8 +43,9 @@ const KINDS: Record<FieldOptionType, string> = {
   text: 'a string',
   number: 'a number',
   boolean: 'true or false',
-  collection: 'a collection name',
   collections: 'a list of collection names',
+  components: 'a list of component names',
+  strings: 'a list of strings',
 }
 
 function isFieldType(type: unknown): type is FieldType {
@@ -54,7 +63,7 @@ function fits(kind: FieldOptionType, value: unknown): boolean {
   if (kind === 'boolean')
     return typeof value === 'boolean'
 
-  if (kind === 'collections')
+  if (kind === 'collections' || kind === 'components' || kind === 'strings')
     return Array.isArray(value) && value.every(item => typeof item === 'string')
 
   return typeof value === 'string'
@@ -98,22 +107,28 @@ function checkDefaultLocale(report: Report, chosen: unknown, locales: readonly u
     report(['defaultLocale'], `The default locale ${quote(chosen)} is not in "locales"`)
 }
 
-function checkReferences(context: Context, path: ValuePath, label: string, targets: readonly string[], listed: boolean): void {
-  targets.forEach((target, index) => {
-    const at = listed ? [...path, index] : path
+function checkReferences(context: Context, path: ValuePath, label: string, targets: readonly string[], group: 'collections' | 'components'): void {
+  const known = group === 'collections' ? context.collections : context.components
+  const noun = group === 'collections' ? 'collection' : 'component'
 
-    if (!context.collections.has(target))
-      context.report(at, `Field ${quote(label)} references unknown collection ${quote(target)}`)
+  if (targets.length === 0)
+    context.report(path, `Field ${quote(label)} needs at least one ${noun}`)
+
+  targets.forEach((target, index) => {
+    const at = [...path, index]
+
+    if (!known.has(target))
+      context.report(at, `Field ${quote(label)} references unknown ${noun} ${quote(target)}`)
     else if (targets.indexOf(target) < index)
-      context.report(at, `Field ${quote(label)} lists collection ${quote(target)} twice`)
+      context.report(at, `Field ${quote(label)} lists ${noun} ${quote(target)} twice`)
   })
 }
 
 function checkOption(context: Context, path: ValuePath, label: string, option: string, kind: FieldOptionType, value: unknown): void {
   if (!fits(kind, value))
     context.report(path, `${quote(option)} of field ${quote(label)} has to be ${KINDS[kind]}`)
-  else if (kind === 'collection' || kind === 'collections')
-    checkReferences(context, path, label, kind === 'collection' ? [value as string] : value as string[], kind === 'collections')
+  else if (kind === 'collections' || kind === 'components')
+    checkReferences(context, path, label, value as string[], kind)
 }
 
 function checkConstraints(report: Report, path: ValuePath, label: string, field: Record<string, unknown>): void {
@@ -122,6 +137,15 @@ function checkConstraints(report: Report, path: ValuePath, label: string, field:
 
     if (pattern instanceof SyntaxError)
       report([...path, 'validation'], `"validation" of field ${quote(label)} is not a valid regular expression: ${pattern.message.replace(/^Invalid regular expression: /, '')}`)
+  }
+
+  if (field.type === 'list' && Array.isArray(field.values)) {
+    const values: unknown[] = field.values
+
+    values.forEach((value, index) => {
+      if (values.indexOf(value) < index)
+        report([...path, 'values', index], `Field ${quote(label)} lists the value ${quote(value)} twice`)
+    })
   }
 
   if (field.type !== 'number')
@@ -134,12 +158,22 @@ function checkConstraints(report: Report, path: ValuePath, label: string, field:
     report([...path, 'min'], `"min" of field ${quote(label)} can't be greater than "max"`)
 }
 
-function checkField(context: Context, path: ValuePath, collection: string, key: string, field: unknown): void {
+function checkNestedTranslations(context: Context, path: ValuePath, label: string, names: unknown): void {
+  const translated = (Array.isArray(names) ? names : []).filter(name => typeof name === 'string' && context.translating.has(name))
+
+  if (translated.length > 0)
+    context.report(path, `Field ${quote(label)} is translated, and so ${translated.length === 1 ? 'is component' : 'are the components'} ${translated.map(quote).join(', ')}; translate one or the other`)
+}
+
+function checkField(context: Context, path: ValuePath, owner: string, key: string, field: unknown): void {
   const { report } = context
-  const label = `${collection}.${key}`
+  const label = `${owner}.${key}`
 
   if (RESERVED_FIELDS.includes(key))
     report(path, `Field ${quote(label)} uses ${quote(key)}, which is reserved for entry metadata`)
+
+  if (context.nested && key === COMPONENT_KEY)
+    report(path, `Field ${quote(label)} uses ${quote(COMPONENT_KEY)}, which is reserved for the component an item holds`)
 
   if (!isRecord(field))
     return report(path, `Field ${quote(label)} has to be an object`)
@@ -158,7 +192,11 @@ function checkField(context: Context, path: ValuePath, collection: string, key: 
     if (option === 'type')
       continue
 
-    if (kind)
+    if (context.nested && option === 'index')
+      report([...path, option], `Field ${quote(label)} is inside a component and can't be indexed`)
+    else if (option === 'translate' && value === true && field.type === 'component')
+      checkNestedTranslations(context, [...path, option], label, field.components)
+    else if (kind)
       checkOption(context, [...path, option], label, option, kind, value)
     else if (option === 'index')
       report([...path, option], `Field ${quote(label)} can't be indexed; only ${INDEXABLE.slice(0, -1).join(', ')} and ${INDEXABLE.at(-1)} fields can`)
@@ -177,28 +215,93 @@ function checkField(context: Context, path: ValuePath, collection: string, key: 
     report([...path, 'translate'], `Field ${quote(label)} is translated, but the schema has no locales`)
 }
 
-function checkCollection(context: Context, name: string, collection: unknown): void {
+function checkGroup(context: Context, group: Group, name: string, value: unknown): void {
   const { report } = context
-  const path = ['collections', name]
+  const path = [group, name]
+  const noun = GROUP_NAMES[group]
 
   if (!isCollectionName(name))
-    report(path, `Collection ${quote(name)} has to start with a lowercase letter and contain only letters and digits`)
+    report(path, `${noun} ${quote(name)} has to start with a lowercase letter and contain only letters and digits`)
 
-  if (!isRecord(collection))
-    return report(path, `Collection ${quote(name)} has to be an object`)
+  if (!isRecord(value))
+    return report(path, `${noun} ${quote(name)} has to be an object`)
 
-  for (const [key, value] of Object.entries(collection)) {
+  for (const [key, option] of Object.entries(value)) {
     if (!COLLECTION_KEYS.has(key))
-      report([...path, key], `Collection ${quote(name)} has no option ${quote(key)}`)
-    else if (key !== 'fields' && typeof value !== 'string')
-      report([...path, key], `${quote(key)} of collection ${quote(name)} has to be a string`)
+      report([...path, key], `${noun} ${quote(name)} has no option ${quote(key)}`)
+    else if (key !== 'fields' && typeof option !== 'string')
+      report([...path, key], `${quote(key)} of ${noun.toLowerCase()} ${quote(name)} has to be a string`)
   }
 
-  if (!isRecord(collection.fields))
-    return report(collection.fields === undefined ? path : [...path, 'fields'], `Collection ${quote(name)} needs "fields" as an object`)
+  if (!isRecord(value.fields))
+    return report(value.fields === undefined ? path : [...path, 'fields'], `${noun} ${quote(name)} needs "fields" as an object`)
 
-  for (const [key, field] of Object.entries(collection.fields))
+  for (const [key, field] of Object.entries(value.fields))
     checkField(context, [...path, 'fields', key], name, key, field)
+}
+
+function includedComponents(component: unknown): string[] {
+  if (!isRecord(component) || !isRecord(component.fields))
+    return []
+
+  return Object.values(component.fields).flatMap(field => isRecord(field) && field.type === 'component' && Array.isArray(field.components)
+    ? field.components.filter(name => typeof name === 'string')
+    : [])
+}
+
+function translatingComponents(components: Record<string, unknown>): Set<string> {
+  const found = new Set<string>()
+  const fieldsOf = (name: string): Record<string, unknown> => {
+    const component = components[name]
+
+    return isRecord(component) && isRecord(component.fields) ? component.fields : {}
+  }
+
+  const translates = (name: string, trail: readonly string[]): boolean => {
+    if (trail.includes(name))
+      return false
+
+    return Object.values(fieldsOf(name)).some((field) => {
+      if (!isRecord(field))
+        return false
+
+      if (field.translate === true)
+        return true
+
+      return field.type === 'component' && (Array.isArray(field.components) ? field.components : [])
+        .some(inner => typeof inner === 'string' && translates(inner, [...trail, name]))
+    })
+  }
+
+  for (const name of Object.keys(components)) {
+    if (translates(name, []))
+      found.add(name)
+  }
+
+  return found
+}
+
+function checkCycles(report: Report, components: Record<string, unknown>): void {
+  const reported = new Set<string>()
+
+  const visit = (name: string, trail: string[]): void => {
+    if (trail.includes(name)) {
+      const cycle = trail.slice(trail.indexOf(name))
+
+      if (!cycle.some(item => reported.has(item))) {
+        cycle.forEach(item => reported.add(item))
+        report(['components', name], `Component ${quote(name)} includes itself through ${[...cycle, name].join(' → ')}`)
+      }
+
+      return
+    }
+
+    for (const next of includedComponents(components[name]))
+      visit(next, [...trail, name])
+  }
+
+  for (const name of Object.keys(components))
+    visit(name, [])
 }
 
 export function validateSchema(schema: unknown): ValueIssue[] {
@@ -226,10 +329,21 @@ export function validateSchema(schema: unknown): ValueIssue[] {
     return issues
   }
 
-  const context: Context = { report, collections: new Set(Object.keys(schema.collections)), locales }
+  const components = schema.components === undefined ? {} : schema.components
+
+  if (!isRecord(components))
+    report(['components'], '"components" has to be an object')
+
+  const found = isRecord(components) ? components : {}
+  const context: Context = { report, collections: new Set(Object.keys(schema.collections)), components: new Set(Object.keys(found)), locales, nested: false, translating: translatingComponents(found) }
+
+  for (const [name, component] of Object.entries(found))
+    checkGroup({ ...context, nested: true }, 'components', name, component)
+
+  checkCycles(report, found)
 
   for (const [name, collection] of Object.entries(schema.collections))
-    checkCollection(context, name, collection)
+    checkGroup(context, 'collections', name, collection)
 
   return issues
 }

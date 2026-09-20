@@ -1,7 +1,7 @@
 import type { Entry } from '../../src/entries/types'
 import type { ForgePressSchema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
-import { indexedFields, isLocalized, toOutputEntry } from '../../src/output/entry'
+import { indexedFields, isLocalized, linkedComponents, linkFields, toOutputEntry } from '../../src/output/entry'
 
 const schema = {
   locales: ['en', 'de'],
@@ -11,7 +11,7 @@ const schema = {
         name: { type: 'text', index: true },
         portrait: { type: 'image', optional: true },
         age: { type: 'number', optional: true, index: false },
-        posts: { type: 'relation', collection: 'blogPost', multiple: true, optional: true },
+        posts: { type: 'collection', collections: ['blogPost'], multiple: true, optional: true },
       },
     },
     blogPost: {
@@ -19,8 +19,8 @@ const schema = {
         title: { type: 'text', translate: true, index: true },
         summary: { type: 'text', translate: true, optional: true },
         body: { type: 'richtext', translate: true },
-        author: { type: 'relation', collection: 'author', index: true },
-        blocks: { type: 'dynamic', collections: ['hero'], optional: true },
+        author: { type: 'collection', collections: ['author'], index: true },
+        blocks: { type: 'collection', collections: ['hero', 'author'], multiple: true, optional: true },
       },
     },
     hero: { fields: {} },
@@ -81,5 +81,35 @@ describe('output entries', () => {
     expect(indexedFields(schema, 'author')).toEqual(['name'])
     expect(indexedFields(schema, 'blogPost')).toEqual(['title', 'author'])
     expect(indexedFields(schema, 'hero')).toEqual([])
+  })
+})
+
+describe('linked fields', () => {
+  const nested = {
+    components: {
+      grid: { fields: { cards: { type: 'component', components: ['card'], multiple: true } } },
+      card: { fields: { title: { type: 'text' }, by: { type: 'collection', collections: ['author'] } } },
+      plain: { fields: { note: { type: 'text' } } },
+    },
+    collections: {
+      page: { fields: { content: { type: 'component', components: ['grid', 'plain'], multiple: true }, author: { type: 'collection', collections: ['author'] } } },
+      author: { fields: { name: { type: 'text' } } },
+    },
+  } as const satisfies ForgePressSchema
+
+  it('names what a field links to, without expanding a component into every field that holds it', () => {
+    expect(linkFields(nested, 'page')).toEqual({
+      content: { components: ['grid', 'plain'], multiple: true },
+      author: { collections: ['author'], multiple: false },
+    })
+  })
+
+  it('describes each component once, and only those that lead to entries', () => {
+    expect(linkedComponents(nested, linkFields(nested, 'page'))).toEqual({
+      grid: { cards: { components: ['card'], multiple: true } },
+      card: { by: { collections: ['author'], multiple: false } },
+    })
+
+    expect(linkedComponents(nested, linkFields(nested, 'author'))).toBeUndefined()
   })
 })

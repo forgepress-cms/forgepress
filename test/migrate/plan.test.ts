@@ -73,7 +73,7 @@ describe('multiplicity', () => {
   })
 
   it('keeps an empty list a required list field holds', () => {
-    const blocks = { type: 'dynamic', collections: ['post'] } as Field
+    const blocks = { type: 'collection', collections: ['post'], multiple: true } as Field
 
     expect(field(blocks, blocks, []).migration.effects).toEqual([])
   })
@@ -196,9 +196,9 @@ describe('relations', () => {
     return { migration, row: migration.changeset.write.find(write => write.collection === 'post')?.entry }
   }
 
-  const one = { type: 'relation', collection: 'author', optional: true } as Field
-  const list = { type: 'relation', collection: 'author', multiple: true, optional: true } as Field
-  const other = { type: 'relation', collection: 'tag', optional: true } as Field
+  const one = { type: 'collection', collections: ['author'], optional: true } as Field
+  const list = { type: 'collection', collections: ['author'], multiple: true, optional: true } as Field
+  const other = { type: 'collection', collections: ['tag'], optional: true } as Field
   const text = { type: 'text', optional: true } as Field
 
   it('wraps and unwraps ids', () => {
@@ -251,19 +251,19 @@ describe('relations', () => {
 
 describe('dynamic', () => {
   const blocks = { collections: { hero: { fields: {} }, textBlock: { fields: {} } } } satisfies Partial<ForgePressSchema>
-  const wide = { type: 'dynamic', collections: ['hero', 'textBlock'], optional: true } as Field
-  const narrow = { type: 'dynamic', collections: ['hero'], optional: true } as Field
+  const wide = { type: 'collection', collections: ['hero', 'textBlock'], multiple: true, optional: true } as Field
+  const narrow = { type: 'collection', collections: ['hero'], multiple: true, optional: true } as Field
 
   it('drops blocks whose collection is no longer allowed', () => {
     const value = [{ collection: 'hero', id: 'hero_1' }, { collection: 'textBlock', id: 'textBlock_1' }]
     const migration = plan({ before: schema({ blocks: wide }, blocks), after: schema({ blocks: narrow }, blocks), content: { post: [entry('post_1', { blocks: value })] } })
 
-    expect(migration.changeset.write[0]!.entry.blocks).toEqual([value[0]])
+    expect(migration.changeset.write[0]!.entry.blocks).toEqual(['hero_1'])
     expect(migration.effects).toMatchObject([{ kind: 'lost', before: [value[1]] }])
   })
 
   it('turns a relation into blocks of its collection', () => {
-    const relation = { type: 'relation', collection: 'hero', multiple: true, optional: true } as Field
+    const relation = { type: 'collection', collections: ['hero'], multiple: true, optional: true } as Field
     const migration = plan({ before: schema({ blocks: relation }, blocks), after: schema({ blocks: wide }, blocks), content: { post: [entry('post_1', { blocks: ['hero_1'] })] } })
 
     expect(migration.changeset.write[0]!.entry.blocks).toEqual([{ collection: 'hero', id: 'hero_1' }])
@@ -287,13 +287,15 @@ describe('renames', () => {
     const before: ForgePressSchema = {
       collections: {
         writer: { fields: { name: { type: 'text' } } },
-        post: { fields: { by: { type: 'relation', collection: 'writer' }, blocks: { type: 'dynamic', collections: ['writer'], optional: true } } },
+        hero: { fields: {} },
+        post: { fields: { by: { type: 'collection', collections: ['writer'] }, blocks: { type: 'collection', collections: ['writer', 'hero'], multiple: true, optional: true } } },
       },
     }
     const after: ForgePressSchema = {
       collections: {
         author: { fields: { name: { type: 'text' } } },
-        post: { fields: { by: { type: 'relation', collection: 'author' }, blocks: { type: 'dynamic', collections: ['author'], optional: true } } },
+        hero: { fields: {} },
+        post: { fields: { by: { type: 'collection', collections: ['author'] }, blocks: { type: 'collection', collections: ['author', 'hero'], multiple: true, optional: true } } },
       },
     }
     const migration = plan({

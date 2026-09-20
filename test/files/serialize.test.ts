@@ -11,7 +11,7 @@ const schema = {
       label: 'Blog Post',
       fields: {
         title: { type: 'text', label: 'Title', translate: true },
-        content: { type: 'dynamic', collections: ['hero', 'textBlock'] },
+        content: { type: 'collection', collections: ['hero', 'textBlock'], multiple: true },
       },
     },
   },
@@ -33,8 +33,9 @@ export default {
           translate: true,
         },
         content: {
-          type: 'dynamic',
+          type: 'collection',
           collections: ['hero', 'textBlock'],
+          multiple: true,
         },
       },
     },

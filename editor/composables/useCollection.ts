@@ -22,5 +22,5 @@ export async function useCollection(name: string): Promise<CollectionSchema> {
 
   const locales = schema.locales ?? []
 
-  return { schema, collection, locales, chosen: defaultLocale(schema), fields: toFields(collection, locales) }
+  return { schema, collection, locales, chosen: defaultLocale(schema), fields: toFields(collection, locales, schema.components) }
 }

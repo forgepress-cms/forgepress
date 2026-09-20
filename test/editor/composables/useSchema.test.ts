@@ -2,6 +2,7 @@ import type { Entry } from '../../../src/entries/types'
 import type { ForgePressSchema } from '../../../src/schema/types'
 import type { MigrationState, SchemaChangeset, SchemaStore } from '../../../src/store/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
 import { settle } from '../../settle'
 
 const schema: ForgePressSchema = { collections: { author: { fields: { name: { type: 'text' } } } } }
@@ -62,6 +63,18 @@ describe('schema editing', () => {
     expect(applied[0]).toMatchObject({ collections: [], write: [{ collection: 'author', entry: { id: 'author_1', title: 'Ada' } }] })
     expect(editor.schema.value.collections.author!.fields).toEqual({ title: { type: 'text' } })
     expect(schema.collections.author!.fields).toEqual({ name: { type: 'text' } })
+  })
+
+  it('saves a change that holds reactive values from the form', async () => {
+    const editor = await useSchema()
+    const values = reactive(['draft', 'final'])
+
+    const written = await editor.change((draft) => {
+      draft.collections.author!.fields.stage = { type: 'list', values, optional: true }
+    })
+
+    expect(written).toBe(true)
+    expect(editor.schema.value.collections.author!.fields.stage).toEqual({ type: 'list', values: ['draft', 'final'], optional: true })
   })
 
   it('asks before a change removes content, and saves only once confirmed', async () => {

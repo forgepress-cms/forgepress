@@ -1,6 +1,78 @@
 import type { ForgePressSchema } from 'forgepress'
 
 export default {
+  components: {
+    cards: {
+      label: 'Cards',
+      fields: {
+        cards: {
+          type: 'component',
+          label: 'Cards',
+          description: 'The cards content',
+          components: ['card'],
+          multiple: true,
+        },
+      },
+    },
+    card: {
+      label: 'Card',
+      fields: {
+        headline: {
+          type: 'text',
+          label: 'Headline',
+          description: 'The card headline',
+          translate: true,
+        },
+        subheadline: {
+          type: 'text',
+          label: 'Subheadline',
+          description: 'The card subheadline',
+          optional: true,
+          translate: true,
+        },
+        icon: {
+          type: 'list',
+          label: 'Icon',
+          description: 'The card icon',
+          values: ['lightning', 'house', 'user', 'arrow-left', 'arrow-right'],
+        },
+      },
+    },
+    banner: {
+      label: 'Banner',
+      fields: {
+        headline: {
+          type: 'text',
+          label: 'Headline',
+          description: 'The banner headline',
+          translate: true,
+        },
+        subheadline: {
+          type: 'text',
+          label: 'Subheadline',
+          description: 'The banner subheadline',
+          translate: true,
+        },
+        media: {
+          type: 'image',
+          label: 'Media',
+          description: 'The banner media',
+          multiple: true,
+        },
+      },
+    },
+    textBlock: {
+      label: 'Text Block',
+      fields: {
+        content: {
+          type: 'richtext',
+          label: 'Content',
+          description: 'The text box content',
+          translate: true,
+        },
+      },
+    },
+  },
   collections: {
     page: {
       label: 'Page',
@@ -25,10 +97,11 @@ export default {
           translate: true,
         },
         content: {
-          type: 'dynamic',
+          type: 'component',
           label: 'Content',
-          description: 'The content of the page',
-          collections: ['banner'],
+          description: 'The page content',
+          components: ['cards', 'banner', 'textBlock'],
+          multiple: true,
         },
         showInMenu: {
           type: 'boolean',
@@ -40,31 +113,6 @@ export default {
           type: 'boolean',
           label: 'Show in footer',
           description: 'Whether the page is shown in the footer menu',
-        },
-      },
-    },
-    banner: {
-      label: 'Banner',
-      fields: {
-        headline: {
-          type: 'text',
-          label: 'Headline',
-          description: 'The headline of the banner',
-          optional: true,
-          translate: true,
-        },
-        subheadline: {
-          type: 'text',
-          label: 'Subheadline',
-          description: 'The subheadline of the banner',
-          optional: true,
-          translate: true,
-        },
-        image: {
-          type: 'image',
-          label: 'image',
-          description: 'The banner image',
-          multiple: true,
         },
       },
     },

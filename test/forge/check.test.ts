@@ -6,7 +6,7 @@ import { checkResult } from '../../src/forge/check'
 
 const target = { paths: defaultPaths, mediaDir: 'public/uploads' }
 
-const schema = 'export default { collections: { author: { fields: { name: { type: \'text\' } } }, blogPost: { fields: { author: { type: \'relation\', collection: \'author\' } } } } }\n'
+const schema = 'export default { collections: { author: { fields: { name: { type: \'text\' } } }, blogPost: { fields: { author: { type: \'collection\', collections: [\'author\'] } } } } }\n'
 
 function author(id: string, name: unknown = 'Alice'): string {
   return `export default { id: '${id}', status: 'published', createdAt: '2024-01-01', updatedAt: '2024-01-01', name: ${JSON.stringify(name)} }\n`

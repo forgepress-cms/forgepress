@@ -6,7 +6,7 @@ import { SINGLE } from '../../../editor/utils/entry'
 const schema = {
   collections: {
     hero: { fields: { headline: { type: 'text' } } },
-    section: { fields: { title: { type: 'text' }, blocks: { type: 'dynamic', collections: ['hero', 'section'], optional: true } } },
+    section: { fields: { title: { type: 'text' }, blocks: { type: 'collection', collections: ['hero', 'section'], multiple: true, optional: true } } },
   },
 } as const satisfies ForgePressSchema
 

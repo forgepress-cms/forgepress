@@ -44,7 +44,7 @@ if (id && index < 0) {
 const creating = index < 0
 const row = creating ? newEntry(name) : rows[index]!
 
-const fields = reactive(toLocalizedFields(collection, locales))
+const fields = reactive(toLocalizedFields(collection, locales, schema.components))
 
 const entries = await useEntries()
 const nested = await useNestedEntries()
@@ -63,7 +63,7 @@ const title = computed(() => {
 })
 
 const missing = computed(() => [
-  ...missingFields(fields, values).map(field => field.label),
+  ...missingFields(fields, values, locales).map(field => field.label),
   ...nested.missing(),
 ])
 

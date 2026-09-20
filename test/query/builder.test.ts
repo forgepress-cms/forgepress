@@ -8,19 +8,24 @@ import { createLoader } from '../../src/query/client'
 
 const schema = {
   locales: ['en', 'de'],
+  components: {
+    card: { fields: { caption: { type: 'text', translate: true }, by: { type: 'collection', collections: ['author'], optional: true } } },
+    quote: { fields: { saying: { type: 'text' }, source: { type: 'collection', collections: ['author', 'hero'], optional: true } } },
+  },
   collections: {
     author: {
       fields: {
         name: { type: 'text', index: true },
-        posts: { type: 'relation', collection: 'post', multiple: true, optional: true },
+        posts: { type: 'collection', collections: ['post'], multiple: true, optional: true },
       },
     },
     post: {
       fields: {
         title: { type: 'text', translate: true, index: true },
         views: { type: 'number', optional: true },
-        author: { type: 'relation', collection: 'author', index: true },
-        blocks: { type: 'dynamic', collections: ['hero', 'author'], optional: true },
+        author: { type: 'collection', collections: ['author'], index: true },
+        blocks: { type: 'collection', collections: ['hero', 'author'], multiple: true, optional: true },
+        mixed: { type: 'component', components: ['card', 'quote'], multiple: true, optional: true },
       },
     },
     hero: {
@@ -42,7 +47,16 @@ const content: ContentEntries = {
     carol: entry('carol', '2024-03-01T00:00:00Z', { name: 'Carol' }, 'unpublished'),
   },
   post: {
-    p1: entry('p1', '2024-01-05T00:00:00Z', { title: { en: 'First', de: 'Erster' }, views: 10, author: 'alice', blocks: [{ collection: 'hero', id: 'h1' }, { collection: 'author', id: 'bob' }] }),
+    p1: entry('p1', '2024-01-05T00:00:00Z', {
+      title: { en: 'First', de: 'Erster' },
+      views: 10,
+      author: 'alice',
+      blocks: [{ collection: 'hero', id: 'h1' }, { collection: 'author', id: 'bob' }],
+      mixed: [
+        { component: 'card', caption: { en: 'A card', de: 'Eine Karte' }, by: 'bob' },
+        { component: 'quote', saying: 'Words', source: { collection: 'hero', id: 'h1' } },
+      ],
+    }),
     p2: entry('p2', '2024-01-10T00:00:00Z', { title: { en: 'Second', de: 'Zweiter' }, views: 30, author: 'alice' }),
     p3: entry('p3', '2024-01-15T00:00:00Z', { title: { en: 'Third', de: 'Dritter' }, views: 20, author: 'bob' }),
   },
@@ -75,7 +89,19 @@ describe('queries', () => {
     const { query } = await site()
 
     expect(await query('post').locale('de')).toEqual([
-      { id: 'p1', createdAt: '2024-01-05T00:00:00Z', updatedAt: '2024-01-05T00:00:00Z', title: 'Erster', views: 10, author: { collection: 'author', id: 'alice' }, blocks: [{ collection: 'hero', id: 'h1' }, { collection: 'author', id: 'bob' }] },
+      {
+        id: 'p1',
+        createdAt: '2024-01-05T00:00:00Z',
+        updatedAt: '2024-01-05T00:00:00Z',
+        title: 'Erster',
+        views: 10,
+        author: { collection: 'author', id: 'alice' },
+        blocks: [{ collection: 'hero', id: 'h1' }, { collection: 'author', id: 'bob' }],
+        mixed: [
+          { component: 'card', caption: 'Eine Karte', by: { collection: 'author', id: 'bob' } },
+          { component: 'quote', saying: 'Words', source: { collection: 'hero', id: 'h1' } },
+        ],
+      },
       { id: 'p2', createdAt: '2024-01-10T00:00:00Z', updatedAt: '2024-01-10T00:00:00Z', title: 'Zweiter', views: 30, author: { collection: 'author', id: 'alice' } },
       { id: 'p3', createdAt: '2024-01-15T00:00:00Z', updatedAt: '2024-01-15T00:00:00Z', title: 'Dritter', views: 20, author: { collection: 'author', id: 'bob' } },
     ])
@@ -141,11 +167,64 @@ describe('queries', () => {
     expect((await query('author').locale('de').with('posts')).map(author => (author.posts as { title: string }[]).map(item => item.title))).toEqual([['Erster', 'Zweiter'], ['Dritter']])
   })
 
+  it('load the entries that items point at, keeping the item shape and its locale', async () => {
+    const { query } = await site()
+    const post = await query('post').locale('de').with('mixed').first()
+
+    expect(post).toMatchObject({
+      mixed: [
+        { component: 'card', caption: 'Eine Karte', by: { id: 'bob', name: 'Bob' } },
+        { component: 'quote', saying: 'Words', source: { collection: 'hero', id: 'h1', entry: { id: 'h1', headline: 'Hallo' } } },
+      ],
+    })
+  })
+
+  it('follow a path into the entries it has loaded', async () => {
+    const { query } = await site()
+    const post = await query('post').locale('en').with('author.posts').first()
+
+    expect(post).toMatchObject({ author: { name: 'Alice', posts: [{ id: 'p1', title: 'First' }, { id: 'p2', title: 'Second' }] } })
+
+    const deep = await query('post').locale('de').with('mixed.by.posts').first()
+
+    expect(deep).toMatchObject({
+      mixed: [
+        { component: 'card', by: { name: 'Bob', posts: [{ id: 'p3', title: 'Dritter' }] } },
+        { component: 'quote', source: { collection: 'hero', id: 'h1', entry: { id: 'h1', headline: 'Hallo' } } },
+      ],
+    })
+  })
+
+  it('follow a path only into the collections that have the field', async () => {
+    const { query } = await site()
+    const post = await query('post').locale('en').with('blocks.posts').first()
+
+    expect(post).toMatchObject({
+      blocks: [
+        { collection: 'hero', entry: { headline: 'Hello' } },
+        { collection: 'author', entry: { name: 'Bob', posts: [{ id: 'p3', title: 'Third' }] } },
+      ],
+    })
+  })
+
+  it('take several calls, and a path reaches further than the field it starts with', async () => {
+    const { query, reads } = await site()
+    const post = await query('post').locale('en').with('author').with('author.posts').with('blocks').first()
+
+    expect(post).toMatchObject({
+      author: { name: 'Alice', posts: [{ id: 'p1', title: 'First' }, { id: 'p2', title: 'Second' }] },
+      blocks: [{ collection: 'hero', entry: { headline: 'Hello' } }, { collection: 'author', entry: { name: 'Bob' } }],
+    })
+
+    expect(reads.filter(path => path === 'author/alice')).toEqual(['author/alice'])
+  })
+
   it('need a locale to load translated entries, and a field that links', async () => {
     const { query } = await site()
 
     await expect(Promise.resolve(query('author').with('posts'))).rejects.toThrow('[forgepress] .with("posts") loads "post" entries, which are translated, so query("author") needs .locale(), such as .locale("en")')
-    await expect(Promise.resolve(query('author').with('name'))).rejects.toThrow('[forgepress] .with() loads relation and dynamic fields, and "name" is not one in "author"')
+    await expect(Promise.resolve(query('author').with('name'))).rejects.toThrow('[forgepress] .with("name") loads fields that link to entries, and "name" is not one in "author"')
+    await expect(Promise.resolve(query('post').locale('en').with('mixed.writer'))).rejects.toThrow('[forgepress] .with("mixed.writer") stops at "writer", which does not link to entries')
   })
 
   it('return copies, so changing a result changes nothing else', async () => {

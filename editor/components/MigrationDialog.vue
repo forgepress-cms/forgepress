@@ -4,6 +4,7 @@ import type { Fill, Fix, RenameQuestion } from '../../src/migrate/types'
 import type { Review } from '../composables/useSchema'
 import { computed } from 'vue'
 import { collectionLabel, describeValue, entryCount, fillOptions, fixOptions, groupCount, groupEffects, groupTitle, questionText, renameHints } from '../../src/migrate/report'
+import { onlyName } from '../../src/schema/fields/picked'
 import { questionKey, REMOVE } from '../composables/useSchema'
 import ErrorAlert from './ErrorAlert.vue'
 
@@ -105,7 +106,8 @@ function chooseCreate(group: EffectGroup, value: unknown): void {
 
 function createItems(group: EffectGroup): { label: string, value: string }[] {
   const field = group.field === undefined ? undefined : props.review?.after.collections[group.collection]?.fields[group.field]
-  const target = field?.type === 'relation' ? label(field.collection) : 'new'
+  const only = field?.type === 'collection' ? onlyName(field.collections) : undefined
+  const target = only === undefined ? 'new' : label(only)
   const texts = new Set(group.effects.map(effect => String(effect.before).trim().toLowerCase())).size
 
   return [

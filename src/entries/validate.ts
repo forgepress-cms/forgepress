@@ -1,11 +1,15 @@
 import type { ValueIssue, ValuePath } from '../files/issues'
 import type { Field } from '../schema/fields'
-import type { DynamicField } from '../schema/fields/dynamic'
+import type { CollectionField } from '../schema/fields/collection'
+import type { ComponentField } from '../schema/fields/component'
+import type { ListField } from '../schema/fields/list'
 import type { NumberField } from '../schema/fields/number'
 import type { TextField } from '../schema/fields/text'
-import type { ForgePressSchema } from '../schema/types'
+import type { Component, ForgePressSchema } from '../schema/types'
 import { isEntryId } from '../files/paths'
 import { isTranslated } from '../schema/fields'
+import { itemComponent } from '../schema/fields/component'
+import { COMPONENT_KEY, onlyName } from '../schema/fields/picked'
 import { compilePattern } from '../schema/fields/text'
 import { isRecord, quote } from '../utils/value'
 import { ENTRY_STATUSES, META_KEYS } from './meta'
@@ -17,6 +21,8 @@ export interface FieldIssue extends ValueIssue {
 }
 
 type Report = (path: ValuePath, message: string, kind?: IssueKind) => void
+
+type Components = Readonly<Record<string, Component>>
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))?$/
 const MEDIA_OPTIONS: Record<string, readonly [kind: string, fits: (value: unknown) => boolean]> = {
@@ -88,7 +94,7 @@ function checkMedia(report: Report, path: ValuePath, label: string, value: unkno
   }
 }
 
-function checkBlock(report: Report, path: ValuePath, label: string, field: DynamicField, value: unknown): void {
+function checkBlock(report: Report, path: ValuePath, label: string, field: CollectionField, value: unknown): void {
   if (!isRecord(value))
     return report(path, `Field ${label} has to hold blocks such as { collection: "…", id: "…" }`)
 
@@ -138,7 +144,14 @@ function checkRange(report: Report, path: ValuePath, label: string, field: Numbe
   report(path, `Field ${label} has to be in steps of ${step}${base === 0 ? '' : ` from ${base}`}${nearest.length > 0 ? `, such as ${nearest.join(' or ')}` : ''}`, 'constraint')
 }
 
-function checkValue(report: Report, path: ValuePath, label: string, field: Field, value: unknown): void {
+function checkChoice(report: Report, path: ValuePath, label: string, field: ListField, value: unknown): void {
+  if (typeof value !== 'string')
+    report(path, `Field ${label} has to be a string`)
+  else if (!field.values.includes(value))
+    report(path, `Field ${label} has to be one of ${field.values.map(quote).join(', ') || 'no values yet'}`, 'constraint')
+}
+
+function checkValue(report: Report, path: ValuePath, label: string, field: Field, value: unknown, components: Components, locales: readonly string[]): void {
   switch (field.type) {
     case 'text':
       if (typeof value !== 'string')
@@ -164,6 +177,13 @@ function checkValue(report: Report, path: ValuePath, label: string, field: Field
         report(path, `Field ${label} has to be true or false`)
       return
 
+    case 'list':
+      if (field.multiple)
+        checkList(report, path, value, `Field ${label} has to be a list of values`, (at, item) => checkChoice(report, at, label, field, item))
+      else
+        checkChoice(report, path, label, field, value)
+      return
+
     case 'image':
     case 'video':
       if (field.multiple)
@@ -172,25 +192,38 @@ function checkValue(report: Report, path: ValuePath, label: string, field: Field
         checkMedia(report, path, label, value)
       return
 
-    case 'relation':
-      if (field.multiple)
-        checkList(report, path, value, `Field ${label} has to be a list of ${quote(field.collection)} entry ids`, (at, item) => checkId(report, at, label, field.collection, item))
-      else
-        checkId(report, path, label, field.collection, value)
-      return
+    case 'collection': {
+      const only = onlyName(field.collections)
+      const entry = (at: ValuePath, item: unknown): void => only === undefined
+        ? checkBlock(report, at, label, field, item)
+        : checkId(report, at, label, only, item)
 
-    case 'dynamic':
-      checkList(report, path, value, `Field ${label} has to be a list of blocks`, (at, item) => checkBlock(report, at, label, field, item))
+      if (field.multiple)
+        checkList(report, path, value, `Field ${label} has to be a list of ${only === undefined ? 'blocks' : `${quote(only)} entry ids`}`, entry)
+      else
+        entry(path, value)
+
+      return
+    }
+
+    case 'component': {
+      const only = onlyName(field.components)
+
+      if (field.multiple)
+        checkList(report, path, value, `Field ${label} has to be a list of ${only === undefined ? 'items' : `${quote(only)} items`}`, (at, item) => checkItem(report, at, label, field, item, components, locales))
+      else
+        checkItem(report, path, label, field, value, components, locales)
+    }
   }
 }
 
-function checkTranslations(report: Report, key: string, field: Field, value: unknown, locales: readonly string[]): void {
+function checkTranslations(report: Report, key: string, field: Field, value: unknown, locales: readonly string[], components: Components): void {
   if (!isRecord(value))
     return report([key], `Field ${quote(key)} is translated and has to hold one value per locale, such as { ${locales[0]}: … }`)
 
   for (const [locale, item] of Object.entries(value)) {
     if (locales.includes(locale))
-      checkValue(report, [key, locale], `${quote(key)} (${locale})`, field, item)
+      checkValue(report, [key, locale], `${quote(key)} (${locale})`, field, item, components, locales)
     else
       report([key, locale], `Field ${quote(key)} has no locale ${quote(locale)}; the schema has ${locales.join(', ')}`)
   }
@@ -201,23 +234,56 @@ function checkTranslations(report: Report, key: string, field: Field, value: unk
     report([key], `Field ${quote(key)} is missing its ${missing.join(', ')} ${missing.length === 1 ? 'translation' : 'translations'}`, 'missing')
 }
 
-function checkField(report: Report, key: string, field: Field, value: unknown, locales: readonly string[]): void {
+function checkItem(report: Report, path: ValuePath, label: string, field: ComponentField, value: unknown, components: Components, locales: readonly string[]): void {
+  const only = onlyName(field.components)
+
+  if (!isRecord(value))
+    return report(path, `Field ${label} has to hold ${only === undefined ? 'items' : `${quote(only)} items`} as objects`)
+
+  const name = itemComponent(field, value)
+
+  if (name === undefined) {
+    return value[COMPONENT_KEY] === undefined
+      ? report(path, `An item in field ${label} needs a ${quote(COMPONENT_KEY)}`)
+      : report([...path, COMPONENT_KEY], `A ${quote(COMPONENT_KEY)} in field ${label} has to be a string`)
+  }
+
+  if (!field.components.includes(name))
+    return report([...path, COMPONENT_KEY], `Field ${label} can't hold ${quote(name)} items; allowed are ${field.components.join(', ') || 'none'}`)
+
+  const definition = components[name]
+
+  if (!definition)
+    return report(path, `Field ${label} uses unknown component ${quote(name)}`)
+
+  const nested: Report = (at, message, kind) => report([...path, ...at], message, kind)
+
+  for (const [key, item] of Object.entries(value)) {
+    if (item !== undefined && key !== COMPONENT_KEY && !Object.hasOwn(definition.fields, key))
+      report([...path, key], `${quote(key)} is not a field of component ${quote(name)}`)
+  }
+
+  for (const [key, inner] of Object.entries(definition.fields))
+    checkField(nested, key, inner, value[key], locales, components)
+}
+
+function checkField(report: Report, key: string, field: Field, value: unknown, locales: readonly string[], components: Components): void {
   if (value === undefined) {
     if (!field.optional)
       report([], `Field ${quote(key)} is required`, 'missing')
   }
   else if (isTranslated(field, locales)) {
-    checkTranslations(report, key, field, value, locales)
+    checkTranslations(report, key, field, value, locales, components)
   }
   else {
-    checkValue(report, [key], quote(key), field, value)
+    checkValue(report, [key], quote(key), field, value, components, locales)
   }
 }
 
-export function validateField(key: string, field: Field, value: unknown, locales: readonly string[]): FieldIssue[] {
+export function validateField(key: string, field: Field, value: unknown, locales: readonly string[], components: Components = {}): FieldIssue[] {
   const issues: FieldIssue[] = []
 
-  checkField((path, message, kind = 'type') => issues.push({ path, message, kind }), key, field, value, locales)
+  checkField((path, message, kind = 'type') => issues.push({ path, message, kind }), key, field, value, locales, components)
 
   return issues
 }
@@ -248,7 +314,7 @@ export function validateEntry(schema: ForgePressSchema, collection: string, entr
   }
 
   for (const [key, field] of Object.entries(definition.fields))
-    checkField(report, key, field, entry[key], locales)
+    checkField(report, key, field, entry[key], locales, schema.components ?? {})
 
   return issues
 }

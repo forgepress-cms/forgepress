@@ -1,9 +1,9 @@
 import type { Entry } from '../entries/types'
 import type { Conversion } from '../migrate/convert'
 import type { Field } from '../schema/fields'
-import type { ForgePressSchema } from '../schema/types'
+import type { Component, ForgePressSchema } from '../schema/types'
 import { META_KEYS } from '../entries/meta'
-import { convertField } from '../migrate/convert'
+import { convertField, sameComponents } from '../migrate/convert'
 import { leaves } from '../migrate/plan'
 import { defaultLocale } from '../schema/locales'
 import { same } from '../utils/value'
@@ -16,7 +16,7 @@ export interface Adapted {
 
 const META: ReadonlySet<string> = new Set(META_KEYS)
 
-function conversion(locales: readonly string[], chosen: string | undefined): Conversion {
+function conversion(locales: readonly string[], chosen: string | undefined, components: Readonly<Record<string, Component>> | undefined): Conversion {
   return {
     links: {
       collection: name => name,
@@ -27,6 +27,7 @@ function conversion(locales: readonly string[], chosen: string | undefined): Con
       unmatched: () => undefined,
     },
     locales: { before: locales, after: locales, defaults: { before: chosen, after: chosen }, rename: locale => locale, source: locale => locale },
+    components: sameComponents(components),
   }
 }
 
@@ -36,7 +37,7 @@ function later(left: string, right: string): string {
 
 export function adaptEntry(pending: Entry, schema: ForgePressSchema, collection: string, base?: Entry, head?: Entry): Adapted {
   const fields: Readonly<Record<string, Field>> = schema.collections[collection]?.fields ?? {}
-  const context = conversion(schema.locales ?? [], defaultLocale(schema))
+  const context = conversion(schema.locales ?? [], defaultLocale(schema), schema.components)
   const fit = (value: unknown, field: Field): unknown => value === undefined ? undefined : convertField(value, undefined, field, context)
   const renamed = new Map<string, string>()
 

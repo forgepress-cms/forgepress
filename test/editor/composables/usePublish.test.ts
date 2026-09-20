@@ -66,7 +66,7 @@ function site() {
   const schema: ForgePressSchema = {
     collections: {
       author: { fields: { name: { type: 'text' } } },
-      blogPost: { fields: { author: { type: 'relation', collection: 'author', optional: true } } },
+      blogPost: { fields: { author: { type: 'collection', collections: ['author'], optional: true } } },
     },
   }
   const content: Record<string, Record<string, Entry>> = {
@@ -220,7 +220,7 @@ describe('publishing', () => {
     upstream({
       collections: {
         author: { fields: { fullName: { type: 'text' } } },
-        blogPost: { fields: { author: { type: 'relation', collection: 'author', optional: true } } },
+        blogPost: { fields: { author: { type: 'collection', collections: ['author'], optional: true } } },
       },
     }, 'author', { ...row('author_1'), fullName: 'Alice' })
 
@@ -240,7 +240,7 @@ describe('publishing', () => {
     upstream({
       collections: {
         author: { fields: { name: { type: 'text' } } },
-        blogPost: { fields: { author: { type: 'relation', collection: 'author', optional: true } } },
+        blogPost: { fields: { author: { type: 'collection', collections: ['author'], optional: true } } },
       },
     }, 'author', { ...row('author_1'), name: 'Alice Pleasance' })
 
