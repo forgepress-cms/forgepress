@@ -1,5 +1,5 @@
 import type { Entry } from '../../src/entries/types'
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { parseEntry, parseSchema } from '../../src/files/parse'
 import { serializeEntry, serializeSchema } from '../../src/files/serialize'
@@ -15,11 +15,11 @@ const schema = {
       },
     },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 
 describe('serializeSchema', () => {
   it('writes a schema module in project style', () => {
-    expect(serializeSchema(schema)).toBe(`import type { ForgePressSchema } from 'forgepress'
+    expect(serializeSchema(schema)).toBe(`import type { Schema } from 'forgepress'
 
 export default {
   locales: ['en', 'de'],
@@ -40,13 +40,13 @@ export default {
       },
     },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 `)
   })
 
   it('honours the content config', () => {
     expect(serializeSchema({ collections: {} }, { indent: 4, semi: true }))
-      .toContain('export default {\n    collections: {},\n} as const satisfies ForgePressSchema;')
+      .toContain('export default {\n    collections: {},\n} as const satisfies Schema;')
   })
 
   it('writes a schema the parser reads back', () => {
@@ -68,7 +68,7 @@ describe('serializeEntry', () => {
   }
 
   it('writes one module per entry as a single default export', () => {
-    expect(serializeEntry('blogPost', row)).toBe(`import type { ForgePressEntry } from 'forgepress'
+    expect(serializeEntry('blogPost', row)).toBe(`import type { Content } from 'forgepress'
 
 export default {
   id: 'blog-post-1',
@@ -80,7 +80,7 @@ export default {
     de: 'Hallo',
   },
   tags: [],
-} satisfies ForgePressEntry<'blogPost'>
+} satisfies Content<'blogPost'>
 `)
   })
 

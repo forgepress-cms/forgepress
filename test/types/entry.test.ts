@@ -1,4 +1,4 @@
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -46,7 +46,7 @@ const schema = {
     author: { fields: { name: { type: 'text' } } },
     hero: { fields: { headline: { type: 'text' } } },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 
 const post: Record<string, unknown> = {
   id: 'post_1',

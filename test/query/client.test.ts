@@ -40,6 +40,22 @@ describe('createLoader', () => {
     expect(reads).toEqual(['index.json', 'author/index.1.json', 'author/alice.1.json', 'index.json'])
   })
 
+  it('reads the root index once for queries that run at the same time', async () => {
+    const { reads, read } = site({
+      'index.json': index,
+      'author/index.1.json': manifest('author/alice.1.json'),
+      'author/alice.1.json': { id: 'alice', name: 'Alice' },
+    })
+    const loader = createLoader(read)
+    const names = (): Promise<unknown[]> => loader.run(async snapshot => (await snapshot.entries('author', undefined, ['alice'])).map(author => author.name))
+
+    expect(await Promise.all([names(), names(), names()])).toEqual([['Alice'], ['Alice'], ['Alice']])
+    expect(reads).toEqual(['index.json', 'author/index.1.json', 'author/alice.1.json'])
+
+    await names()
+    expect(reads.filter(path => path === 'index.json')).toHaveLength(2)
+  })
+
   it('finds the manifest of a locale and ignores the locale for untranslated collections', async () => {
     const { read } = site({ 'index.json': index, 'post/en/index.1.json': manifest('post/en/alice.1.json'), 'author/index.1.json': manifest('author/alice.1.json') })
     const loader = createLoader(read)

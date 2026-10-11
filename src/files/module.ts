@@ -16,7 +16,7 @@ const BINARY = /[01]/
 const HEX_DIGITS = /^[\da-f]+$/i
 const RADIX = /[box]/i
 const BREAKS = new Set(['\n', '\r', '\u2028', '\u2029'])
-const TYPE_IMPORT = 'Only type imports are allowed, e.g. `import type { ForgePressEntry } from \'forgepress\'`'
+const TYPE_IMPORT = 'Only type imports are allowed, e.g. `import type { Content } from \'forgepress\'`'
 
 const ESCAPES = new Map([
   ['n', '\n'],

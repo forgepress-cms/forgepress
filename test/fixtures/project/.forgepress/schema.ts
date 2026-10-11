@@ -1,4 +1,4 @@
-import type { ForgePressSchema } from '../../../../src/index'
+import type { Schema } from '../../../../src/index'
 
 export default {
   locales: ['en', 'de'],
@@ -19,4 +19,4 @@ export default {
       },
     },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema

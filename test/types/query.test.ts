@@ -1,4 +1,4 @@
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -41,7 +41,7 @@ const schema = {
     author: { fields: { name: { type: 'text' }, posts: { type: 'collection', collections: ['post'], multiple: true, optional: true } } },
     hero: { fields: { headline: { type: 'text', translate: true } } },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 
 const accepted: Case[] = [
   {
@@ -88,7 +88,7 @@ const ids: string[] = posts.map(post => post.id)`,
   },
   {
     name: 'relations loaded as entries, optional ones staying optional',
-    code: `const post = (await query('post').locale('en').with('author').with('editor').with('related').first())!
+    code: `const post = (await query('post').locale('en').with('author', 'editor', 'related').first())!
 const name: string = post.author.name
 const editor: string | undefined = post.editor?.name
 const titles: string[] | undefined = post.related?.map(item => item.title)`,
@@ -161,11 +161,86 @@ const titles: string[] = post.cards?.[0]?.link?.posts?.map(item => item.title) ?
 const titles: string[] = post.blocks?.flatMap(block => block.collection === 'author' ? block.entry.posts?.map(item => item.title) ?? [] : [block.entry.headline]) ?? []`,
   },
   {
-    name: 'several calls, each loading its own field',
-    code: `const post = (await query('post').locale('en').with('author.posts').with('blocks').first())!
+    name: 'several paths, each loading its own field',
+    code: `const post = (await query('post').locale('en').with('author.posts', 'blocks').first())!
 const name: string = post.author.name
 const posts: number = post.author.posts?.length ?? 0
 const headline: string | undefined = post.blocks?.map(block => block.collection === 'hero' ? block.entry.headline : block.entry.name)[0]`,
+  },
+  {
+    name: 'picked fields of the entries a field loads, per collection',
+    code: `const post = (await query('post').locale('en').with('author', 'blocks', { hero: ['headline'], author: ['id', 'name'] }).first())!
+const name: string = post.author.name
+const texts: string[] = post.blocks?.map(block => block.collection === 'hero' ? block.entry.headline : block.entry.id) ?? []`,
+  },
+  {
+    name: 'picked fields inside component items and along a path',
+    code: `const post = (await query('post').locale('en').with('mixed', 'author.posts', { author: ['name', 'posts'], post: ['title'] }).first())!
+const names: (string | undefined)[] = post.mixed?.map(item => item.component === 'card' ? item.link?.name : undefined) ?? []
+const titles: string[] = post.author.posts?.map(item => item.title) ?? []`,
+  },
+  {
+    name: 'several paths under the same field, each one loaded',
+    code: `const post = (await query('post').locale('en').with('related.author', 'related.editor', 'related.blocks').first())!
+const author: string | undefined = post.related?.[0]?.author.name
+const editor: string | undefined = post.related?.[0]?.editor?.name
+const texts: string[] = post.related?.[0]?.blocks?.map(block => block.collection === 'hero' ? block.entry.headline : block.entry.name) ?? []`,
+  },
+  {
+    name: 'a query as the collection type it returns',
+    code: `const plain = await query('post').locale('en').first()
+const loaded = (await query('post').locale('en').with('author.posts', 'blocks', { author: ['name', 'posts'] }).first())!
+const one: Same<typeof plain, Collection<'post'> | undefined> = true
+const two: Same<typeof loaded, Collection<'post', With<'author.posts' | 'blocks', { author: ['name', 'posts'] }>>> = true
+const listed: Collection<'post', With<'author'>>[] = await query('post').locale('en').with('author')`,
+  },
+  {
+    name: 'picked fields as a Pick of the collection type, before or after loading',
+    code: `const picked = (await query('post').locale('en').pick('id', 'title').first())!
+const after = (await query('post').locale('en').with('author').pick('title', 'author').first())!
+const before = (await query('post').locale('en').pick('title', 'author').with('author').first())!
+const one: Same<typeof picked, Pick<Collection<'post'>, 'id' | 'title'>> = true
+const two: Same<typeof after, Pick<Collection<'post', With<'author'>>, 'title' | 'author'>> = true
+const three: Same<typeof before, typeof after> = true`,
+  },
+  {
+    name: 'a component by its name, with links as references until a path loads them',
+    code: `const stored = {} as Component<'card'>
+const loaded = {} as Component<'card', With<'link'>>
+const deeper = {} as Component<'card', With<'link.posts'>>
+const kept = {} as Component<'card', With<'link', { author: ['name'] }>>
+const ref: { collection: 'author', id: string } | undefined = stored.link
+const posts: { collection: 'post', id: string }[] | undefined = loaded.link?.posts
+const titles: string[] | undefined = deeper.link?.posts?.map(item => item.title)
+const name: string | undefined = kept.link?.name
+const title: string = kept.title`,
+  },
+  {
+    name: 'a component item of a query as the component type it declares',
+    code: `const post = (await query('post').locale('en').with('cards', 'mixed', { author: ['name'] }).first())!
+const card: Component<'card', With<'link', { author: ['name'] }>> | undefined = post.cards?.[0]
+const quotes: Component<'quote', With<'source', { author: ['name'] }>>[] = post.mixed?.flatMap(item => item.component === 'quote' ? [item] : []) ?? []
+const same: Same<NonNullable<typeof post.cards>[number], Component<'card', With<'link', { author: ['name'] }>>> = true`,
+  },
+  {
+    name: 'a collection with paths, a union of them, and the fields to keep',
+    code: `const post = {} as Collection<'post', With<'author.posts' | 'spot', { hero: ['headline'] }>>
+const titles: string[] | undefined = post.author.posts?.map(item => item.title)
+const text: string = post.spot === undefined ? '' : post.spot.collection === 'hero' ? post.spot.entry.headline : post.spot.entry.name
+const editor: { collection: 'author', id: string } | undefined = post.editor`,
+  },
+  {
+    name: 'a stored entry, the locales of the site, and the untyped forms',
+    code: `const stored = {} as Content<'post'>
+const title: string = stored.title.de
+const locale: Locale = 'de'
+const anyStored = {} as Content
+const status: 'published' | 'unpublished' = anyStored.status
+const anyEntry = {} as Collection
+const id: string = anyEntry.id
+const field: unknown = anyEntry.title
+const anyItem = {} as Component
+const value: unknown = anyItem.title`,
   },
 ]
 
@@ -189,6 +264,25 @@ const rejected: Case[] = [
   { name: 'a path through a field that does not link', code: `await query('post').locale('en').with('author.name')` },
   { name: 'a path into a component field that does not exist', code: `await query('post').locale('en').with('cards.writer')` },
   { name: 'a field that was not picked', code: `const [post] = await query('post').locale('en').pick('id')\nconst title = post?.title` },
+  { name: 'a field of a loaded entry that was not picked', code: `const post = (await query('post').locale('en').with('author', { author: ['name'] }).first())!\nconst id = post.author.id` },
+  { name: 'picking a field the collection does not have', code: `await query('post').locale('en').with('author', { author: ['title'] })` },
+  { name: 'picking from a collection that does not exist', code: `await query('post').locale('en').with('author', { writer: ['name'] })` },
+  { name: 'a field of a kept component link that was not kept', code: `const card = {} as Component<'card', With<'link', { author: ['name'] }>>\nconst id = card.link?.id` },
+  { name: 'a loaded field on a component as it is stored', code: `const card = {} as Component<'card'>\nconst name = card.link?.name` },
+  { name: 'a second call to with', code: `await query('post').locale('en').with('author').with('blocks')` },
+  { name: 'a second call to pick', code: `await query('post').locale('en').pick('id', 'title').pick('id')` },
+  { name: 'a field list before the paths', code: `await query('post').locale('en').with({ author: ['name'] }, 'author')` },
+  { name: 'a field list without a path', code: `await query('post').locale('en').with({ author: ['name'] })` },
+  { name: 'With without what it loads', code: `const post = {} as Collection<'post', With>` },
+  { name: 'With for a field that does not link', code: `const post = {} as Collection<'post', With<'title'>>` },
+  { name: 'With for a path of another collection', code: `const hero = {} as Collection<'hero', With<'author'>>` },
+  { name: 'With keeping a field the collection does not have', code: `const post = {} as Collection<'post', With<'author', { author: ['title'] }>>` },
+  { name: 'With for a path the component does not have', code: `const card = {} as Component<'card', With<'author'>>` },
+  { name: 'a field of a loaded entry that the declared type does not keep', code: `const post = {} as Collection<'post', With<'author', { author: ['name'] }>>\nconst id = post.author.id` },
+  { name: 'a query that loads more than the declared type', code: `const post: Collection<'post'> | undefined = await query('post').locale('en').with('author').first()` },
+  { name: 'a query that loads less than the declared type', code: `const post: Collection<'post', With<'author' | 'editor'>> | undefined = await query('post').locale('en').with('author').first()` },
+  { name: 'a collection that does not exist', code: `const page = {} as Collection<'page'>` },
+  { name: 'a component that does not exist', code: `const grid = {} as Component<'grid'>` },
 ]
 
 const cases = [...accepted, ...rejected]
@@ -202,9 +296,25 @@ beforeAll(() => {
   mkdirSync(scratch, { recursive: true })
   writeFileSync(join(scratch, 'schema.ts'), serializeSchema(schema).replace('from \'forgepress\'', 'from \'../../src/schema/types\''))
 
+  writeFileSync(join(scratch, 'registry.ts'), [
+    'import type schema from \'./schema\'',
+    '',
+    'declare module \'../../src/schema/types\' {',
+    '  interface SchemaRegistry {',
+    '    schema: typeof schema',
+    '  }',
+    '}',
+    '',
+    'export {}',
+    '',
+  ].join('\n'))
+
   cases.forEach((item, index) => writeFileSync(file(index), [
+    'import type { Collection, Component, Content, Locale, With } from \'../../src/entries/types\'',
     'import type { Query } from \'../../src/query/types\'',
     'import type schema from \'./schema\'',
+    '',
+    'type Same<TLeft, TRight> = [TLeft] extends [TRight] ? [TRight] extends [TLeft] ? true : false : false',
     '',
     'declare const query: Query<typeof schema>',
     '',
@@ -214,7 +324,7 @@ beforeAll(() => {
     '',
   ].join('\n')))
 
-  const program = ts.createProgram([join(scratch, 'schema.ts'), ...cases.map((_, index) => file(index))], {
+  const program = ts.createProgram([join(scratch, 'schema.ts'), join(scratch, 'registry.ts'), ...cases.map((_, index) => file(index))], {
     strict: true,
     exactOptionalPropertyTypes: true,
     noEmit: true,

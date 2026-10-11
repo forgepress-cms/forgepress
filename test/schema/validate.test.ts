@@ -149,6 +149,14 @@ describe('validateSchema', () => {
     ])
   })
 
+  it('takes text over several lines', () => {
+    expect(issues(withField({ type: 'text', multiline: true }))).toEqual([])
+
+    expect(issues(withField({ type: 'text', multiline: 'yes' }))).toEqual([
+      { path: ['collections', 'post', 'fields', 'field', 'multiline'], message: '"multiline" of field "post.field" has to be true or false' },
+    ])
+  })
+
   it('checks the field constraints', () => {
     expect(issues(withField({ type: 'text', validation: '[a-z' }))).toEqual([
       { path: ['collections', 'post', 'fields', 'field', 'validation'], message: '"validation" of field "post.field" is not a valid regular expression: /[a-z/u: Unterminated character class' },

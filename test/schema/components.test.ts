@@ -1,4 +1,4 @@
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { serializeSchema } from '../../src/files/serialize'
 import { validateSchema } from '../../src/schema/validate'
@@ -88,7 +88,7 @@ describe('components in the schema', () => {
   })
 
   it('writes components ahead of the collections that use them', () => {
-    const text = serializeSchema({ locales: ['en'], collections: { page: { fields: {} } }, components: { card: { fields: {} } } } as ForgePressSchema)
+    const text = serializeSchema({ locales: ['en'], collections: { page: { fields: {} } }, components: { card: { fields: {} } } } as Schema)
 
     expect(text.indexOf('components:')).toBeLessThan(text.indexOf('collections:'))
     expect(text.indexOf('locales:')).toBeLessThan(text.indexOf('components:'))

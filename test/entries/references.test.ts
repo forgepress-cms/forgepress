@@ -1,5 +1,5 @@
 import type { Entry } from '../../src/entries/types'
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { entryReferences, unpublishedReferences, validateReferences } from '../../src/entries/references'
 
@@ -17,7 +17,7 @@ const schema = {
     author: { fields: {} },
     hero: { fields: {} },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 
 function entry(id: string, fields: Record<string, unknown> = {}, status: Entry['status'] = 'published'): Entry {
   return { id, status, createdAt: '2024-01-01', updatedAt: '2024-01-01', ...fields }

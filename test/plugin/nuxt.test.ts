@@ -1,5 +1,5 @@
 import type { ModuleOptions } from '../../src/plugin/nuxt'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runWithNuxtContext } from '@nuxt/kit'
@@ -68,6 +68,16 @@ describe('nuxt module', () => {
 
     expect(types.tsConfig.include).toEqual(['./nuxt.d.ts', '../../.forgepress/**/*.ts'])
     expect(types.nodeTsConfig.include).toEqual(['../nuxt.config.*', '../forgepress.config.ts'])
+  })
+
+  it('writes the schema registry when it is set up, so preparing the app is enough for its types', async () => {
+    write('site/package.json', '{}\n')
+    write('site/.forgepress/schema.ts', 'export default { collections: {} }\n')
+    const { install } = nuxt()
+
+    await install()
+
+    expect(readFileSync(join(scratch, 'site/.forgepress/forgepress.d.ts'), 'utf8')).toContain('interface SchemaRegistry {')
   })
 
   it('runs the preview plugin in the browser unless it is switched off', async () => {

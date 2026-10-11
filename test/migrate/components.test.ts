@@ -1,6 +1,6 @@
 import type { Entry } from '../../src/entries/types'
 import type { MigrationInput } from '../../src/migrate/types'
-import type { Component, ForgePressSchema } from '../../src/schema/types'
+import type { ComponentDefinition, Schema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { planMigration } from '../../src/migrate/plan'
 import { renameQuestions } from '../../src/migrate/questions'
@@ -9,7 +9,7 @@ function entry(id: string, fields: Record<string, unknown> = {}): Entry {
   return { id, status: 'published', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', ...fields }
 }
 
-function schema(components: Record<string, Component>, translate = false, names?: string[]): ForgePressSchema {
+function schema(components: Record<string, ComponentDefinition>, translate = false, names?: string[]): Schema {
   const picked = names ?? [Object.keys(components)[0]!]
 
   return {
@@ -23,7 +23,7 @@ function plan(input: Pick<MigrationInput, 'before' | 'after' | 'content'> & Part
   return planMigration({ now: '2026-09-17T10:00:00.000Z', ...input })
 }
 
-const card: Component = { fields: { title: { type: 'text' }, count: { type: 'text', optional: true } } }
+const card: ComponentDefinition = { fields: { title: { type: 'text' }, count: { type: 'text', optional: true } } }
 const content = { page: [entry('page_1', { cards: [{ title: 'One', count: '3' }, { title: 'Two' }] })] }
 
 describe('migrating components', () => {
@@ -55,7 +55,7 @@ describe('migrating components', () => {
   })
 
   it('names every item once the field holds more than one component', () => {
-    const quote: Component = { fields: { saying: { type: 'text' } } }
+    const quote: ComponentDefinition = { fields: { saying: { type: 'text' } } }
     const after = schema({ card, quote }, false, ['card', 'quote'])
     const migration = plan({ before: schema({ card }), after, content })
 
@@ -66,7 +66,7 @@ describe('migrating components', () => {
   })
 
   it('keeps the items of the one component left and drops the others', () => {
-    const quote: Component = { fields: { saying: { type: 'text' } } }
+    const quote: ComponentDefinition = { fields: { saying: { type: 'text' } } }
     const before = schema({ card, quote }, false, ['card', 'quote'])
     const mixed = { page: [entry('page_1', { cards: [{ component: 'card', title: 'One' }, { component: 'quote', saying: 'Hi' }] })] }
     const migration = plan({ before, after: schema({ card, quote }, false, ['card']), content: mixed })

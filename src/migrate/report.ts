@@ -1,4 +1,4 @@
-import type { ForgePressSchema } from '../schema/types'
+import type { Schema } from '../schema/types'
 import type { Effect, EffectKind, Fill, Fix, RenameQuestion, Renames } from './types'
 import { isEntryRef } from '../entries/references'
 import { isTranslated } from '../schema/fields'
@@ -55,15 +55,15 @@ export function groupEffects(effects: readonly Effect[], kinds: readonly EffectK
   return [...groups.values()]
 }
 
-export function collectionLabel(name: string, ...schemas: ForgePressSchema[]): string {
+export function collectionLabel(name: string, ...schemas: Schema[]): string {
   return schemas.map(schema => schema.collections[name]?.label).find(label => label !== undefined) ?? name
 }
 
-export function componentLabel(name: string, ...schemas: ForgePressSchema[]): string {
+export function componentLabel(name: string, ...schemas: Schema[]): string {
   return schemas.map(schema => schema.components?.[name]?.label).find(label => label !== undefined) ?? name
 }
 
-export function groupTitle(group: EffectGroup, ...schemas: ForgePressSchema[]): string {
+export function groupTitle(group: EffectGroup, ...schemas: Schema[]): string {
   const collection = collectionLabel(group.collection, ...schemas)
   const name = group.field === undefined ? collection : `${collection} · ${group.label ?? group.field}`
 
@@ -89,7 +89,7 @@ export function groupCount(group: EffectGroup): string {
   return entries
 }
 
-export function questionText(question: RenameQuestion, ...schemas: ForgePressSchema[]): string {
+export function questionText(question: RenameQuestion, ...schemas: Schema[]): string {
   if (question.kind === 'collection')
     return `Entries are stored for ${question.from}, which isn't a collection anymore.`
 
@@ -105,7 +105,7 @@ export function questionText(question: RenameQuestion, ...schemas: ForgePressSch
   return `Translations use the locale ${question.from}, which isn't in the schema anymore.`
 }
 
-export function fillOptions(schema: ForgePressSchema, group: EffectGroup): FillOptions {
+export function fillOptions(schema: Schema, group: EffectGroup): FillOptions {
   const fields = schema.collections[group.collection]?.fields ?? {}
   const field = group.field === undefined ? undefined : fields[group.field]
 
@@ -137,7 +137,7 @@ export function fillOptions(schema: ForgePressSchema, group: EffectGroup): FillO
   return options
 }
 
-export function fixOptions(schema: ForgePressSchema, group: EffectGroup): Choice<Fix>[] {
+export function fixOptions(schema: Schema, group: EffectGroup): Choice<Fix>[] {
   const field = group.field === undefined ? undefined : schema.collections[group.collection]?.fields[group.field]
 
   return [

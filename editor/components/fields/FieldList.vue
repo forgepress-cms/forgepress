@@ -66,7 +66,6 @@ const localeTabs = localeItems(props.locales)
       :key="field.locale"
       v-model="values[field.key]![field.locale]"
       :forms="field.components"
-      :label="field.label"
       :multiple="field.config.multiple ?? false"
       :tagged="field.config.components.length !== 1"
       :entries="entries"
@@ -108,6 +107,14 @@ const localeTabs = localeItems(props.locales)
       :nested="nested"
       :locales="locales"
       :trail="trail"
+    />
+
+    <UTextarea
+      v-else-if="field.config.type === 'text' && field.config.multiline"
+      v-model="values[field.key]![field.locale]"
+      :rows="6"
+      autoresize
+      class="w-full"
     />
 
     <UInput

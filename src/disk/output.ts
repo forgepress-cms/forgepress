@@ -1,7 +1,7 @@
 import type { ResolvedConfig } from '../config/resolve'
 import type { ContentIssue } from '../files/issues'
 import type { OutputFile } from '../output/types'
-import type { ForgePressSchema } from '../schema/types'
+import type { Schema } from '../schema/types'
 import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, rename, rm, rmdir, writeFile } from 'node:fs/promises'
@@ -25,7 +25,7 @@ export interface BuildResult {
   files: number
   commit: string | null
   issues: ContentIssue[]
-  schema: ForgePressSchema
+  schema: Schema
 }
 
 const queues = new Map<string, Promise<void>>()

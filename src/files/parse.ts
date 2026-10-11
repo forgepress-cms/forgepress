@@ -1,5 +1,5 @@
 import type { Entry } from '../entries/types'
-import type { ForgePressSchema } from '../schema/types'
+import type { Schema } from '../schema/types'
 import type { ContentIssue, ValueIssue } from './issues'
 import type { ParsedModule } from './module'
 import { validateSchema } from '../schema/validate'
@@ -12,7 +12,7 @@ export interface ContentFile {
   text: string
 }
 
-export type ParsedSchema = { schema: ForgePressSchema } | { issues: ContentIssue[] }
+export type ParsedSchema = { schema: Schema } | { issues: ContentIssue[] }
 
 export function parseFile(file: ContentFile): ParsedModule | readonly ContentIssue[] {
   try {
@@ -40,10 +40,10 @@ export function parseSchemaFile(file: ContentFile): ParsedSchema {
 
   return issues.length > 0
     ? { issues: issues.map(issue => located(file.path, parsed, issue)) }
-    : { schema: parsed.value as ForgePressSchema }
+    : { schema: parsed.value as Schema }
 }
 
-export function parseSchema(text: string, file: string): ForgePressSchema {
+export function parseSchema(text: string, file: string): Schema {
   const parsed = parseSchemaFile({ path: file, text })
 
   if ('issues' in parsed)

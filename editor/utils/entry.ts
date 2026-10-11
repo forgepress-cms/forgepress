@@ -1,6 +1,6 @@
 import type { CollectionEntry } from '../../src/entries/references'
 import type { Entry, EntryStatus } from '../../src/entries/types'
-import type { Collection, Component } from '../../src/schema/types'
+import type { CollectionDefinition, ComponentDefinition } from '../../src/schema/types'
 import type { ComponentForm, FormField, LocalizedField } from './schema'
 import { entryId } from '../../src/entries/id'
 import { entryKey } from '../../src/entries/references'
@@ -70,7 +70,7 @@ export function fieldLocale(field: FormField, locales: readonly string[]): strin
   return field.translated ? locales[0] ?? SINGLE : SINGLE
 }
 
-export function toLocalizedFields(collection: Collection, locales: readonly string[], components: Readonly<Record<string, Component>> = {}): LocalizedField[] {
+export function toLocalizedFields(collection: CollectionDefinition, locales: readonly string[], components: Readonly<Record<string, ComponentDefinition>> = {}): LocalizedField[] {
   return toFields(collection, locales, components).map(field => ({ ...field, locale: fieldLocale(field, locales) }))
 }
 

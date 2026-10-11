@@ -1,6 +1,6 @@
 import type { ContentConfig } from '../config/types'
 import type { Entry } from '../entries/types'
-import type { ForgePressSchema } from '../schema/types'
+import type { Schema } from '../schema/types'
 import { META_KEYS } from '../entries/meta'
 import { isRecord } from '../utils/value'
 
@@ -93,7 +93,7 @@ function value(input: unknown, style: Style, depth: number): string {
   return `{\n${lines.join('\n')}\n${close}}`
 }
 
-function orderedSchema(schema: ForgePressSchema): Record<string, unknown> {
+function orderedSchema(schema: Schema): Record<string, unknown> {
   const { components, ...rest } = schema
 
   if (!isRecord(components) || Object.keys(components).length === 0)
@@ -102,13 +102,13 @@ function orderedSchema(schema: ForgePressSchema): Record<string, unknown> {
   return Object.fromEntries(Object.entries(rest).flatMap(([name, item]) => name === 'collections' ? [['components', components], [name, item]] : [[name, item]]))
 }
 
-export function serializeSchema(schema: ForgePressSchema, config?: ContentConfig): string {
+export function serializeSchema(schema: Schema, config?: ContentConfig): string {
   const current = style(config)
 
   return [
-    `import type { ForgePressSchema } from 'forgepress'${current.semi}`,
+    `import type { Schema } from 'forgepress'${current.semi}`,
     '',
-    `export default ${value(orderedSchema(schema), current, 0)} as const satisfies ForgePressSchema${current.semi}`,
+    `export default ${value(orderedSchema(schema), current, 0)} as const satisfies Schema${current.semi}`,
     '',
   ].join('\n')
 }
@@ -132,9 +132,9 @@ export function serializeEntry(collection: string, row: Entry, config?: ContentC
     .join('\n')
 
   return [
-    `import type { ForgePressEntry } from 'forgepress'${current.semi}`,
+    `import type { Content } from 'forgepress'${current.semi}`,
     '',
-    `export default {\n${body}\n} satisfies ForgePressEntry<${string(collection)}>${current.semi}`,
+    `export default {\n${body}\n} satisfies Content<${string(collection)}>${current.semi}`,
     '',
   ].join('\n')
 }

@@ -4,6 +4,7 @@ const text = {
   type: 'text',
   label: 'Text',
   options: {
+    multiline: { label: 'Multiline', type: 'boolean', description: 'Edited in a box that holds several lines, such as a code sample.' },
     validation: { label: 'Validation Pattern', type: 'text' },
     index: { label: 'Indexed', type: 'boolean', description: 'Listed in the collection manifest, so queries can filter and sort on it without loading every entry.' },
   },

@@ -206,7 +206,7 @@ describe('forge source', () => {
     expect(repo.calls.filter(call => call === 'head')).toHaveLength(2)
   })
 
-  it('lists the uploads directly in the media folder of the commit it reads', async () => {
+  it('lists the uploads in the media folder of the commit it reads, folders included', async () => {
     const upload = '\u0089PNG'
     const repo = repository({
       c1: {
@@ -226,8 +226,8 @@ describe('forge source', () => {
     const source = createForgeSource(() => repo.forge, { paths: repositoryPaths(defaultPaths, 'apps/site'), mediaDir: 'apps/site/public/uploads' }, cache)
     const listed = (): string[] => repo.calls.filter(call => call.startsWith('files') && call.includes('public/uploads'))
 
-    expect((await source.media()).sort()).toEqual(['clip.5e6f7a8b.webm', 'team.1a2b3c4d.png'])
-    expect(await source.media()).toHaveLength(2)
+    expect((await source.media()).sort()).toEqual(['clip.5e6f7a8b.webm', 'old/team.png', 'team.1a2b3c4d.png'])
+    expect(await source.media()).toHaveLength(3)
     expect(listed()).toEqual(['files c1 apps/site/public/uploads'])
 
     await settle()
@@ -236,7 +236,7 @@ describe('forge source', () => {
 
     const reloaded = createForgeSource(() => repo.forge, { paths: repositoryPaths(defaultPaths, 'apps/site'), mediaDir: 'apps/site/public/uploads' }, cache)
 
-    expect(await reloaded.media()).toHaveLength(2)
+    expect(await reloaded.media()).toHaveLength(3)
     expect(listed()).toHaveLength(1)
 
     reloaded.reset('c2')

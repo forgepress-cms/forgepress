@@ -3,7 +3,7 @@ import type { App } from 'vue'
 import type { ChangeService } from '../../../src/changes/types'
 import type { Entry } from '../../../src/entries/types'
 import type { Forge } from '../../../src/forge/types'
-import type { ForgePressSchema } from '../../../src/schema/types'
+import type { Schema } from '../../../src/schema/types'
 import type { ContentSource } from '../../../src/store/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, onMounted, ref } from 'vue'
@@ -63,7 +63,7 @@ const base: ContentSource = {
 }
 
 function site() {
-  const schema: ForgePressSchema = {
+  const schema: Schema = {
     collections: {
       author: { fields: { name: { type: 'text' } } },
       blogPost: { fields: { author: { type: 'collection', collections: ['author'], optional: true } } },
@@ -118,7 +118,7 @@ function site() {
     entry: async (collection, id) => listing.get(defaultPaths.entry(collection, id)),
   })
 
-  function upstream(next: ForgePressSchema, collection: string, entry: Entry): void {
+  function upstream(next: Schema, collection: string, entry: Entry): void {
     const entryPath = defaultPaths.entry(collection, entry.id)
 
     Object.assign(schema, next)

@@ -1,6 +1,6 @@
 import type { Entry } from '../entries/types'
 import type { Field } from '../schema/fields'
-import type { Collection, Component } from '../schema/types'
+import type { CollectionDefinition, ComponentDefinition } from '../schema/types'
 import type { EntryWrite } from '../store/types'
 import type { ComponentMap, Conversion, Links, LocaleMap } from './convert'
 import type { Effect, Fill, Fix, Migration, MigrationInput } from './types'
@@ -68,7 +68,7 @@ function gaps(value: unknown, field: Field, locales: readonly string[]): (string
   return isRecord(value) ? locales.filter(locale => value[locale] === undefined) : []
 }
 
-function itemGaps(field: Field | undefined, value: unknown, components: Readonly<Record<string, Component>>, locales: readonly string[], path: string, label: string, found = new Map<string, string>()): Map<string, string> {
+function itemGaps(field: Field | undefined, value: unknown, components: Readonly<Record<string, ComponentDefinition>>, locales: readonly string[], path: string, label: string, found = new Map<string, string>()): Map<string, string> {
   if (!field || field.type !== 'component')
     return found
 
@@ -384,7 +384,7 @@ export function planMigration(input: MigrationInput): Migration {
     }
   }
 
-  function migrateEntry(row: Entry, source: string, target: string, definition: Collection): Entry {
+  function migrateEntry(row: Entry, source: string, target: string, definition: CollectionDefinition): Entry {
     const previous = before.collections[source]?.fields ?? {}
     const fields = definition.fields
     const fieldRenames = renames.fields?.[target] ?? {}

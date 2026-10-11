@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { assetName, checkUpload, isAssetName, isMediaFile, resolveMedia, sortAssets, storedAsset } from '../media'
+import { toPosix } from './paths'
 
 export function createMediaStore(root: string, config?: MediaConfig): MediaStore {
   const media = resolveMedia(config)
@@ -20,7 +21,7 @@ export function createMediaStore(root: string, config?: MediaConfig): MediaStore
       if (!existsSync(dir))
         return []
 
-      const files = (await readdir(dir)).filter(isMediaFile)
+      const files = (await readdir(dir, { recursive: true })).map(toPosix).filter(isMediaFile)
 
       return sortAssets(await Promise.all(files.map(describe)))
     },

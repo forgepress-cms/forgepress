@@ -1,7 +1,7 @@
 import type { Entry } from '../entries/types'
 import type { Field } from '../schema/fields'
-import type { ForgePressSchema } from '../schema/types'
-import type { Content, RenameQuestion, Renames } from './types'
+import type { Schema } from '../schema/types'
+import type { Entries, RenameQuestion, Renames } from './types'
 import { componentItems } from '../entries/items'
 import { META_KEYS } from '../entries/meta'
 import { isTranslated } from '../schema/fields'
@@ -9,9 +9,9 @@ import { isTranslations } from './convert'
 import { invert, leaves } from './plan'
 
 export interface QuestionInput {
-  before: ForgePressSchema
-  after: ForgePressSchema
-  content: Content
+  before: Schema
+  after: Schema
+  content: Entries
   renames?: Renames | undefined
   repair?: boolean | undefined
 }
@@ -24,7 +24,7 @@ function empty(rows: readonly Row[], key: string): boolean {
   return rows.every(row => leaves(row[key]) === 0)
 }
 
-function collectItems(schema: ForgePressSchema, field: Field | undefined, value: unknown, translated: boolean, found: Map<string, Row[]>): void {
+function collectItems(schema: Schema, field: Field | undefined, value: unknown, translated: boolean, found: Map<string, Row[]>): void {
   if (!field || field.type !== 'component')
     return
 
@@ -41,7 +41,7 @@ function collectItems(schema: ForgePressSchema, field: Field | undefined, value:
   }
 }
 
-function itemsByComponent(schema: ForgePressSchema, content: Content): Map<string, Row[]> {
+function itemsByComponent(schema: Schema, content: Entries): Map<string, Row[]> {
   const found = new Map<string, Row[]>()
 
   for (const [collection, definition] of Object.entries(schema.collections)) {
@@ -54,7 +54,7 @@ function itemsByComponent(schema: ForgePressSchema, content: Content): Map<strin
   return found
 }
 
-function componentQuestions(before: ForgePressSchema, after: ForgePressSchema, content: Content, renames: Renames): RenameQuestion[] {
+function componentQuestions(before: Schema, after: Schema, content: Entries, renames: Renames): RenameQuestion[] {
   const questions: RenameQuestion[] = []
   const items = itemsByComponent(before, content)
   const componentRenames = renames.components ?? {}

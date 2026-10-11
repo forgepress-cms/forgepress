@@ -3,7 +3,7 @@ import type { Field } from '../schema/fields'
 import type { CollectionField } from '../schema/fields/collection'
 import type { ComponentField } from '../schema/fields/component'
 import type { ListField } from '../schema/fields/list'
-import type { Component } from '../schema/types'
+import type { ComponentDefinition } from '../schema/types'
 import { isEntryRef } from '../entries/references'
 import { isTranslated } from '../schema/fields'
 import { itemComponent } from '../schema/fields/component'
@@ -32,8 +32,8 @@ export interface LocaleMap {
 }
 
 export interface ComponentMap {
-  before: Readonly<Record<string, Component>>
-  after: Readonly<Record<string, Component>>
+  before: Readonly<Record<string, ComponentDefinition>>
+  after: Readonly<Record<string, ComponentDefinition>>
   rename: (name: string) => string
   fields: (component: string) => Readonly<Record<string, string>>
 }
@@ -56,7 +56,7 @@ export function isTranslations(value: unknown): value is Record<string, unknown>
   return isRecord(value) && !isMedia(value) && !isEntryRef(value)
 }
 
-export function sameComponents(components: Readonly<Record<string, Component>> = {}): ComponentMap {
+export function sameComponents(components: Readonly<Record<string, ComponentDefinition>> = {}): ComponentMap {
   return { before: components, after: components, rename: name => name, fields: () => ({}) }
 }
 

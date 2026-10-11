@@ -1,7 +1,7 @@
 import type { ResolvedConfig } from '../config/resolve'
 import type { EffectGroup } from '../migrate/report'
 import type { Fill, Fix, Migration, RenameQuestion } from '../migrate/types'
-import type { ForgePressSchema } from '../schema/types'
+import type { Schema } from '../schema/types'
 import { execFileSync } from 'node:child_process'
 import { diskFiles } from '../disk/files'
 import { createWriter } from '../disk/writer'
@@ -26,7 +26,7 @@ export interface MigrateOptions {
 const REMOVE = '-'
 const EXAMPLES = 3
 
-function committedSchema(root: string, path: string): ForgePressSchema | undefined {
+function committedSchema(root: string, path: string): Schema | undefined {
   try {
     const text = execFileSync('git', ['show', `HEAD:./${path}`], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
     const parsed = parseSchemaFile({ path, text })
@@ -42,7 +42,7 @@ function questionKey(question: RenameQuestion): string {
   return [question.kind, question.collection ?? question.component ?? '', question.from].join('/')
 }
 
-async function fill(ask: Ask, schema: ForgePressSchema, group: EffectGroup, title: string): Promise<Fill> {
+async function fill(ask: Ask, schema: Schema, group: EffectGroup, title: string): Promise<Fill> {
   const options = fillOptions(schema, group)
   const type = await ask.select(`${title} needs a value in ${groupCount(group)}. What should they get?`, options.types)
 
@@ -58,7 +58,7 @@ async function fill(ask: Ask, schema: ForgePressSchema, group: EffectGroup, titl
   return { type: 'empty' }
 }
 
-function report(migration: Migration, before: ForgePressSchema, after: ForgePressSchema, log: (message: string) => void): void {
+function report(migration: Migration, before: Schema, after: Schema, log: (message: string) => void): void {
   const sections: [string, EffectGroup[]][] = [
     ['Removed', groupEffects(migration.effects, ['removed', 'lost'])],
     ['Without a matching entry', groupEffects(migration.effects, ['unmatched'])],

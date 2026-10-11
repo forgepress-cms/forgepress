@@ -125,6 +125,47 @@ describe('navigation', () => {
   })
 })
 
+describe('the address', () => {
+  async function open(search: string): Promise<void> {
+    router.dispose()
+    window.history.replaceState(null, '', `/admin${search}`)
+    router = createRouter(routes)
+    await settle()
+  }
+
+  it('drops a page that leads back to the index', async () => {
+    await open('?path=/')
+
+    expect(router.route.value.path).toBe('')
+    expect(address()).toBe('/admin')
+  })
+
+  it('keeps the address of a page it opens on', async () => {
+    await open('?path=/content')
+
+    expect(address()).toBe('/admin?path=/content')
+  })
+
+  it('tidies the address a step back or a link lands on', async () => {
+    await traverse('?path=//content')
+
+    expect(router.route.value.path).toBe('content')
+    expect(address()).toBe('/admin?path=/content')
+
+    await traverse('?path=/')
+
+    expect(router.route.value.path).toBe('')
+    expect(address()).toBe('/admin')
+  })
+
+  it('leaves an address that carries more than the page alone, such as a sign-in coming back', async () => {
+    await open('?path=/&code=abc&state=xyz')
+
+    expect(router.route.value.path).toBe('')
+    expect(address()).toBe('/admin?path=/&code=abc&state=xyz')
+  })
+})
+
 describe('guards', () => {
   it('lets navigation through while nothing blocks', async () => {
     router.block(() => false)

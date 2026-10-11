@@ -1,6 +1,6 @@
 import type { Field } from '../../src/schema/fields'
 import type { FieldOption, FieldTypeDefinition } from '../../src/schema/fields/types'
-import type { Collection, Component } from '../../src/schema/types'
+import type { CollectionDefinition, ComponentDefinition } from '../../src/schema/types'
 import { fieldTypeNames, fieldTypes, isTranslated } from '../../src/schema/fields'
 
 export const FIELD_ICONS: Record<string, string> = {
@@ -40,7 +40,7 @@ export interface LocalizedField extends FormField {
   locale: string
 }
 
-function fieldsOf(holder: Collection | Component, locales: readonly string[], forms: Readonly<Record<string, ComponentForm>>): FormField[] {
+function fieldsOf(holder: CollectionDefinition | ComponentDefinition, locales: readonly string[], forms: Readonly<Record<string, ComponentForm>>): FormField[] {
   return Object.entries(holder.fields).map(([key, config]) => ({
     key,
     label: config.label ?? key,
@@ -55,7 +55,7 @@ function fieldsOf(holder: Collection | Component, locales: readonly string[], fo
   }))
 }
 
-export function componentForms(components: Readonly<Record<string, Component>>, locales: readonly string[] = []): Record<string, ComponentForm> {
+export function componentForms(components: Readonly<Record<string, ComponentDefinition>>, locales: readonly string[] = []): Record<string, ComponentForm> {
   const forms: Record<string, ComponentForm> = Object.fromEntries(Object.entries(components)
     .map(([name, definition]) => [name, { name, label: definition.label ?? name, fields: [] }]))
 
@@ -65,7 +65,7 @@ export function componentForms(components: Readonly<Record<string, Component>>, 
   return forms
 }
 
-export function toFields(collection: Collection, locales: readonly string[] = [], components: Readonly<Record<string, Component>> = {}): FormField[] {
+export function toFields(collection: CollectionDefinition, locales: readonly string[] = [], components: Readonly<Record<string, ComponentDefinition>> = {}): FormField[] {
   return fieldsOf(collection, locales, componentForms(components, locales))
 }
 

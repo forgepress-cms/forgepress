@@ -1,6 +1,6 @@
 import type { ContentReader } from '../query/client'
 import { join } from 'node:path'
-import process from 'node:process'
+import { cwd, env } from 'node:process'
 import { once } from '../utils/once'
 import { readText } from './files'
 
@@ -15,14 +15,14 @@ export function diskReader(dir: () => Promise<string>): ContentReader {
 }
 
 async function locate(): Promise<string> {
-  const known = process.env[OUTPUT_VARIABLE]
+  const known = env[OUTPUT_VARIABLE]
 
   if (known)
     return known
 
   const { locateOutput } = await import('./locate')
 
-  return locateOutput(process.cwd())
+  return locateOutput(cwd())
 }
 
 export const reader: ContentReader = diskReader(once(locate))

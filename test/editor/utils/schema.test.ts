@@ -1,4 +1,4 @@
-import type { ForgePressSchema } from '../../../src/schema/types'
+import type { Schema } from '../../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { componentForms, seedField, seedOption, toFields, toKey } from '../../../editor/utils/schema'
 
@@ -29,7 +29,7 @@ describe('componentForms', () => {
     collections: {
       page: { fields: { content: { type: 'component', components: ['grid', 'card'], multiple: true } } },
     },
-  } as const satisfies ForgePressSchema
+  } as const satisfies Schema
 
   it('builds one form per component, whatever holds it', () => {
     const forms = componentForms(schema.components)
@@ -46,7 +46,7 @@ describe('componentForms', () => {
   })
 
   it('holds a component that includes itself, since the schema is still being edited', () => {
-    const looping = { row: { fields: { rows: { type: 'component', components: ['row'] } } } } as const satisfies ForgePressSchema['components']
+    const looping = { row: { fields: { rows: { type: 'component', components: ['row'] } } } } as const satisfies Schema['components']
     const forms = componentForms(looping)
 
     expect(forms.row!.fields[0]!.components![0]).toBe(forms.row)

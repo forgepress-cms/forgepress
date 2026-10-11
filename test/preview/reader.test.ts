@@ -3,12 +3,12 @@ import type { Changes } from '../../src/changes/types'
 import type { Entry } from '../../src/entries/types'
 import type { ForgeFile, TokenGetter } from '../../src/forge/types'
 import type { OutputIndex, OutputManifest } from '../../src/output/types'
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultPaths } from '../../src/files/paths'
 import { serializeEntry, serializeSchema } from '../../src/files/serialize'
 
-const schema: ForgePressSchema = {
+const schema: Schema = {
   collections: {
     author: { fields: { name: { type: 'text' }, portrait: { type: 'image', optional: true } } },
   },

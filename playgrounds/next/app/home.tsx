@@ -19,7 +19,7 @@ export function HomePage({ home }: { home: Home }) {
       {page && (
         <section>
           <h1>{page.title}</h1>
-          <p>{page.content}</p>
+          <p>{JSON.stringify(page.content, null, 2)}</p>
         </section>
       )}
 

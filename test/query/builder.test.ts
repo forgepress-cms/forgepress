@@ -1,6 +1,6 @@
 import type { ContentEntries } from '../../src/entries/references'
 import type { Entry } from '../../src/entries/types'
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createOutput } from '../../src/output'
 import { Builder } from '../../src/query/builder'
@@ -34,7 +34,7 @@ const schema = {
       },
     },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 
 function entry(id: string, createdAt: string, fields: Record<string, unknown>, status: Entry['status'] = 'published'): Entry {
   return { id, status, createdAt, updatedAt: createdAt, ...fields }
@@ -154,7 +154,7 @@ describe('queries', () => {
 
   it('load relations as entries and blocks with their collection', async () => {
     const { query } = await site()
-    const post = await query('post').locale('en').with('author').with('blocks').first()
+    const post = await query('post').locale('en').with('author', 'blocks').first()
 
     expect(post).toMatchObject({
       author: { id: 'alice', name: 'Alice', posts: [{ collection: 'post', id: 'p1' }, { collection: 'post', id: 'p2' }] },
@@ -207,9 +207,9 @@ describe('queries', () => {
     })
   })
 
-  it('take several calls, and a path reaches further than the field it starts with', async () => {
+  it('take several paths, and a path reaches further than the field it starts with', async () => {
     const { query, reads } = await site()
-    const post = await query('post').locale('en').with('author').with('author.posts').with('blocks').first()
+    const post = await query('post').locale('en').with('author', 'author.posts', 'blocks').first()
 
     expect(post).toMatchObject({
       author: { name: 'Alice', posts: [{ id: 'p1', title: 'First' }, { id: 'p2', title: 'Second' }] },
@@ -217,6 +217,68 @@ describe('queries', () => {
     })
 
     expect(reads.filter(path => path === 'author/alice')).toEqual(['author/alice'])
+  })
+
+  it('keep only the picked fields of the entries a field loads, and read the manifest when they are all indexed', async () => {
+    const { query, reads } = await site()
+    const post = await query('post').locale('en').where('id', 'p1').with('author', { author: ['name'] }).first()
+
+    expect(post?.author).toEqual({ name: 'Alice' })
+    expect(reads).toEqual(['index.json', 'post/en/index', 'post/en/p1', 'author/index'])
+  })
+
+  it('pick per collection for every path of the call, reading only the entries that need more than the manifest lists', async () => {
+    const { query, reads } = await site()
+    const post = await query('post').locale('de').with('mixed', 'blocks', { author: ['id', 'name'], hero: ['headline'] }).first()
+
+    expect(post).toEqual(expect.objectContaining({
+      mixed: [
+        { component: 'card', caption: 'Eine Karte', by: { id: 'bob', name: 'Bob' } },
+        { component: 'quote', saying: 'Words', source: { collection: 'hero', id: 'h1', entry: { headline: 'Hallo' } } },
+      ],
+      blocks: [
+        { collection: 'hero', id: 'h1', entry: { headline: 'Hallo' } },
+        { collection: 'author', id: 'bob', entry: { id: 'bob', name: 'Bob' } },
+      ],
+    }))
+    expect(reads.filter(path => path.startsWith('hero/') || path.startsWith('author/')).sort()).toEqual(['author/index', 'hero/de/h1', 'hero/de/index'])
+  })
+
+  it('load the whole entries of a collection the call does not pick from', async () => {
+    const { query } = await site()
+    const post = await query('post').locale('en').with('author', 'blocks', { hero: ['headline'] }).first()
+
+    expect(post?.author).toMatchObject({ id: 'alice', name: 'Alice', posts: [{ collection: 'post', id: 'p1' }, { collection: 'post', id: 'p2' }] })
+    expect(post?.blocks).toEqual([
+      { collection: 'hero', id: 'h1', entry: { headline: 'Hello' } },
+      { collection: 'author', id: 'bob', entry: expect.objectContaining({ id: 'bob', name: 'Bob', posts: [{ collection: 'post', id: 'p3' }] }) },
+    ])
+  })
+
+  it('pick along a path, keeping the field the path goes through', async () => {
+    const { query } = await site()
+    const post = await query('post').locale('en').with('author.posts', { author: ['name', 'posts'], post: ['title'] }).first()
+
+    expect(post?.author).toEqual({ name: 'Alice', posts: [{ title: 'First' }, { title: 'Second' }] })
+  })
+
+  it('follow several paths under the same field', async () => {
+    const { query } = await site()
+    const post = await query('post').locale('de').with('mixed.by.posts', 'mixed.source.posts').first()
+
+    expect(post).toMatchObject({
+      mixed: [
+        { component: 'card', by: { name: 'Bob', posts: [{ id: 'p3', title: 'Dritter' }] } },
+        { component: 'quote', source: { collection: 'hero', id: 'h1', entry: { headline: 'Hallo' } } },
+      ],
+    })
+  })
+
+  it('take with and pick once per query', async () => {
+    const { query } = await site()
+
+    expect(() => query('post').locale('en').with('author').with('blocks')).toThrow('[forgepress] query("post") calls .with() twice; name every path in one call, such as .with("author", "category")')
+    expect(() => query('post').locale('en').pick('id').pick('title')).toThrow('[forgepress] query("post") calls .pick() twice; name every field in one call, such as .pick("title", "slug")')
   })
 
   it('need a locale to load translated entries, and a field that links', async () => {

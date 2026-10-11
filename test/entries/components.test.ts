@@ -1,5 +1,5 @@
 import type { Entry } from '../../src/entries/types'
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { entryReferences } from '../../src/entries/references'
 import { validateEntry } from '../../src/entries/validate'
@@ -30,7 +30,7 @@ const schema = {
     },
     author: { fields: {} },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 
 function page(fields: Record<string, unknown>): Entry {
   return { id: 'page_1', status: 'published', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', ...fields }

@@ -1,25 +1,25 @@
 import type { Field } from '../schema/fields'
 
-export interface Collection {
+export interface CollectionDefinition {
   label?: string
   description?: string
   fields: Record<string, Field>
 }
 
-export type Component = Collection
+export type ComponentDefinition = CollectionDefinition
 
-export interface ForgePressSchema {
-  components?: Record<string, Component>
-  collections: Record<string, Collection>
+export interface Schema {
+  components?: Record<string, ComponentDefinition>
+  collections: Record<string, CollectionDefinition>
   locales?: readonly string[]
   defaultLocale?: string
 }
 
-export type SchemaLocale<TSchema extends ForgePressSchema>
+export type SchemaLocale<TSchema extends Schema>
   = TSchema['locales'] extends readonly string[] ? TSchema['locales'][number] : never
 
-export interface ForgePressSchemaRegistry {}
+export interface SchemaRegistry {}
 
-export type RegisteredSchema = ForgePressSchemaRegistry extends { schema: infer TSchema extends ForgePressSchema }
+export type RegisteredSchema = SchemaRegistry extends { schema: infer TSchema extends Schema }
   ? TSchema
-  : ForgePressSchema
+  : Schema

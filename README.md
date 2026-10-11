@@ -171,7 +171,7 @@ You can edit it through the editor's Schema page or by hand in `.forgepress/sche
 A typical schema file looks like this:
 
 ```ts
-import type { ForgePressSchema } from 'forgepress'
+import type { Schema } from 'forgepress'
 
 export default {
   collections: {
@@ -200,12 +200,12 @@ export default {
   },
   locales: ['en', 'de'],
   defaultLocale: 'en',
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 ```
 
 Available fields include:
-- `text`: single-line text input
-- `richtext`: rich text editor
+- `text`: single- or multi-line text input
+- `richtext`: rich text markdown editor
 - `number`: numeric input
 - `boolean`: on/off switch
 - `image`: image upload
@@ -258,7 +258,7 @@ export default {
       },
     },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 ```
 
 The items are stored in the entry in the order they're listed.
@@ -279,17 +279,54 @@ const author = page?.cards?.[0]?.author
 
 An item keeps its shape, so only the referencing fields change. A field naming one collection becomes the entry, one naming several becomes `{ collection, id, entry }`.
 
-Call it once per field, and name a path to keep going inside an entry it has loaded:
+Call it once per query with every field it should load, and name a path to keep going inside an entry it has loaded:
 
 ```ts
 const page = await query('page')
   .locale('en')
-  .with('author.employer')
-  .with('cards.author.posts')
+  .with('author.employer', 'cards.author.posts')
   .first()
 ```
 
 Every field on the way has to link somewhere, and each collection it passes through is one more round of loading, batched per collection. Paths are typed up to four fields deep, which is as far as this is worth going: past that, query the collection again.
+
+The entries arrive whole unless you name the fields to keep, per collection, after the paths:
+
+```ts
+const menu = await query('menu')
+  .locale('en')
+  .with('items', { page: ['title', 'slug'], product: ['name', 'slug'] })
+  .first()
+```
+
+The fields to keep count for every path of the call. When every field kept from a collection is indexed, its entries come from the manifest and no entry file is read. A path has to keep the fields it goes through.
+
+### Types
+
+Everything is typed from the schema, so there is nothing to declare by hand:
+
+- `Collection<'page'>`: an entry as a query returns it
+- `Component<'card'>`: an item of a component as a query returns it
+- `Content<'page'>`: an entry as it is stored, with a value per locale
+- `Locale`: a locale of the site
+
+Without a name, `Collection`, `Component` and `Content` are the same shapes with untyped fields.
+
+`With` says what `.with()` loaded, as the second argument of `Collection` and `Component`. It takes the same paths, as a union, and the same fields to keep:
+
+```ts
+const page = await query('page').locale('en').with('author', 'cards', { author: ['name'] }).first()
+
+function title(page: Collection<'page', With<'author' | 'cards', { author: ['name'] }>>): string {
+  return `${page.title} by ${page.author.name}`
+}
+
+function byline(card: Component<'card', With<'author', { author: ['name'] }>>): string | undefined {
+  return card.author?.name
+}
+```
+
+A query returns exactly these types, so the page above can be handed to `title` and each of its cards to `byline`. On a component the paths start at its own fields, and it names every field the query loaded. `.pick('title', 'author')` returns a `Pick` of the collection, and both `.with()` and `.pick()` are called once per query.
 
 ### Migrations
 
@@ -385,7 +422,7 @@ Available configuration values:
   - `semi`: whether to use semicolons in the content formatting
   - `indent`: the number of spaces to use for indentation in the content formatting
 - `media`: the media configuration
-  - `dir`: the directory where media files are stored
+  - `dir`: the directory where media files are stored, subfolders included
   - `url`: the base URL for accessing media files
   - `maxSize`: the maximum allowed size for media files
 - `output`: the build output configuration

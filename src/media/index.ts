@@ -88,7 +88,7 @@ export async function assetName(file: string, data: ArrayBuffer | Uint8Array<Arr
 }
 
 export function isAssetName(name: string): boolean {
-  return NAME.test(name) && !name.includes('..')
+  return name.split('/').every(segment => NAME.test(segment) && !segment.includes('..'))
 }
 
 export function isMediaFile(name: string): boolean {

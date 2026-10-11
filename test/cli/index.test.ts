@@ -12,7 +12,7 @@ import { createCli } from '../../src/cli'
 
 const scratch = fileURLToPath(new URL('../../node_modules/.forgepress-cli-test', import.meta.url))
 
-const schema = `import type { ForgePressSchema } from 'forgepress'
+const schema = `import type { Schema } from 'forgepress'
 
 export default {
   collections: {
@@ -22,12 +22,12 @@ export default {
       },
     },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 `
 
 function author(name: string): string {
   return [
-    'import type { ForgePressEntry } from \'forgepress\'',
+    'import type { Content } from \'forgepress\'',
     '',
     'export default {',
     '  id: \'author_1\',',
@@ -35,7 +35,7 @@ function author(name: string): string {
     '  createdAt: \'2024-01-01T00:00:00Z\',',
     '  updatedAt: \'2024-01-01T00:00:00Z\',',
     `  name: ${name},`,
-    '} satisfies ForgePressEntry<\'author\'>',
+    '} satisfies Content<\'author\'>',
     '',
   ].join('\n')
 }

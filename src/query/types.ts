@@ -1,6 +1,5 @@
-import type { ComponentFields, LinkedValue, OutputOf, PathHead, PathTail } from '../entries/types'
-import type { Field } from '../schema/fields'
-import type { ForgePressSchema, SchemaLocale } from '../schema/types'
+import type { Linkable, LinkPicks, OutputOf, Simplify } from '../entries/types'
+import type { Schema, SchemaLocale } from '../schema/types'
 
 export type Operator = 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'contains'
 
@@ -15,6 +14,8 @@ export interface SortClause {
   dir: 'asc' | 'desc'
 }
 
+export type Picks = Readonly<Record<string, readonly string[]>>
+
 export interface QueryPlan {
   where: WhereClause[]
   sort: SortClause[]
@@ -24,13 +25,11 @@ export interface QueryPlan {
   with: string[]
 }
 
-export type CollectionName<TSchema extends ForgePressSchema> = keyof TSchema['collections'] & string
+export type CollectionName<TSchema extends Schema> = keyof TSchema['collections'] & string
 
-type Fields<TSchema extends ForgePressSchema, TName extends CollectionName<TSchema>> = TSchema['collections'][TName]['fields']
+type Fields<TSchema extends Schema, TName extends CollectionName<TSchema>> = TSchema['collections'][TName]['fields']
 
-type FieldName<TSchema extends ForgePressSchema, TName extends CollectionName<TSchema>> = keyof Fields<TSchema, TName> & string
-
-type Simplify<TValue> = { [TKey in keyof TValue]: TValue[TKey] } & {}
+type FieldName<TSchema extends Schema, TName extends CollectionName<TSchema>> = keyof Fields<TSchema, TName> & string
 
 type Kind<TField> = TField extends { type: 'list', multiple: true }
   ? 'choices'
@@ -48,7 +47,7 @@ type Kind<TField> = TField extends { type: 'list', multiple: true }
               ? 'link'
               : 'none'
 
-type KindOf<TSchema extends ForgePressSchema, TName extends CollectionName<TSchema>, TKey> = TKey extends 'id'
+type KindOf<TSchema extends Schema, TName extends CollectionName<TSchema>, TKey> = TKey extends 'id'
   ? 'text'
   : TKey extends 'createdAt' | 'updatedAt'
     ? 'date'
@@ -68,70 +67,57 @@ export interface Operands {
   none: Record<never, never>
 }
 
-type Keys<TSchema extends ForgePressSchema, TName extends CollectionName<TSchema>> = 'id' | 'createdAt' | 'updatedAt' | FieldName<TSchema, TName>
+type Keys<TSchema extends Schema, TName extends CollectionName<TSchema>> = 'id' | 'createdAt' | 'updatedAt' | FieldName<TSchema, TName>
 
-type OperatorOf<TSchema extends ForgePressSchema, TName extends CollectionName<TSchema>, TKey> = keyof Operands[KindOf<TSchema, TName, TKey>] & Operator
+type OperatorOf<TSchema extends Schema, TName extends CollectionName<TSchema>, TKey> = keyof Operands[KindOf<TSchema, TName, TKey>] & Operator
 
-type Operand<TSchema extends ForgePressSchema, TName extends CollectionName<TSchema>, TKey, TOperator> = TOperator extends keyof Operands[KindOf<TSchema, TName, TKey>]
+type Operand<TSchema extends Schema, TName extends CollectionName<TSchema>, TKey, TOperator> = TOperator extends keyof Operands[KindOf<TSchema, TName, TKey>]
   ? Operands[KindOf<TSchema, TName, TKey>][TOperator]
   : never
 
-type Filterable<TSchema extends ForgePressSchema, TName extends CollectionName<TSchema>> = {
+type Filterable<TSchema extends Schema, TName extends CollectionName<TSchema>> = {
   [TKey in Keys<TSchema, TName>]: [OperatorOf<TSchema, TName, TKey>] extends [never] ? never : TKey
 }[Keys<TSchema, TName>]
 
-type Comparable<TSchema extends ForgePressSchema, TName extends CollectionName<TSchema>> = {
+type Comparable<TSchema extends Schema, TName extends CollectionName<TSchema>> = {
   [TKey in Keys<TSchema, TName>]: 'eq' extends OperatorOf<TSchema, TName, TKey> ? TKey : never
 }[Keys<TSchema, TName>]
 
-type Sortable<TSchema extends ForgePressSchema, TName extends CollectionName<TSchema>> = {
+type Sortable<TSchema extends Schema, TName extends CollectionName<TSchema>> = {
   [TKey in Keys<TSchema, TName>]: KindOf<TSchema, TName, TKey> extends 'text' | 'number' | 'boolean' | 'choice' | 'date' | 'link' ? TKey : never
 }[Keys<TSchema, TName>]
 
-type FieldRecord = Record<string, Field>
-
-type Fewer<TDepth extends number> = [0, 0, 1, 2, 3][TDepth]
-
-type PathsIn<TSchema extends ForgePressSchema, TFields extends FieldRecord, TDepth extends number> = [TDepth] extends [0] ? never : {
-  [TKey in keyof TFields & string]: TFields[TKey] extends { type: 'component', components: infer TNames extends readonly string[] }
-    ? TKey | `${TKey}.${PathsIn<TSchema, ComponentFields<TSchema, TNames[number]>, Fewer<TDepth>>}`
-    : TFields[TKey] extends { type: 'collection', collections: infer TTargets extends readonly string[] }
-      ? TKey | `${TKey}.${TargetPaths<TSchema, TTargets[number], Fewer<TDepth>>}`
-      : never
-}[keyof TFields & string]
-
-type TargetPaths<TSchema extends ForgePressSchema, TTarget, TDepth extends number> = TTarget extends CollectionName<TSchema>
-  ? PathsIn<TSchema, Fields<TSchema, TTarget>, TDepth>
-  : never
-
-type Linkable<TSchema extends ForgePressSchema, TName extends CollectionName<TSchema>> = PathsIn<TSchema, Fields<TSchema, TName>, 4>
+type Step = 'with' | 'pick'
 
 type Starting<TKeys> = (TKeys & string) | `${TKeys & string}.${string}`
 
+type Path<TSchema extends Schema, TName extends CollectionName<TSchema>, TResult> = Linkable<TSchema, Fields<TSchema, TName>> & Starting<keyof TResult>
+
+type Loaded<TSchema extends Schema, TName extends CollectionName<TSchema>, TResult, TUsed, TPath extends string, TKeep> = 'pick' extends TUsed
+  ? Simplify<Pick<OutputOf<TSchema, TName, TPath, TKeep>, keyof TResult & keyof OutputOf<TSchema, TName, TPath, TKeep>>>
+  : OutputOf<TSchema, TName, TPath, TKeep>
+
 export type { LinkedBlock } from '../entries/types'
 
-type Linked<TSchema extends ForgePressSchema, TField extends Field, TPath extends string> = LinkedValue<TSchema, TField, TPath>
+type SiteLocale<TSchema extends Schema> = [SchemaLocale<TSchema>] extends [never] ? string : SchemaLocale<TSchema>
 
-type WithLinked<TResult, TKey extends keyof TResult, TValue> = Simplify<Omit<TResult, TKey> & (Record<never, never> extends Pick<TResult, TKey> ? { [TField in TKey]?: TValue } : { [TField in TKey]: TValue })>
-
-type SiteLocale<TSchema extends ForgePressSchema> = [SchemaLocale<TSchema>] extends [never] ? string : SchemaLocale<TSchema>
-
-export interface QueryBuilder<TSchema extends ForgePressSchema, TName extends CollectionName<TSchema>, TResult> extends Promise<TResult[]> {
+interface Steps<TSchema extends Schema, TName extends CollectionName<TSchema>, TResult, TUsed extends Step> {
   where: {
-    <TKey extends Comparable<TSchema, TName>>(field: TKey, value: Operand<TSchema, TName, TKey, 'eq'>): QueryBuilder<TSchema, TName, TResult>
-    <TKey extends Filterable<TSchema, TName>, TOperator extends OperatorOf<TSchema, TName, TKey>>(field: TKey, operator: TOperator, value: Operand<TSchema, TName, TKey, TOperator>): QueryBuilder<TSchema, TName, TResult>
+    <TKey extends Comparable<TSchema, TName>>(field: TKey, value: Operand<TSchema, TName, TKey, 'eq'>): QueryBuilder<TSchema, TName, TResult, TUsed>
+    <TKey extends Filterable<TSchema, TName>, TOperator extends OperatorOf<TSchema, TName, TKey>>(field: TKey, operator: TOperator, value: Operand<TSchema, TName, TKey, TOperator>): QueryBuilder<TSchema, TName, TResult, TUsed>
   }
-  sort: (field: Sortable<TSchema, TName>, direction?: 'asc' | 'desc') => QueryBuilder<TSchema, TName, TResult>
-  limit: (count: number) => QueryBuilder<TSchema, TName, TResult>
-  offset: (count: number) => QueryBuilder<TSchema, TName, TResult>
-  locale: (locale: SiteLocale<TSchema>) => QueryBuilder<TSchema, TName, TResult>
-  with: <TPath extends Linkable<TSchema, TName> & Starting<keyof TResult>>(field: TPath) => QueryBuilder<
-    TSchema,
-    TName,
-    WithLinked<TResult, PathHead<TPath> & keyof TResult, Linked<TSchema, Fields<TSchema, TName>[PathHead<TPath> & FieldName<TSchema, TName>], PathTail<TPath>>>
-  >
-  pick: <TKey extends keyof TResult & string>(...fields: TKey[]) => QueryBuilder<TSchema, TName, Simplify<Pick<TResult, TKey>>>
+  sort: (field: Sortable<TSchema, TName>, direction?: 'asc' | 'desc') => QueryBuilder<TSchema, TName, TResult, TUsed>
+  limit: (count: number) => QueryBuilder<TSchema, TName, TResult, TUsed>
+  offset: (count: number) => QueryBuilder<TSchema, TName, TResult, TUsed>
+  locale: (locale: SiteLocale<TSchema>) => QueryBuilder<TSchema, TName, TResult, TUsed>
+  with: {
+    <TPath extends Path<TSchema, TName, TResult>>(...paths: [TPath, ...TPath[]]): QueryBuilder<TSchema, TName, Loaded<TSchema, TName, TResult, TUsed, TPath, Record<never, never>>, TUsed | 'with'>
+    <TPath extends Path<TSchema, TName, TResult>, const TKeep extends LinkPicks<TSchema>>(...paths: [TPath, ...TPath[], TKeep]): QueryBuilder<TSchema, TName, Loaded<TSchema, TName, TResult, TUsed, TPath, TKeep>, TUsed | 'with'>
+  }
+  pick: <TKey extends keyof TResult & string>(...fields: TKey[]) => QueryBuilder<TSchema, TName, Simplify<Pick<TResult, TKey>>, TUsed | 'pick'>
   first: () => Promise<TResult | undefined>
 }
 
-export type Query<TSchema extends ForgePressSchema> = <TName extends CollectionName<TSchema>>(collection: TName) => QueryBuilder<TSchema, TName, OutputOf<TSchema, TName>>
+export type QueryBuilder<TSchema extends Schema, TName extends CollectionName<TSchema>, TResult, TUsed extends Step = never> = Omit<Steps<TSchema, TName, TResult, TUsed>, TUsed> & Promise<TResult[]>
+
+export type Query<TSchema extends Schema> = <TName extends CollectionName<TSchema>>(collection: TName) => QueryBuilder<TSchema, TName, OutputOf<TSchema, TName>>

@@ -1,11 +1,11 @@
 import type { Entry } from '../../../src/entries/types'
-import type { ForgePressSchema } from '../../../src/schema/types'
+import type { Schema } from '../../../src/schema/types'
 import type { MigrationState, SchemaChangeset, SchemaStore } from '../../../src/store/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive } from 'vue'
 import { settle } from '../../settle'
 
-const schema: ForgePressSchema = { collections: { author: { fields: { name: { type: 'text' } } } } }
+const schema: Schema = { collections: { author: { fields: { name: { type: 'text' } } } } }
 
 const applied: SchemaChangeset[] = []
 

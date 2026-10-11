@@ -23,7 +23,7 @@ describe('file changes', () => {
     const [file] = toFiles(changes({ entries: { blogPost: { p1: row('p1') } } }), target)
 
     expect(file).toMatchObject({ path: '.forgepress/content/blog-post/p1.ts', encoding: 'utf-8' })
-    expect(file && 'data' in file && file.data).toContain('satisfies ForgePressEntry<\'blogPost\'>')
+    expect(file && 'data' in file && file.data).toContain('satisfies Content<\'blogPost\'>')
   })
 
   it('marks a removed entry for deletion', () => {

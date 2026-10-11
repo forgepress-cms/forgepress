@@ -1,10 +1,10 @@
 import type { Field } from '../schema/fields'
-import type { Collection, Component, ForgePressSchema } from '../schema/types'
+import type { CollectionDefinition, ComponentDefinition, Schema } from '../schema/types'
 import { defaultLocale } from '../schema/locales'
 
 export interface SchemaDraft {
-  components?: Record<string, Component>
-  collections: Record<string, Collection>
+  components?: Record<string, ComponentDefinition>
+  collections: Record<string, CollectionDefinition>
   locales?: readonly string[]
   defaultLocale?: string
 }
@@ -35,11 +35,11 @@ export function renameKey<TValue>(record: Readonly<Record<string, TValue>>, from
   return Object.fromEntries(Object.entries(record).map(([key, value]) => [key === from ? to : key, value]))
 }
 
-function fieldsOf(draft: SchemaDraft): [Collection, string, Field][] {
-  return holders(draft).flatMap(holder => Object.entries(holder.fields).map(([key, field]) => [holder, key, field] as [Collection, string, Field]))
+function fieldsOf(draft: SchemaDraft): [CollectionDefinition, string, Field][] {
+  return holders(draft).flatMap(holder => Object.entries(holder.fields).map(([key, field]) => [holder, key, field] as [CollectionDefinition, string, Field]))
 }
 
-function holders(draft: SchemaDraft): Collection[] {
+function holders(draft: SchemaDraft): CollectionDefinition[] {
   return [...Object.values(draft.components ?? {}), ...Object.values(draft.collections)]
 }
 
@@ -68,7 +68,7 @@ function removePick(draft: SchemaDraft, group: Group, name: string): void {
   }
 }
 
-export function uses(schema: ForgePressSchema, group: Group, name: string): Usage[] {
+export function uses(schema: Schema, group: Group, name: string): Usage[] {
   const groups = [['component', schema.components ?? {}], ['collection', schema.collections]] as const
 
   return groups.flatMap(([kind, holders]) => Object.entries(holders).flatMap(([holder, definition]) => Object.entries(definition.fields)

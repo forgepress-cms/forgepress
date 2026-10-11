@@ -2,7 +2,7 @@
 import type schema from './schema'
 
 declare module 'forgepress' {
-  interface ForgePressSchemaRegistry {
+  interface SchemaRegistry {
     schema: typeof schema
   }
 }

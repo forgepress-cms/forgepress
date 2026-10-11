@@ -32,7 +32,7 @@ export interface OutputConfig {
   dir?: string
 }
 
-export interface ForgePressConfig {
+export interface Config {
   path?: string
   provider?: ProviderConfig
   content?: ContentConfig

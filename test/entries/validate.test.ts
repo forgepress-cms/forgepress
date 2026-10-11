@@ -1,4 +1,4 @@
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { validateEntry } from '../../src/entries/validate'
 
@@ -26,7 +26,7 @@ const schema = {
     hero: { fields: {} },
     flag: { fields: { featured: { type: 'boolean' } } },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 
 const post = {
   id: 'post_1',
@@ -217,7 +217,7 @@ describe('validateEntry', () => {
   })
 
   it('treats translated fields as plain values when the schema has no locales', () => {
-    const plain = { collections: { note: { fields: { text: { type: 'text', translate: true } } } } } as ForgePressSchema
+    const plain = { collections: { note: { fields: { text: { type: 'text', translate: true } } } } } as Schema
 
     expect(validateEntry(plain, 'note', { ...post, title: undefined, body: undefined, author: undefined, text: 'Hi' })).toEqual([])
   })

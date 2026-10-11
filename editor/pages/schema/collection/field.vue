@@ -2,7 +2,7 @@
 import type { SchemaDraft } from '../../../../src/migrate/schema'
 import type { Field } from '../../../../src/schema/fields'
 import type { FieldTypeDefinition } from '../../../../src/schema/fields/types'
-import type { ForgePressSchema } from '../../../../src/schema/types'
+import type { Schema } from '../../../../src/schema/types'
 import { computed, reactive, watch } from 'vue'
 
 import { planMigration } from '../../../../src/migrate/plan'
@@ -154,7 +154,7 @@ const rewrites = computed(() => {
 
   apply(after)
 
-  const { changeset } = planMigration({ before: schema.value, after: after as ForgePressSchema, content, renames: renames.value })
+  const { changeset } = planMigration({ before: schema.value, after: after as Schema, content, renames: renames.value })
 
   return changeset.write.length
 })

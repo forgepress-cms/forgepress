@@ -1,7 +1,7 @@
 import type { EntryRef } from '../entries/types'
 import type { LinkedFields, LinkItems, LinkTarget, OutputEntry, OutputManifest } from '../output/types'
 import type { ContentLoader, Snapshot } from './client'
-import type { Operator, QueryPlan } from './types'
+import type { Operator, Picks, QueryPlan } from './types'
 import { OUTPUT_META_KEYS } from '../entries/meta'
 import { entryKey, isEntryRef } from '../entries/references'
 import { COMPONENT_KEY, items, mapItems, onlyName } from '../schema/fields/picked'
@@ -29,14 +29,17 @@ function itemFields(target: LinkItems, item: unknown, components: Components): L
   return typeof tag === 'string' ? components[tag] : undefined
 }
 
-function linkedValue(value: unknown, target: LinkTarget, components: Components, find: (ref: EntryRef) => OutputEntry | undefined): unknown {
+function linkedValue(value: unknown, target: LinkTarget, components: Components, find: (ref: EntryRef) => OutputEntry | undefined, picks: Picks | undefined): unknown {
   if (!isItems(target)) {
     const tagged = target.collections.length !== 1
     const found = refsOf(value).flatMap((ref) => {
-      const entry = find(ref)
+      const loaded = find(ref)
 
-      if (entry === undefined)
+      if (loaded === undefined)
         return []
+
+      const fields = picks?.[ref.collection]
+      const entry = fields === undefined ? loaded : pick(loaded, fields)
 
       return [tagged ? { collection: ref.collection, id: ref.id, entry } : entry]
     })
@@ -53,7 +56,7 @@ function linkedValue(value: unknown, target: LinkTarget, components: Components,
     return Object.fromEntries(Object.entries(item).map(([key, inner]) => {
       const nested = fields[key]
 
-      return [key, nested === undefined || inner === undefined ? inner : linkedValue(inner, nested, components, find)]
+      return [key, nested === undefined || inner === undefined ? inner : linkedValue(inner, nested, components, find, picks)]
     }))
   })
 }
@@ -115,6 +118,8 @@ function listing(names: readonly string[]): string {
 
 export class Builder {
   private readonly plan: QueryPlan = { where: [], sort: [], offset: 0, with: [] }
+  private readonly called = new Set<string>()
+  private keep: Picks | undefined
   private chosen: string | undefined
 
   constructor(private readonly loader: ContentLoader, private readonly collection: string) {}
@@ -151,14 +156,25 @@ export class Builder {
     return this
   }
 
-  with(field: string): this {
-    if (!this.plan.with.includes(field))
-      this.plan.with.push(field)
+  private once(step: string, hint: string): void {
+    if (this.called.has(step))
+      throw new Error(`[forgepress] query(${quote(this.collection)}) calls .${step}() twice; ${hint}`)
+
+    this.called.add(step)
+  }
+
+  with(...paths: readonly (string | Picks)[]): this {
+    this.once('with', 'name every path in one call, such as .with("author", "category")')
+
+    this.plan.with = [...new Set(paths.filter(path => typeof path === 'string'))]
+    this.keep = paths.find(path => typeof path !== 'string')
 
     return this
   }
 
   pick(...fields: string[]): this {
+    this.once('pick', 'name every field in one call, such as .pick("title", "slug")')
+
     this.plan.pick = fields
 
     return this
@@ -224,37 +240,60 @@ export class Builder {
     return found
   }
 
+  private async linked(snapshot: Snapshot, collection: string, ids: ReadonlySet<string>, fields: ReadonlySet<string> | undefined): Promise<OutputEntry[]> {
+    if (fields !== undefined) {
+      const manifest = await snapshot.manifest(collection, this.chosen)
+      const listed = new Set<string>([...OUTPUT_META_KEYS, ...manifest.indexed])
+
+      if ([...fields].every(field => listed.has(field)))
+        return manifest.entries.filter(entry => ids.has(entry.id))
+    }
+
+    return snapshot.entries(collection, this.chosen, [...ids])
+  }
+
   private async link(snapshot: Snapshot, collection: string, manifest: OutputManifest, rows: readonly OutputEntry[], paths: readonly string[]): Promise<OutputEntry[]> {
     const { index } = snapshot
-    const locale = this.chosen
+    const { chosen: locale, keep } = this
     const components = manifest.components ?? {}
     const targets = this.targets(collection, manifest, paths)
     const wanted = new Map<string, Set<string>>()
+    const kept = new Map<string, Set<string>>()
+    const whole = new Set<string>()
 
     for (const [field, target] of targets) {
       for (const ref of rows.flatMap(row => refsIn(row[field], target, components))) {
         if (index.collections[ref.collection]?.localized && locale === undefined)
           throw this.needsLocale(snapshot, `.with(${quote(field)}) loads ${quote(ref.collection)} entries, which are translated`)
 
+        const picked = keep?.[ref.collection]
+
         wanted.set(ref.collection, (wanted.get(ref.collection) ?? new Set()).add(ref.id))
+
+        if (picked === undefined)
+          whole.add(ref.collection)
+        else
+          kept.set(ref.collection, new Set([...kept.get(ref.collection) ?? [], ...picked]))
       }
     }
-
-    const loaded = new Map<string, OutputEntry>()
-
-    await Promise.all([...wanted].map(async ([name, ids]) => {
-      for (const entry of await snapshot.entries(name, locale, [...ids]))
-        loaded.set(entryKey(name, entry.id), entry)
-    }))
 
     const onward = new Map<string, Set<string>>()
 
     for (const path of paths) {
       const [field, rest] = split(path)
 
-      for (const step of continued(targets.get(field)!, rest, components))
+      for (const step of continued(targets.get(field)!, rest, components)) {
         onward.set(step.collection, (onward.get(step.collection) ?? new Set()).add(step.path))
+        whole.add(step.collection)
+      }
     }
+
+    const loaded = new Map<string, OutputEntry>()
+
+    await Promise.all([...wanted].map(async ([name, ids]) => {
+      for (const entry of await this.linked(snapshot, name, ids, whole.has(name) ? undefined : kept.get(name)))
+        loaded.set(entryKey(name, entry.id), entry)
+    }))
 
     await Promise.all([...onward].map(async ([name, deeper]) => {
       const held = [...wanted.get(name) ?? []].flatMap(id => loaded.get(entryKey(name, id)) ?? [])
@@ -277,7 +316,7 @@ export class Builder {
         const value = row[field]
 
         if (value !== undefined)
-          next[field] = linkedValue(value, target, components, find)
+          next[field] = linkedValue(value, target, components, find, keep)
       }
 
       return next

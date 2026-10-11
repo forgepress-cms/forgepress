@@ -1,7 +1,7 @@
 import type { Entry } from '../entries/types'
 import type { Field } from '../schema/fields'
 import type { ComponentField } from '../schema/fields/component'
-import type { Component, ForgePressSchema } from '../schema/types'
+import type { ComponentDefinition, Schema } from '../schema/types'
 import type { LinkedFields, LinkTarget, OutputEntry } from './types'
 import { OUTPUT_META_KEYS } from '../entries/meta'
 import { isTranslated, translatesAnything } from '../schema/fields'
@@ -9,7 +9,7 @@ import { itemComponent } from '../schema/fields/component'
 import { mapItems, onlyName } from '../schema/fields/picked'
 import { isRecord, pick } from '../utils/value'
 
-function fieldsOf(schema: ForgePressSchema, collection: string): [string, Field][] {
+function fieldsOf(schema: Schema, collection: string): [string, Field][] {
   return Object.entries(schema.collections[collection]?.fields ?? {})
 }
 
@@ -18,7 +18,7 @@ function translation(stored: unknown, locale: string | undefined): unknown {
 }
 
 interface Resolve {
-  components: Readonly<Record<string, Component>>
+  components: Readonly<Record<string, ComponentDefinition>>
   locales: readonly string[]
   locale: string | undefined
 }
@@ -55,11 +55,11 @@ function linked(field: Field, value: unknown, resolve: Resolve): unknown {
   return mapItems(value, field.multiple, link)
 }
 
-export function isLocalized(schema: ForgePressSchema, collection: string): boolean {
+export function isLocalized(schema: Schema, collection: string): boolean {
   return translatesAnything(schema.collections[collection]?.fields ?? {}, schema.components ?? {}, schema.locales ?? [])
 }
 
-export function indexedFields(schema: ForgePressSchema, collection: string): string[] {
+export function indexedFields(schema: Schema, collection: string): string[] {
   return fieldsOf(schema, collection).filter(([, field]) => 'index' in field && field.index === true).map(([key]) => key)
 }
 
@@ -82,11 +82,11 @@ function held(links: LinkedFields): string[] {
   return Object.values(links).flatMap(target => 'components' in target ? target.components : [])
 }
 
-export function linkFields(schema: ForgePressSchema, collection: string): LinkedFields {
+export function linkFields(schema: Schema, collection: string): LinkedFields {
   return linkTargets(schema.collections[collection]?.fields ?? {})
 }
 
-export function linkedComponents(schema: ForgePressSchema, links: LinkedFields): Record<string, LinkedFields> | undefined {
+export function linkedComponents(schema: Schema, links: LinkedFields): Record<string, LinkedFields> | undefined {
   const defined = schema.components ?? {}
   const found: Record<string, LinkedFields> = {}
   const queue = held(links)
@@ -112,7 +112,7 @@ export function linkedComponents(schema: ForgePressSchema, links: LinkedFields):
   return Object.keys(found).length > 0 ? found : undefined
 }
 
-export function toOutputEntry(schema: ForgePressSchema, collection: string, entry: Entry, locale?: string): OutputEntry {
+export function toOutputEntry(schema: Schema, collection: string, entry: Entry, locale?: string): OutputEntry {
   const locales = schema.locales ?? []
   const output = pick(entry, OUTPUT_META_KEYS) as OutputEntry
 

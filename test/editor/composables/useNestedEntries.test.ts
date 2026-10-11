@@ -1,5 +1,5 @@
 import type { Entry, EntryStatus } from '../../../src/entries/types'
-import type { ForgePressSchema } from '../../../src/schema/types'
+import type { Schema } from '../../../src/schema/types'
 import { describe, expect, it, vi } from 'vitest'
 import { SINGLE } from '../../../editor/utils/entry'
 
@@ -8,7 +8,7 @@ const schema = {
     hero: { fields: { headline: { type: 'text' } } },
     section: { fields: { title: { type: 'text' }, blocks: { type: 'collection', collections: ['hero', 'section'], multiple: true, optional: true } } },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 
 vi.doMock('../../../editor/composables/useContent', () => ({
   useContent: () => ({ store: { schema: async () => schema } }),

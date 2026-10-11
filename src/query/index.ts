@@ -1,4 +1,4 @@
-import type { ForgePressSchema, RegisteredSchema } from '../schema/types'
+import type { RegisteredSchema, Schema } from '../schema/types'
 import type { Query } from './types'
 import { reader } from '#content-reader'
 import { Builder } from './builder'
@@ -10,11 +10,11 @@ export interface ClientOptions {
   url?: string
 }
 
-export interface Client<TSchema extends ForgePressSchema = RegisteredSchema> {
+export interface Client<TSchema extends Schema = RegisteredSchema> {
   query: Query<TSchema>
 }
 
-export function createClient<TSchema extends ForgePressSchema = RegisteredSchema>(options: ClientOptions = {}): Client<TSchema> {
+export function createClient<TSchema extends Schema = RegisteredSchema>(options: ClientOptions = {}): Client<TSchema> {
   const loader = createLoader(overlaid(options.url === undefined ? reader : fetchReader(options.url)))
   const query = (collection: string): Builder => new Builder(loader, collection)
 

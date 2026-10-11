@@ -3,7 +3,7 @@ import type { App } from 'vue'
 import type { Entries } from '../../../../editor/composables/useEntries'
 import type { NestedEntries } from '../../../../editor/composables/useNestedEntries'
 import type { EditorRouter } from '../../../../editor/plugins/router'
-import type { ForgePressSchema } from '../../../../src/schema/types'
+import type { Schema } from '../../../../src/schema/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, nextTick, ref } from 'vue'
 import { routerKey } from '../../../../editor/plugins/router'
@@ -17,7 +17,7 @@ const schema = {
   collections: {
     page: { fields: { cards: { type: 'component', components: ['card'], multiple: true } } },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 
 vi.doMock('../../../../editor/composables/useContent', () => ({
   useContent: () => ({ store: { schema: async () => schema } }),
@@ -66,7 +66,6 @@ async function mount(items: unknown) {
         model.value = value
       },
       'forms': cards!.components!,
-      'label': 'Cards',
       'multiple': true,
       'tagged': false,
       'entries': {} as Entries,
@@ -114,6 +113,12 @@ describe('component items', () => {
     expect([...container.querySelectorAll<HTMLInputElement>('input:not([data-switch])')].map(input => input.value)).toEqual(['One', 'Two'])
     expect(container.textContent).toContain('One')
     expect(container.textContent).toContain('Two')
+  })
+
+  it('title an item that has no text yet by the component it holds', async () => {
+    const { container } = await mount([{ wide: false }])
+
+    expect(container.querySelector('.flex-1')?.textContent?.trim()).toBe('Card')
   })
 
   it('write edits back as plain items', async () => {

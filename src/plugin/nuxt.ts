@@ -5,7 +5,7 @@ import { addPluginTemplate, addVitePlugin, defineNuxtModule } from '@nuxt/kit'
 import { configFile } from '../disk/config'
 import { toPosix } from '../disk/paths'
 import { vitePlugin } from './index'
-import { loadProject } from './project'
+import { loadProject, syncTypes } from './project'
 
 export interface ModuleOptions extends Options {
   preview?: boolean
@@ -35,6 +35,8 @@ const forgepress: NuxtModule<ModuleOptions> = defineNuxtModule<ModuleOptions>({
 
   async setup(options, nuxt) {
     const { root, config } = await loadProject(nuxt.options.rootDir, options)
+
+    syncTypes(root, config)
 
     addVitePlugin(vitePlugin({ ...options, root }))
 

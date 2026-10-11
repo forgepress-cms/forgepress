@@ -1,6 +1,6 @@
 import type { Entry } from '../../src/entries/types'
 import type { Field } from '../../src/schema/fields'
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { validateEntry } from '../../src/entries/validate'
 import { planMigration } from '../../src/migrate/plan'
@@ -15,7 +15,7 @@ const schema = {
       },
     },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 
 function post(fields: Record<string, unknown>): Entry {
   return { id: 'post_1', status: 'published', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', ...fields }
@@ -46,8 +46,8 @@ describe('list fields', () => {
   })
 
   it('pick up text that matches one of their values when a field becomes a list', () => {
-    const before: ForgePressSchema = { collections: { post: { fields: { stage: { type: 'text', optional: true } } } } }
-    const after: ForgePressSchema = { collections: { post: { fields: { stage: { type: 'list', values: ['Draft', 'Final'], optional: true } as Field } } } }
+    const before: Schema = { collections: { post: { fields: { stage: { type: 'text', optional: true } } } } }
+    const after: Schema = { collections: { post: { fields: { stage: { type: 'list', values: ['Draft', 'Final'], optional: true } as Field } } } }
     const migration = planMigration({ before, after, content: { post: [post({ stage: ' draft ' }), { ...post({ stage: 'maybe' }), id: 'post_2' }] } })
 
     expect(migration.changeset.write.map(write => write.entry.stage)).toEqual(['Draft', undefined])

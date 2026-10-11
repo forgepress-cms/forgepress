@@ -2,7 +2,7 @@ import type { Changes } from '../../src/changes/types'
 import type { Entry } from '../../src/entries/types'
 import type { HashSource } from '../../src/forge/types'
 import type { MediaSource } from '../../src/media/types'
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import type { ContentSource, KeyValueStore } from '../../src/store/types'
 import { describe, expect, it } from 'vitest'
 import { reactive } from 'vue'
@@ -10,7 +10,7 @@ import { createChanges } from '../../src/changes'
 import { defaultPaths, repositoryPaths } from '../../src/files/paths'
 import { createMemoryStore } from '../../src/store/memory'
 
-const baseSchema = { collections: { hero: { fields: {} } }, locales: ['en'] } as ForgePressSchema
+const baseSchema = { collections: { hero: { fields: {} } }, locales: ['en'] } as Schema
 
 const target = { paths: defaultPaths, mediaDir: 'public/uploads' }
 

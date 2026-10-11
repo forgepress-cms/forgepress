@@ -1,7 +1,7 @@
 import type { Entry } from '../entries/types'
 import type { Conversion } from '../migrate/convert'
 import type { Field } from '../schema/fields'
-import type { Component, ForgePressSchema } from '../schema/types'
+import type { ComponentDefinition, Schema } from '../schema/types'
 import { META_KEYS } from '../entries/meta'
 import { convertField, sameComponents } from '../migrate/convert'
 import { leaves } from '../migrate/plan'
@@ -16,7 +16,7 @@ export interface Adapted {
 
 const META: ReadonlySet<string> = new Set(META_KEYS)
 
-function conversion(locales: readonly string[], chosen: string | undefined, components: Readonly<Record<string, Component>> | undefined): Conversion {
+function conversion(locales: readonly string[], chosen: string | undefined, components: Readonly<Record<string, ComponentDefinition>> | undefined): Conversion {
   return {
     links: {
       collection: name => name,
@@ -35,7 +35,7 @@ function later(left: string, right: string): string {
   return left > right ? left : right
 }
 
-export function adaptEntry(pending: Entry, schema: ForgePressSchema, collection: string, base?: Entry, head?: Entry): Adapted {
+export function adaptEntry(pending: Entry, schema: Schema, collection: string, base?: Entry, head?: Entry): Adapted {
   const fields: Readonly<Record<string, Field>> = schema.collections[collection]?.fields ?? {}
   const context = conversion(schema.locales ?? [], defaultLocale(schema), schema.components)
   const fit = (value: unknown, field: Field): unknown => value === undefined ? undefined : convertField(value, undefined, field, context)

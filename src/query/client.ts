@@ -69,10 +69,28 @@ export function createLoader(read: ContentReader): ContentLoader {
     }
   }
 
+  let shared: Promise<Snapshot> | undefined
+
+  async function attempt<TValue>(task: (snapshot: Snapshot) => Promise<TValue>, fresh: boolean): Promise<TValue> {
+    const joined = fresh ? undefined : shared
+    const using = joined ?? snapshot()
+
+    if (joined === undefined)
+      shared = using
+
+    try {
+      return await task(await using)
+    }
+    finally {
+      if (joined === undefined && shared === using)
+        shared = undefined
+    }
+  }
+
   return {
     async run(task) {
       try {
-        return await task(await snapshot())
+        return await attempt(task, false)
       }
       catch (error) {
         if (!(error instanceof MissingFile))
@@ -80,7 +98,7 @@ export function createLoader(read: ContentReader): ContentLoader {
       }
 
       try {
-        return await task(await snapshot())
+        return await attempt(task, true)
       }
       catch (error) {
         if (error instanceof MissingFile)

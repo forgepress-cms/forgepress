@@ -32,7 +32,7 @@ function failure(text: string): { message: string, line: number, column: number 
 
 describe('module shape', () => {
   it('reads an entry as the editor writes it', () => {
-    const text = `import type { ForgePressEntry } from 'forgepress'
+    const text = `import type { Content } from 'forgepress'
 
 export default {
   id: 'hero_1',
@@ -40,16 +40,16 @@ export default {
   headline: {
     en: 'Hello',
   },
-} satisfies ForgePressEntry<'hero'>
+} satisfies Content<'hero'>
 `
 
     expect(parse(text)).toEqual({ id: 'hero_1', status: 'published', headline: { en: 'Hello' } })
   })
 
   it('reads a schema declared as a constant', () => {
-    const text = `import type { ForgePressSchema } from 'forgepress'
+    const text = `import type { Schema } from 'forgepress'
 
-export default { collections: {} } as const satisfies ForgePressSchema
+export default { collections: {} } as const satisfies Schema
 `
 
     expect(parse(text)).toEqual({ collections: {} })
@@ -57,7 +57,7 @@ export default { collections: {} } as const satisfies ForgePressSchema
 
   it('accepts what formatters and people add around the value', () => {
     const text = `\uFEFF// generated once, edited by hand
-import type { ForgePressEntry } from "forgepress";
+import type { Content } from "forgepress";
 import type * as forgepress from 'forgepress'
 import type { A as B, C, } from 'x'
 
@@ -67,7 +67,7 @@ export default {
   double: "quotes",
   list: [1, 2, 3,],
   /* between */ nested: { deep: [{ a: true }, { b: false }] },
-} satisfies forgepress.ForgePressEntry<"hero", Other<'x'>,>;;
+} satisfies forgepress.Content<"hero", Other<'x'>,>;;
 `
 
     expect(parse(text)).toEqual({
@@ -186,17 +186,17 @@ describe('rejected syntax', () => {
     ['export default /* open', 'Unterminated comment'],
     ['export default { a: [1, 2', 'Unexpected end of file'],
     ['export default', 'Unexpected end of file'],
-    ['export default {} as ForgePressSchema', 'Only `as const` is allowed; use `satisfies` to type the value'],
+    ['export default {} as Schema', 'Only `as const` is allowed; use `satisfies` to type the value'],
     ['export default {} satisfies', 'Expected a type'],
     ['export default {}\nexport const b = 1', 'Nothing may follow `export default`'],
     ['export default 1\nexport default 2', 'Nothing may follow `export default`'],
     ['export const a = 1', 'Only `export default` is allowed'],
     ['const a = 1\nexport default a', 'Only `import type` and `export default` are allowed'],
     ['\'use strict\'\nexport default 1', 'Only `import type` and `export default` are allowed'],
-    ['import { a } from \'a\'\nexport default 1', 'Only type imports are allowed, e.g. `import type { ForgePressEntry } from \'forgepress\'`'],
-    ['import a from \'a\'\nexport default 1', 'Only type imports are allowed, e.g. `import type { ForgePressEntry } from \'forgepress\'`'],
-    ['import type from \'a\'\nexport default 1', 'Only type imports are allowed, e.g. `import type { ForgePressEntry } from \'forgepress\'`'],
-    ['import \'side-effect\'\nexport default 1', 'Only type imports are allowed, e.g. `import type { ForgePressEntry } from \'forgepress\'`'],
+    ['import { a } from \'a\'\nexport default 1', 'Only type imports are allowed, e.g. `import type { Content } from \'forgepress\'`'],
+    ['import a from \'a\'\nexport default 1', 'Only type imports are allowed, e.g. `import type { Content } from \'forgepress\'`'],
+    ['import type from \'a\'\nexport default 1', 'Only type imports are allowed, e.g. `import type { Content } from \'forgepress\'`'],
+    ['import \'side-effect\'\nexport default 1', 'Only type imports are allowed, e.g. `import type { Content } from \'forgepress\'`'],
     ['import type { A } from a\nexport default 1', 'Expected a module name'],
     ['// nothing here', 'Missing `export default`'],
   ])('rejects %j', (text, message) => {
@@ -205,12 +205,12 @@ describe('rejected syntax', () => {
 
   it('points at the offending token', () => {
     const text = [
-      'import type { ForgePressEntry } from \'forgepress\'',
+      'import type { Content } from \'forgepress\'',
       '',
       'export default {',
       '  id: \'post_1\',',
       '  author: someone,',
-      '} satisfies ForgePressEntry<\'post\'>',
+      '} satisfies Content<\'post\'>',
     ].join('\r\n')
 
     expect(failure(text)).toMatchObject({ line: 5, column: 11 })

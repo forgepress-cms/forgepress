@@ -4,7 +4,7 @@ import type { Entries } from '../../../../editor/composables/useEntries'
 import type { NestedEntries } from '../../../../editor/composables/useNestedEntries'
 import type { EditorRouter } from '../../../../editor/plugins/router'
 import type { Entry, EntryRef } from '../../../../src/entries/types'
-import type { ForgePressSchema } from '../../../../src/schema/types'
+import type { Schema } from '../../../../src/schema/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, nextTick, ref } from 'vue'
 import { routerKey } from '../../../../editor/plugins/router'
@@ -15,7 +15,7 @@ const schema = {
     hero: { fields: { headline: { type: 'text' } } },
     page: { fields: { content: { type: 'collection', collections: ['hero', 'page'], multiple: true } } },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 
 vi.doMock('../../../../editor/composables/useContent', () => ({
   useContent: () => ({ store: { schema: async () => schema } }),

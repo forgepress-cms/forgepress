@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -64,6 +64,24 @@ describe('media store', () => {
     await writeFile(join(root, 'public/uploads/notes.txt'), 'ignored')
 
     expect((await store.list()).map(asset => asset.name).sort()).toEqual([first.name, second.name].sort())
+  })
+
+  it('lists and removes media in folders by their path', async () => {
+    const store = createMediaStore(root)
+
+    await mkdir(join(root, 'public/uploads/products/2024'), { recursive: true })
+    await writeFile(join(root, 'public/uploads/products/inline.png'), bytes)
+    await writeFile(join(root, 'public/uploads/products/2024/pearl.webp'), bytes)
+    await writeFile(join(root, 'public/uploads/products/notes.txt'), 'ignored')
+
+    const listed = await store.list()
+
+    expect(listed.map(asset => asset.name).sort()).toEqual(['products/2024/pearl.webp', 'products/inline.png'])
+    expect(listed.find(asset => asset.name === 'products/inline.png')).toMatchObject({ url: '/uploads/products/inline.png', type: 'image/png', size: bytes.byteLength })
+
+    await store.remove('products/inline.png')
+
+    expect((await store.list()).map(asset => asset.name)).toEqual(['products/2024/pearl.webp'])
   })
 
   it('lists nothing before the first upload', async () => {

@@ -1,9 +1,9 @@
 import type { Entry } from '../entries/types'
 import type { ContentIssue } from '../files/issues'
-import type { ForgePressSchema } from '../schema/types'
+import type { Schema } from '../schema/types'
 
 export interface ContentSource {
-  schema: () => Promise<ForgePressSchema>
+  schema: () => Promise<Schema>
   list: (collection: string) => Promise<Entry[]>
   entry: (collection: string, id: string) => Promise<Entry | undefined>
 }
@@ -19,13 +19,13 @@ export interface EntryWrite {
 }
 
 export interface SchemaChangeset {
-  schema: ForgePressSchema
+  schema: Schema
   write: readonly EntryWrite[]
   collections: readonly string[]
 }
 
 export interface MigrationState {
-  outstanding?: ForgePressSchema
+  outstanding?: Schema
 }
 
 export interface SchemaStore {

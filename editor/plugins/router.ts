@@ -86,10 +86,20 @@ export function createRouter(routes: EditorRoutes): EditorRouter {
     route.value = matchRoute(routes, path)
   }
 
+  function tidy(path: string): void {
+    const params = new URLSearchParams(window.location.search)
+    const address = `${window.location.pathname}${window.location.search}`
+
+    if (address !== addressOf(path) && ![...params.keys()].some(key => key !== PATH_PARAMETER))
+      updateAddress(addressOf(path))
+  }
+
   function go(path: string): void {
     show(path)
 
-    if (read() !== path)
+    if (read() === path)
+      tidy(path)
+    else
       updateAddress(addressOf(path), true)
   }
 
@@ -106,12 +116,13 @@ export function createRouter(routes: EditorRoutes): EditorRouter {
     const next = read()
 
     if (next === route.value.path)
-      return
+      return tidy(next)
 
-    if (allowed(() => go(next)))
-      show(next)
-    else
-      updateAddress(addressOf(route.value.path), true)
+    if (!allowed(() => go(next)))
+      return updateAddress(addressOf(route.value.path), true)
+
+    show(next)
+    tidy(next)
   }
 
   window.addEventListener('popstate', onChange)
@@ -121,6 +132,8 @@ export function createRouter(routes: EditorRoutes): EditorRouter {
 
     if (current !== route.value.path)
       show(current)
+
+    tidy(current)
   }, 0)
 
   return {

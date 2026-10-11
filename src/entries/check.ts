@@ -1,7 +1,7 @@
 import type { ContentIssue } from '../files/issues'
 import type { ParsedModule } from '../files/module'
 import type { ContentFile, ParsedSchema } from '../files/parse'
-import type { ForgePressSchema } from '../schema/types'
+import type { Schema } from '../schema/types'
 import type { ContentEntries } from './references'
 import type { Entry } from './types'
 import { located, parseFile, parseSchemaFile } from '../files/parse'
@@ -17,7 +17,7 @@ export interface EntryFile extends ContentFile {
 
 export interface ParsedContent {
   issues: ContentIssue[]
-  schema: ForgePressSchema | undefined
+  schema: Schema | undefined
   content: ContentEntries
 }
 

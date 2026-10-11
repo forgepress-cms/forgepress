@@ -1,8 +1,8 @@
 import type { Entry } from '../entries/types'
-import type { Collection } from '../schema/types'
+import type { CollectionDefinition } from '../schema/types'
 import { isRecord } from '../utils/value'
 
-export function titleKey(collection: Collection | undefined): string | undefined {
+export function titleKey(collection: CollectionDefinition | undefined): string | undefined {
   const fields = Object.entries(collection?.fields ?? {})
 
   return (fields.find(([, field]) => field.type === 'text') ?? fields.find(([, field]) => field.type === 'richtext'))?.[0]
@@ -15,7 +15,7 @@ export function textOf(value: unknown, locales: readonly string[]): string | und
   return typeof found === 'string' ? found : undefined
 }
 
-export function entryTitle(entry: Entry, collection: Collection | undefined, locales: readonly string[]): string {
+export function entryTitle(entry: Entry, collection: CollectionDefinition | undefined, locales: readonly string[]): string {
   const key = titleKey(collection)
   const text = key === undefined ? undefined : textOf(entry[key], locales)
 

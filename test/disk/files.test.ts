@@ -13,7 +13,7 @@ import { unpluginFactory } from '../../src/unplugin'
 const fixture = fileURLToPath(new URL('../fixtures/project', import.meta.url))
 const scratch = fileURLToPath(new URL('../../node_modules/.forgepress-files-test', import.meta.url))
 
-const schema = `import type { ForgePressSchema } from 'forgepress'
+const schema = `import type { Schema } from 'forgepress'
 
 export default {
   locales: ['en', 'de'],
@@ -30,16 +30,16 @@ export default {
       },
     },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 `
 
 function entry(collection: string, lines: string[]): string {
   return [
-    'import type { ForgePressEntry } from \'forgepress\'',
+    'import type { Content } from \'forgepress\'',
     '',
     'export default {',
     ...lines.map(line => `  ${line}`),
-    `} satisfies ForgePressEntry<'${collection}'>`,
+    `} satisfies Content<'${collection}'>`,
     '',
   ].join('\n')
 }

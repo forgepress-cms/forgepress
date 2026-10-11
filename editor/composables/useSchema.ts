@@ -2,7 +2,7 @@ import type { ComputedRef, Ref, ShallowRef } from 'vue'
 import type { Entry } from '../../src/entries/types'
 import type { SchemaDraft } from '../../src/migrate/schema'
 import type { Fill, Fix, Migration, RenameQuestion, Renames } from '../../src/migrate/types'
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import type { MigrationState, SchemaStore } from '../../src/store/types'
 import { computed, reactive, ref, shallowRef } from 'vue'
 import { planMigration } from '../../src/migrate/plan'
@@ -22,8 +22,8 @@ export interface Choices {
 }
 
 export interface Review {
-  before: ForgePressSchema
-  after: ForgePressSchema
+  before: Schema
+  after: Schema
   choices: Choices
   questions: ComputedRef<RenameQuestion[]>
   renames: ComputedRef<Renames>
@@ -37,7 +37,7 @@ export interface Review {
 }
 
 export interface SchemaEditor {
-  schema: Ref<ForgePressSchema>
+  schema: Ref<Schema>
   state: Ref<MigrationState>
   saving: Ref<boolean>
   error: Ref<string>
@@ -87,7 +87,7 @@ function answered(base: Renames, questions: readonly RenameQuestion[], answers: 
   return { collections, fields, locales, components, componentFields }
 }
 
-function open(store: SchemaStore, before: ForgePressSchema, after: ForgePressSchema, content: Record<string, Entry[]>, base: Renames, repair: boolean): Opened {
+function open(store: SchemaStore, before: Schema, after: Schema, content: Record<string, Entry[]>, base: Renames, repair: boolean): Opened {
   const choices = reactive<Choices>({ answers: {}, fills: {}, fixes: {}, create: {} })
   const input = { before, after, content, repair }
   const { saving, error, save } = useSave()
@@ -168,7 +168,7 @@ export async function useSchema(): Promise<SchemaEditor> {
   const { store } = useContent()
   const target = await writable()
   const [current, found] = await Promise.all([store.schema(), target.state()])
-  const schema = ref<ForgePressSchema>(plain(current))
+  const schema = ref<Schema>(plain(current))
   const state = ref<MigrationState>(found)
 
   const { saving, error, save } = useSave()
@@ -177,7 +177,7 @@ export async function useSchema(): Promise<SchemaEditor> {
     return target.content()
   }
 
-  async function start(before: ForgePressSchema, after: ForgePressSchema, renames: Renames, repair: boolean): Promise<boolean> {
+  async function start(before: Schema, after: Schema, renames: Renames, repair: boolean): Promise<boolean> {
     let loaded: Record<string, Entry[]> = {}
 
     if (!await save(async () => {
@@ -219,7 +219,7 @@ export async function useSchema(): Promise<SchemaEditor> {
         return false
       }
 
-      return start(plain(schema.value), draft as ForgePressSchema, renames, false)
+      return start(plain(schema.value), draft as Schema, renames, false)
     },
 
     mismatch: async () => {

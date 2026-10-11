@@ -1,5 +1,5 @@
 import type { DiskWriter } from '../disk/writer'
-import type { ForgePressSchema } from '../schema/types'
+import type { Schema } from '../schema/types'
 import type { MigrationState, SchemaChangeset } from '../store/types'
 import { same } from '../utils/value'
 
@@ -7,13 +7,13 @@ export interface DevMigrations {
   state: () => MigrationState
   apply: (changeset: SchemaChangeset) => Promise<void>
   dismiss: () => void
-  observe: (schema: ForgePressSchema) => void
+  observe: (schema: Schema) => void
 }
 
 export function createMigrations(writer: DiskWriter): DevMigrations {
-  let known: ForgePressSchema | undefined
-  let replaced: ForgePressSchema | undefined
-  let outstanding: ForgePressSchema | undefined
+  let known: Schema | undefined
+  let replaced: Schema | undefined
+  let outstanding: Schema | undefined
 
   return {
     state: () => outstanding ? { outstanding } : {},

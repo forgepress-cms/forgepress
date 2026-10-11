@@ -1,9 +1,9 @@
 import type { Entry } from '../../src/entries/types'
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { adaptEntry } from '../../src/changes/rebase'
 
-const schema: ForgePressSchema = {
+const schema: Schema = {
   locales: ['en', 'de'],
   collections: {
     post: {

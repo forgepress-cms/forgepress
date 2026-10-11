@@ -1,7 +1,7 @@
 import type { Entry } from '../entries/types'
 import type { ContentIssue } from '../files/issues'
 import type { MediaAsset, MediaClient } from '../media/types'
-import type { ForgePressSchema } from '../schema/types'
+import type { Schema } from '../schema/types'
 import type { ContentSource, ContentWriter, MigrationState, SchemaStore } from '../store/types'
 import { ENDPOINT, route, ROUTES } from './routes'
 
@@ -32,7 +32,7 @@ export function createEndpoint(server: string): Endpoint {
 
   return {
     reader: {
-      schema: async () => await (await request('GET', ROUTES.schema)).json() as ForgePressSchema,
+      schema: async () => await (await request('GET', ROUTES.schema)).json() as Schema,
 
       list: async collection => await (await request('GET', route(ROUTES.content, collection))).json() as Entry[],
 

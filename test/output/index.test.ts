@@ -1,6 +1,6 @@
 import type { ContentEntries } from '../../src/entries/references'
 import type { OutputFile, OutputIndex, OutputManifest } from '../../src/output/types'
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { createOutput } from '../../src/output'
@@ -28,7 +28,7 @@ const schema = {
       },
     },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 
 function content(): Record<string, Record<string, Record<string, unknown>>> {
   return {

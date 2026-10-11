@@ -11,7 +11,7 @@ import { ContentError } from '../../src/files/issues'
 const scratch = fileURLToPath(new URL('../../node_modules/.forgepress-output-test', import.meta.url))
 const out = join(scratch, 'public/content')
 
-const schema = `import type { ForgePressSchema } from 'forgepress'
+const schema = `import type { Schema } from 'forgepress'
 
 export default {
   locales: ['en', 'de'],
@@ -28,12 +28,12 @@ export default {
       },
     },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 `
 
 function entry(collection: string, id: string, fields: string[], status = 'published'): string {
   return [
-    'import type { ForgePressEntry } from \'forgepress\'',
+    'import type { Content } from \'forgepress\'',
     '',
     'export default {',
     `  id: '${id}',`,
@@ -41,7 +41,7 @@ function entry(collection: string, id: string, fields: string[], status = 'publi
     '  createdAt: \'2024-01-01T00:00:00Z\',',
     '  updatedAt: \'2024-01-01T00:00:00Z\',',
     ...fields.map(field => `  ${field}`),
-    `} satisfies ForgePressEntry<'${collection}'>`,
+    `} satisfies Content<'${collection}'>`,
     '',
   ].join('\n')
 }

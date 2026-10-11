@@ -1,5 +1,5 @@
 import type { Entry } from '../../src/entries/types'
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { indexedFields, isLocalized, linkedComponents, linkFields, toOutputEntry } from '../../src/output/entry'
 
@@ -25,7 +25,7 @@ const schema = {
     },
     hero: { fields: {} },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 
 const meta = { status: 'published', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-02T00:00:00Z' } as const
 
@@ -95,7 +95,7 @@ describe('linked fields', () => {
       page: { fields: { content: { type: 'component', components: ['grid', 'plain'], multiple: true }, author: { type: 'collection', collections: ['author'] } } },
       author: { fields: { name: { type: 'text' } } },
     },
-  } as const satisfies ForgePressSchema
+  } as const satisfies Schema
 
   it('names what a field links to, without expanding a component into every field that holds it', () => {
     expect(linkFields(nested, 'page')).toEqual({

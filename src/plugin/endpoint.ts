@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { ResolvedConfig } from '../config/resolve'
 import type { Entry } from '../entries/types'
 import type { ContentIssue } from '../files/issues'
-import type { ForgePressSchema } from '../schema/types'
+import type { Schema } from '../schema/types'
 import type { SchemaChangeset } from '../store/types'
 import type { DevMigrations } from './migrations'
 import { Buffer } from 'node:buffer'
@@ -139,13 +139,13 @@ function entry(value: unknown): Entry {
   return value as Entry
 }
 
-function schema(value: unknown): ForgePressSchema {
+function schema(value: unknown): Schema {
   const issues = validateSchema(value)
 
   if (issues.length > 0)
     throw new EndpointError(400, `the schema is not valid:\n${issues.map(issue => issue.message).join('\n')}`)
 
-  return value as ForgePressSchema
+  return value as Schema
 }
 
 function changeset(value: unknown): SchemaChangeset {

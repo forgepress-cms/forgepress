@@ -1,7 +1,7 @@
 import type { OutputConfig } from '../config/types'
 import type { ContentEntries } from '../entries/references'
 import type { Entry } from '../entries/types'
-import type { ForgePressSchema } from '../schema/types'
+import type { Schema } from '../schema/types'
 import type { OutputCollection, OutputEntry, OutputFile, OutputIndex, OutputManifest } from './types'
 import { OUTPUT_META_KEYS } from '../entries/meta'
 import { sortByCreation } from '../entries/order'
@@ -39,7 +39,7 @@ async function hashed(folder: string, name: string, value: unknown): Promise<Out
   return { path: `${folder}/${name}.${hash.slice(0, 8)}.json`, text }
 }
 
-async function collectionOutput(schema: ForgePressSchema, collection: string, entries: readonly Entry[], locale?: string): Promise<CollectionOutput> {
+async function collectionOutput(schema: Schema, collection: string, entries: readonly Entry[], locale?: string): Promise<CollectionOutput> {
   const folder = locale === undefined ? toCollectionDir(collection) : `${toCollectionDir(collection)}/${locale}`
   const indexed = indexedFields(schema, collection)
   const listed = [...OUTPUT_META_KEYS, ...indexed]
@@ -60,7 +60,7 @@ async function collectionOutput(schema: ForgePressSchema, collection: string, en
   return { files, manifest: await hashed(folder, 'index', manifest) }
 }
 
-export async function createOutput(schema: ForgePressSchema, content: ContentEntries, options: OutputOptions): Promise<OutputFile[]> {
+export async function createOutput(schema: Schema, content: ContentEntries, options: OutputOptions): Promise<OutputFile[]> {
   const locales = [...schema.locales ?? []]
   const files: OutputFile[] = []
   const collections: Record<string, OutputCollection> = {}

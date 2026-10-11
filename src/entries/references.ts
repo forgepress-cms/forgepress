@@ -2,7 +2,7 @@ import type { ValueIssue, ValuePath } from '../files/issues'
 import type { Field } from '../schema/fields'
 import type { CollectionField } from '../schema/fields/collection'
 import type { ComponentField } from '../schema/fields/component'
-import type { Component, ForgePressSchema } from '../schema/types'
+import type { ComponentDefinition, Schema } from '../schema/types'
 import type { Entry, EntryRef } from './types'
 import { isTranslated } from '../schema/fields'
 import { itemComponent } from '../schema/fields/component'
@@ -40,7 +40,7 @@ function localized(value: unknown, path: ValuePath, translated: boolean): [Value
   return isRecord(value) ? Object.entries(value).map(([locale, item]) => [[...path, locale], item]) : []
 }
 
-type Components = Readonly<Record<string, Component>>
+type Components = Readonly<Record<string, ComponentDefinition>>
 
 function itemReferences(field: ComponentField, item: unknown, path: ValuePath, components: Components, locales: readonly string[]): Reference[] {
   if (!isRecord(item))
@@ -75,7 +75,7 @@ function references(field: Field, value: unknown, path: ValuePath, components: C
   return items(value, field.multiple).flatMap((entry, index) => item(entry, field.multiple ? [...path, index] : path))
 }
 
-export function entryReferences(schema: ForgePressSchema, collection: string, row: Entry): Reference[] {
+export function entryReferences(schema: Schema, collection: string, row: Entry): Reference[] {
   const locales = schema.locales ?? []
 
   return Object.entries(schema.collections[collection]?.fields ?? {}).flatMap(([key, field]) =>
@@ -83,7 +83,7 @@ export function entryReferences(schema: ForgePressSchema, collection: string, ro
       .flatMap(([path, value]) => references(field, value, path, schema.components ?? {}, locales)))
 }
 
-export function validateReferences(schema: ForgePressSchema, content: ContentEntries): EntryIssue[] {
+export function validateReferences(schema: Schema, content: ContentEntries): EntryIssue[] {
   const issues: EntryIssue[] = []
 
   for (const [collection, entries] of Object.entries(content)) {
@@ -104,7 +104,7 @@ export function validateReferences(schema: ForgePressSchema, content: ContentEnt
   return issues
 }
 
-export function unpublishedReferences(schema: ForgePressSchema, entries: readonly CollectionEntry[], find: (collection: string, id: string) => Entry | undefined): CollectionEntry[] {
+export function unpublishedReferences(schema: Schema, entries: readonly CollectionEntry[], find: (collection: string, id: string) => Entry | undefined): CollectionEntry[] {
   const given = new Map(entries.map(item => [entryKey(item.collection, item.entry.id), item.entry]))
   const pending = entries.filter(item => item.entry.status === 'published')
   const seen = new Set(pending.map(item => entryKey(item.collection, item.entry.id)))

@@ -1,5 +1,5 @@
 import type { Entry } from '../entries/types'
-import type { ForgePressSchema } from '../schema/types'
+import type { Schema } from '../schema/types'
 import type { SchemaChangeset } from '../store/types'
 
 export interface Renames {
@@ -25,12 +25,12 @@ export interface Decisions {
   create?: Readonly<Record<string, readonly string[]>>
 }
 
-export type Content = Readonly<Record<string, readonly Entry[]>>
+export type Entries = Readonly<Record<string, readonly Entry[]>>
 
 export interface MigrationInput {
-  before: ForgePressSchema
-  after: ForgePressSchema
-  content: Content
+  before: Schema
+  after: Schema
+  content: Entries
   renames?: Renames | undefined
   decisions?: Decisions | undefined
   repair?: boolean | undefined

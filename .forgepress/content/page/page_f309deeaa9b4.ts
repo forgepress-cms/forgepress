@@ -1,10 +1,10 @@
-import type { ForgePressEntry } from 'forgepress'
+import type { Content } from 'forgepress'
 
 export default {
   id: 'page_f309deeaa9b4',
   status: 'published',
   createdAt: '2026-09-19T16:14:33.293Z',
-  updatedAt: '2026-09-20T12:35:46.313Z',
+  updatedAt: '2026-10-11T09:36:54.623Z',
   title: {
     en: 'Test',
     de: 'Test',
@@ -17,11 +17,10 @@ export default {
     en: 'Test description',
     de: 'Test Beschreibung!',
   },
-  showInMenu: true,
-  showInFooter: false,
+  layout: 'landing',
   content: [
     {
-      component: 'banner',
+      component: 'hero',
       headline: {
         en: 'Test headline Banner',
         de: 'Test headline Banner DE',
@@ -30,14 +29,12 @@ export default {
         en: 'Test subheadline Banner',
         de: 'Test subheadline Banner',
       },
-      media: [
-        {
-          url: '/uploads/blueprint.dcf56475.png',
-          alt: 'Blueprint',
-          width: 2910,
-          height: 1104,
-        },
-      ],
+      media: {
+        url: '/uploads/blueprint.dcf56475.png',
+        alt: 'Blueprint',
+        width: 2910,
+        height: 1104,
+      },
     },
     {
       component: 'cards',
@@ -56,11 +53,17 @@ export default {
       ],
     },
     {
-      component: 'textBlock',
+      component: 'prose',
       content: {
         en: 'Test text block',
         de: 'Test text block DE',
       },
     },
+    {
+      component: 'code',
+      filename: 'test.js',
+      language: 'js',
+      source: 'import testFunction from \'test\'\n\nconst test2 = () => testFunction()\n\nconst test3 = () => console.log(test2())\n\ntest3()',
+    },
   ],
-} satisfies ForgePressEntry<'page'>
+} satisfies Content<'page'>

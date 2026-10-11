@@ -60,8 +60,17 @@ describe('files in the repository', () => {
   it('counts only media files with a valid name', () => {
     expect(isMediaFile('team.1a2b3c4d.png')).toBe(true)
     expect(isMediaFile('notes.md')).toBe(false)
-    expect(isMediaFile('nested/team.png')).toBe(false)
     expect(isMediaFile('.hidden.png')).toBe(false)
+  })
+
+  it('counts media files in folders, but nothing that leaves the media folder', () => {
+    expect(isMediaFile('products/team.png')).toBe(true)
+    expect(isMediaFile('products/2024/team.png')).toBe(true)
+    expect(isMediaFile('../team.png')).toBe(false)
+    expect(isMediaFile('products/../team.png')).toBe(false)
+    expect(isMediaFile('/team.png')).toBe(false)
+    expect(isMediaFile('products//team.png')).toBe(false)
+    expect(isMediaFile('products/.hidden/team.png')).toBe(false)
   })
 
   it('describes a stored file by its name', () => {
@@ -128,9 +137,16 @@ describe('isAssetName', () => {
     expect(isAssetName(toAssetName('hero.png', HASH))).toBe(true)
   })
 
-  it('rejects traversal and separators', () => {
+  it('accepts a path into folders', () => {
+    expect(isAssetName('nested/hero.png')).toBe(true)
+  })
+
+  it('rejects traversal, hidden files and empty segments', () => {
     expect(isAssetName('../hero.png')).toBe(false)
-    expect(isAssetName('nested/hero.png')).toBe(false)
+    expect(isAssetName('nested/../hero.png')).toBe(false)
+    expect(isAssetName('nested\\hero.png')).toBe(false)
+    expect(isAssetName('/hero.png')).toBe(false)
+    expect(isAssetName('nested/')).toBe(false)
     expect(isAssetName('.hidden')).toBe(false)
   })
 })

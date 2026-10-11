@@ -1,7 +1,7 @@
 import type { ContentPaths } from '../files/paths'
 import type { ResolvedMedia } from '../media/types'
 import type { ResolvedOutput } from '../output'
-import type { ContentConfig, ForgePressConfig, ProviderConfig } from './types'
+import type { Config, ContentConfig, ProviderConfig } from './types'
 import { createPaths, prefixer } from '../files/paths'
 import { resolveMedia } from '../media'
 import { resolveOutput } from '../output'
@@ -25,7 +25,7 @@ function checkRepositoryPath(label: string, path: string, provider: ProviderConf
   }
 }
 
-export function resolveConfig(config?: ForgePressConfig): ResolvedConfig {
+export function resolveConfig(config?: Config): ResolvedConfig {
   const paths = createPaths(config?.path)
   const media = resolveMedia(config?.media)
 

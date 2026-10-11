@@ -3,6 +3,9 @@ packages:
   - 'playgrounds/*'
   - docs
 
+overrides:
+  '@types/node': ^24.0.0
+
 allowBuilds:
   esbuild: true
   vue-demi: true

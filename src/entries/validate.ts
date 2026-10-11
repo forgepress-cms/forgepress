@@ -5,7 +5,7 @@ import type { ComponentField } from '../schema/fields/component'
 import type { ListField } from '../schema/fields/list'
 import type { NumberField } from '../schema/fields/number'
 import type { TextField } from '../schema/fields/text'
-import type { Component, ForgePressSchema } from '../schema/types'
+import type { ComponentDefinition, Schema } from '../schema/types'
 import { isEntryId } from '../files/paths'
 import { isTranslated } from '../schema/fields'
 import { itemComponent } from '../schema/fields/component'
@@ -22,7 +22,7 @@ export interface FieldIssue extends ValueIssue {
 
 type Report = (path: ValuePath, message: string, kind?: IssueKind) => void
 
-type Components = Readonly<Record<string, Component>>
+type Components = Readonly<Record<string, ComponentDefinition>>
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))?$/
 const MEDIA_OPTIONS: Record<string, readonly [kind: string, fits: (value: unknown) => boolean]> = {
@@ -288,7 +288,7 @@ export function validateField(key: string, field: Field, value: unknown, locales
   return issues
 }
 
-export function validateEntry(schema: ForgePressSchema, collection: string, entry: unknown): ValueIssue[] {
+export function validateEntry(schema: Schema, collection: string, entry: unknown): ValueIssue[] {
   const issues: ValueIssue[] = []
   const report: Report = (path, message) => issues.push({ path, message })
   const definition = schema.collections[collection]

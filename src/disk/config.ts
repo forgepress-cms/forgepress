@@ -1,4 +1,4 @@
-import type { ForgePressConfig } from '../config/types'
+import type { Config } from '../config/types'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
@@ -7,7 +7,7 @@ import { errorMessage } from '../utils/error'
 import { CONFIG_FILES } from './root'
 
 interface ConfigModule {
-  default?: ForgePressConfig
+  default?: Config
 }
 
 const TYPESCRIPT = /\.m?ts$/
@@ -42,7 +42,7 @@ export function configFile(root: string): string | undefined {
   return CONFIG_FILES.find(file => existsSync(join(root, file)))
 }
 
-export async function loadConfig(root: string): Promise<ForgePressConfig | undefined> {
+export async function loadConfig(root: string): Promise<Config | undefined> {
   const file = configFile(root)
 
   if (!file)

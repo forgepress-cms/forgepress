@@ -1,6 +1,6 @@
 import type { SchemaDraft } from '../../src/migrate/schema'
 import type { Renames } from '../../src/migrate/types'
-import type { Collection, ForgePressSchema } from '../../src/schema/types'
+import type { CollectionDefinition, Schema } from '../../src/schema/types'
 import { useRouter } from './useRouter'
 
 export type GroupKind = 'collections' | 'components'
@@ -10,8 +10,8 @@ export interface SchemaGroup {
   name: string
   noun: string
   path: (field?: string) => string
-  definition: (schema: ForgePressSchema | SchemaDraft) => Collection | undefined
-  holder: (draft: SchemaDraft) => Collection
+  definition: (schema: Schema | SchemaDraft) => CollectionDefinition | undefined
+  holder: (draft: SchemaDraft) => CollectionDefinition
   fieldRenames: (from: string, to: string) => Renames
 }
 
@@ -19,7 +19,7 @@ export function groupPath(kind: GroupKind, name: string, field?: string): string
   return ['schema', kind, name, ...field === undefined ? [] : [field]].join('/')
 }
 
-export function groupOf(schema: ForgePressSchema | SchemaDraft, kind: GroupKind): Record<string, Collection> {
+export function groupOf(schema: Schema | SchemaDraft, kind: GroupKind): Record<string, CollectionDefinition> {
   return (kind === 'components' ? schema.components : schema.collections) ?? {}
 }
 

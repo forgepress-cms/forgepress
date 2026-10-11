@@ -1,7 +1,7 @@
 import type { Entry } from '../../src/entries/types'
 import type { MigrationInput } from '../../src/migrate/types'
 import type { Field } from '../../src/schema/fields'
-import type { ForgePressSchema } from '../../src/schema/types'
+import type { Schema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { planMigration } from '../../src/migrate/plan'
 
@@ -11,7 +11,7 @@ function entry(id: string, fields: Record<string, unknown> = {}, status: Entry['
   return { id, status, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', ...fields }
 }
 
-function schema(fields: Record<string, Field>, extra: Partial<ForgePressSchema> = {}): ForgePressSchema {
+function schema(fields: Record<string, Field>, extra: Partial<Schema> = {}): Schema {
   return { ...extra, collections: { ...extra.collections, post: { fields } } }
 }
 
@@ -178,7 +178,7 @@ describe('relations', () => {
       author: { fields: { name: { type: 'text' } } },
       tag: { fields: { name: { type: 'text' } } },
     },
-  } satisfies Partial<ForgePressSchema>
+  } satisfies Partial<Schema>
 
   const content = {
     author: [entry('author_ada', { name: 'Ada Lovelace' }), entry('author_bob', { name: 'Bob' }, 'unpublished')],
@@ -250,7 +250,7 @@ describe('relations', () => {
 })
 
 describe('dynamic', () => {
-  const blocks = { collections: { hero: { fields: {} }, textBlock: { fields: {} } } } satisfies Partial<ForgePressSchema>
+  const blocks = { collections: { hero: { fields: {} }, textBlock: { fields: {} } } } satisfies Partial<Schema>
   const wide = { type: 'collection', collections: ['hero', 'textBlock'], multiple: true, optional: true } as Field
   const narrow = { type: 'collection', collections: ['hero'], multiple: true, optional: true } as Field
 
@@ -284,14 +284,14 @@ describe('renames', () => {
   })
 
   it('moves a renamed collection and every link to it', () => {
-    const before: ForgePressSchema = {
+    const before: Schema = {
       collections: {
         writer: { fields: { name: { type: 'text' } } },
         hero: { fields: {} },
         post: { fields: { by: { type: 'collection', collections: ['writer'] }, blocks: { type: 'collection', collections: ['writer', 'hero'], multiple: true, optional: true } } },
       },
     }
-    const after: ForgePressSchema = {
+    const after: Schema = {
       collections: {
         author: { fields: { name: { type: 'text' } } },
         hero: { fields: {} },
@@ -315,8 +315,8 @@ describe('renames', () => {
   })
 
   it('refuses to merge two collections into one', () => {
-    const before: ForgePressSchema = { collections: { a: { fields: {} }, b: { fields: {} } } }
-    const after: ForgePressSchema = { collections: { b: { fields: {} } } }
+    const before: Schema = { collections: { a: { fields: {} }, b: { fields: {} } } }
+    const after: Schema = { collections: { b: { fields: {} } } }
 
     expect(plan({ before, after, content: {}, renames: { collections: { a: 'b' } } }).blocked).toEqual(['b and a would both become b'])
   })
@@ -485,8 +485,8 @@ describe('rules', () => {
 
 describe('collections', () => {
   it('removes the entries of a removed collection', () => {
-    const before: ForgePressSchema = { collections: { post: { fields: { title: { type: 'text' } } }, author: { fields: {} } } }
-    const after: ForgePressSchema = { collections: { author: { fields: {} } } }
+    const before: Schema = { collections: { post: { fields: { title: { type: 'text' } } }, author: { fields: {} } } }
+    const after: Schema = { collections: { author: { fields: {} } } }
     const migration = plan({ before, after, content: { post: [entry('post_1', { title: 'Hello' })] } })
 
     expect(migration.changeset.collections).toEqual(['post'])
@@ -494,7 +494,7 @@ describe('collections', () => {
   })
 
   it('leaves folders that are not in the schema alone unless it repairs', () => {
-    const current: ForgePressSchema = { collections: {} }
+    const current: Schema = { collections: {} }
     const content = { stray: [entry('stray_1')] }
 
     expect(plan({ before: current, after: current, content }).changeset.collections).toEqual([])

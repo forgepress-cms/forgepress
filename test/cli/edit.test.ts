@@ -9,7 +9,7 @@ import { resolveConfig } from '../../src/config/resolve'
 const scratch = fileURLToPath(new URL('../../node_modules/.forgepress-edit-test', import.meta.url))
 const assets = join(scratch, 'bundle')
 
-const schema = `import type { ForgePressSchema } from 'forgepress'
+const schema = `import type { Schema } from 'forgepress'
 
 export default {
   collections: {
@@ -19,7 +19,7 @@ export default {
       },
     },
   },
-} as const satisfies ForgePressSchema
+} as const satisfies Schema
 `
 
 const author = `export default {

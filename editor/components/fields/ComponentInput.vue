@@ -16,7 +16,6 @@ import FieldList from './FieldList.vue'
 
 const props = defineProps<{
   forms: ComponentForm[]
-  label: string
   multiple: boolean
   tagged: boolean
   entries: Entries
@@ -93,7 +92,7 @@ function heading(item: Draft): string {
   const title = titleField(item.fields)
   const text = title ? chips(item.values[title.key]?.[title.locale])[0] : undefined
 
-  return text || (props.tagged ? item.form.label : props.label)
+  return text || item.form.label
 }
 
 function add(form: ComponentForm): void {

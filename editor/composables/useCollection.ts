@@ -1,12 +1,12 @@
-import type { Collection, ForgePressSchema } from '../../src/schema/types'
+import type { CollectionDefinition, Schema } from '../../src/schema/types'
 import type { FormField } from '../utils/schema'
 import { defaultLocale } from '../../src/schema/locales'
 import { toFields } from '../utils/schema'
 import { useContent } from './useContent'
 
 export interface CollectionSchema {
-  schema: ForgePressSchema
-  collection: Collection
+  schema: Schema
+  collection: CollectionDefinition
   locales: readonly string[]
   chosen: string | undefined
   fields: FormField[]

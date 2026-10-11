@@ -1,4 +1,4 @@
-import type { ForgePressSchema } from './types'
+import type { Schema } from './types'
 
 export function defaultLocale(schema: { locales?: readonly string[], defaultLocale?: string }): string | undefined {
   const locales = schema.locales ?? []
@@ -7,6 +7,6 @@ export function defaultLocale(schema: { locales?: readonly string[], defaultLoca
   return chosen !== undefined && locales.includes(chosen) ? chosen : locales[0]
 }
 
-export function isDefaultLocale(schema: ForgePressSchema, locale: string): boolean {
+export function isDefaultLocale(schema: Schema, locale: string): boolean {
   return defaultLocale(schema) === locale
 }

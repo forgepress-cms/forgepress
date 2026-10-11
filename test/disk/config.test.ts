@@ -33,7 +33,7 @@ describe('loadConfig', () => {
   it('loads a config written in TypeScript before a JavaScript one', async () => {
     const root = project({
       'forgepress.config.mjs': 'export default { path: \'javascript\' }\n',
-      'forgepress.config.ts': 'import type { ForgePressConfig } from \'forgepress\'\n\nconst path: string = \'typescript\'\n\nexport default { path } satisfies ForgePressConfig\n',
+      'forgepress.config.ts': 'import type { Config } from \'forgepress\'\n\nconst path: string = \'typescript\'\n\nexport default { path } satisfies Config\n',
     })
 
     expect(await loadConfig(root)).toEqual({ path: 'typescript' })
