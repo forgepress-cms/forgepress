@@ -262,6 +262,14 @@ describe('queries', () => {
     expect(post?.author).toEqual({ name: 'Alice', posts: [{ title: 'First' }, { title: 'Second' }] })
   })
 
+  it('read nothing for a path when no entry on the way was loaded', async () => {
+    const { query, reads } = await site()
+    const post = await query('post').locale('en').where('id', 'p2').with('blocks.posts', 'mixed.by.posts').first()
+
+    expect(post).toMatchObject({ id: 'p2', title: 'Second' })
+    expect(reads).toEqual(['index.json', 'post/en/index', 'post/en/p2'])
+  })
+
   it('follow several paths under the same field', async () => {
     const { query } = await site()
     const post = await query('post').locale('de').with('mixed.by.posts', 'mixed.source.posts').first()

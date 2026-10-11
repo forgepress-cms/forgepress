@@ -54,11 +54,15 @@ type Fewer<TDepth extends number> = [0, 0, 1, 2, 3][TDepth]
 
 type PathsIn<TSchema extends Schema, TFields extends Fields, TDepth extends number> = [TDepth] extends [0] ? never : {
   [TKey in keyof TFields & string]: TFields[TKey] extends { type: 'component', components: infer TNames extends readonly string[] }
-    ? TKey | `${TKey}.${PathsIn<TSchema, ComponentFields<TSchema, TNames[number]>, Fewer<TDepth>>}`
+    ? TKey | `${TKey}.${ItemPaths<TSchema, TNames[number], Fewer<TDepth>>}`
     : TFields[TKey] extends { type: 'collection', collections: infer TTargets extends readonly string[] }
       ? TKey | `${TKey}.${TargetPaths<TSchema, TTargets[number], Fewer<TDepth>>}`
       : never
 }[keyof TFields & string]
+
+type ItemPaths<TSchema extends Schema, TName, TDepth extends number> = TName extends string
+  ? PathsIn<TSchema, ComponentFields<TSchema, TName>, TDepth>
+  : never
 
 type TargetPaths<TSchema extends Schema, TTarget, TDepth extends number> = TTarget extends keyof TSchema['collections']
   ? PathsIn<TSchema, TSchema['collections'][TTarget]['fields'], TDepth>

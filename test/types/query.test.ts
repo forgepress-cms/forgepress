@@ -180,6 +180,22 @@ const names: (string | undefined)[] = post.mixed?.map(item => item.component ===
 const titles: string[] = post.author.posts?.map(item => item.title) ?? []`,
   },
   {
+    name: 'a path through items of several components, into a field only one of them has',
+    code: `const post = (await query('post').locale('en').with('mixed.link.posts', 'mixed.source.posts').first())!
+
+for (const item of post.mixed ?? []) {
+  if (item.component === 'card') {
+    const titles: string[] = item.link?.posts?.map(entry => entry.title) ?? []
+  }
+  else {
+    const source = item.source
+    const titles: string[] = source?.collection === 'author' ? source.entry.posts?.map(entry => entry.title) ?? [] : []
+  }
+}
+
+const declared: Same<typeof post, Collection<'post', With<'mixed.link.posts' | 'mixed.source.posts'>>> = true`,
+  },
+  {
     name: 'several paths under the same field, each one loaded',
     code: `const post = (await query('post').locale('en').with('related.author', 'related.editor', 'related.blocks').first())!
 const author: string | undefined = post.related?.[0]?.author.name
@@ -263,6 +279,8 @@ const rejected: Case[] = [
   { name: 'loading a field that does not link', code: `await query('post').locale('en').with('title')` },
   { name: 'a path through a field that does not link', code: `await query('post').locale('en').with('author.name')` },
   { name: 'a path into a component field that does not exist', code: `await query('post').locale('en').with('cards.writer')` },
+  { name: 'a path into a field that none of the components has', code: `await query('post').locale('en').with('mixed.writer')` },
+  { name: 'a path past a field of one component that does not link', code: `await query('post').locale('en').with('mixed.saying')` },
   { name: 'a field that was not picked', code: `const [post] = await query('post').locale('en').pick('id')\nconst title = post?.title` },
   { name: 'a field of a loaded entry that was not picked', code: `const post = (await query('post').locale('en').with('author', { author: ['name'] }).first())!\nconst id = post.author.id` },
   { name: 'picking a field the collection does not have', code: `await query('post').locale('en').with('author', { author: ['title'] })` },

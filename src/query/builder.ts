@@ -297,10 +297,14 @@ export class Builder {
 
     await Promise.all([...onward].map(async ([name, deeper]) => {
       const held = [...wanted.get(name) ?? []].flatMap(id => loaded.get(entryKey(name, id)) ?? [])
+
+      if (held.length === 0)
+        return
+
       const linking = await snapshot.manifest(name, locale)
       const known = [...deeper].filter(path => linking.links[split(path)[0]] !== undefined)
 
-      if (held.length === 0 || known.length === 0)
+      if (known.length === 0)
         return
 
       for (const entry of await this.link(snapshot, name, linking, held, known))
