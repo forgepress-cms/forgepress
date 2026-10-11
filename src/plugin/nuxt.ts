@@ -11,7 +11,7 @@ export interface ModuleOptions extends Options {
   preview?: boolean
 }
 
-const PREVIEW_PLUGIN = `import { defineNuxtPlugin, refreshNuxtData, usePreviewMode } from '#app'
+const PREVIEW_PLUGIN = `import { defineNuxtPlugin, refreshNuxtData, usePreviewMode, useRouter } from '#app'
 import { enablePreview, onPreviewChange, previewing } from 'forgepress/preview'
 
 export default defineNuxtPlugin({
@@ -20,6 +20,14 @@ export default defineNuxtPlugin({
     enablePreview()
 
     const { enabled } = usePreviewMode({ shouldEnable: previewing })
+
+    useRouter().afterEach(() => {
+      if (!enabled.value)
+        return
+
+      for (const key of Object.keys(nuxtApp.static.data))
+        delete nuxtApp.static.data[key]
+    })
 
     onPreviewChange(() => nuxtApp.runWithContext(() => {
       enabled.value = previewing()

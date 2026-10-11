@@ -1,7 +1,7 @@
 import type { ModuleOptions } from '../../src/plugin/nuxt'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { runWithNuxtContext } from '@nuxt/kit'
 import { afterEach, describe, expect, it } from 'vitest'
 import forgepress from '../../src/plugin/nuxt'
@@ -95,6 +95,44 @@ describe('nuxt module', () => {
     expect(on.instance.options.plugins).toMatchObject([{ src: join(scratch, 'site/.nuxt/forgepress/preview.client.mjs'), mode: 'client' }])
     expect(off.instance.options.build.templates).toEqual([])
     expect(off.instance.options.plugins).toEqual([])
+  })
+
+  it('drops the prerendered data of a page a preview navigates to, so the page loads its content again', async () => {
+    write('site/package.json', '{}\n')
+    const { instance, install } = nuxt()
+
+    await install()
+
+    const [template] = instance.options.build.templates as { getContents: () => string }[]
+
+    write('runtime/app.mjs', [
+      'export const hooks = []',
+      'export const enabled = { value: false }',
+      'export const defineNuxtPlugin = plugin => plugin',
+      'export const refreshNuxtData = () => {}',
+      'export const usePreviewMode = () => ({ enabled })',
+      'export const useRouter = () => ({ afterEach: hook => hooks.push(hook) })',
+    ].join('\n'))
+    write('runtime/preview.mjs', [
+      'export const enablePreview = () => true',
+      'export const onPreviewChange = () => () => {}',
+      'export const previewing = () => true',
+    ].join('\n'))
+    write('runtime/plugin.mjs', template!.getContents().replace('\'#app\'', '\'./app.mjs\'').replace('\'forgepress/preview\'', '\'./preview.mjs\''))
+
+    const runtime = await import(pathToFileURL(join(scratch, 'runtime/app.mjs')).href) as { hooks: (() => void)[], enabled: { value: boolean } }
+    const plugin = await import(pathToFileURL(join(scratch, 'runtime/plugin.mjs')).href) as { default: { setup: (app: unknown) => void } }
+    const app = { static: { data: { page: 'prerendered', menu: 'prerendered' } as Record<string, string> } }
+
+    plugin.default.setup(app)
+    runtime.hooks.forEach(hook => hook())
+
+    expect(app.static.data).toEqual({ page: 'prerendered', menu: 'prerendered' })
+
+    runtime.enabled.value = true
+    runtime.hooks.forEach(hook => hook())
+
+    expect(app.static.data).toEqual({})
   })
 
   it('takes options inline over the forgepress key and resolves the root from the Nuxt root', async () => {
