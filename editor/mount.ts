@@ -42,7 +42,7 @@ function resolve(target?: Element | string | null): Element {
   return el
 }
 
-export const mountEditor: MountEditor = (target, options = {}) => {
+export const mountEditor: MountEditor = (target) => {
   const host = resolve(target)
   const root = host.shadowRoot ?? host.attachShadow({ mode: 'open' })
 
@@ -60,7 +60,7 @@ export const mountEditor: MountEditor = (target, options = {}) => {
   const router = createRouter(routes)
   const colorMode = createColorMode(container)
   const title = createTitle()
-  const preview = createPreviewPane(options.preview, baked)
+  const preview = createPreviewPane(baked)
 
   app.use(ui)
   app.provide(routerKey, router)

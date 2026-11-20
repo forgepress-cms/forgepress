@@ -178,6 +178,7 @@ export default {
     page: {
       label: 'Page',
       description: 'A page of the site, with a title and content',
+      preview: '{slug}',
       fields: {
         title: {
           type: 'text',
@@ -360,22 +361,35 @@ When editing schema files by hand you can run `npx forgepress migrate` to keep y
 
 - The site can render unpublished content for signed-in editors
 - A badge on the page turns it on and off
-- The editor can show the page being edited next to its form, updated while you type
+- The editor can show the page of an entry next to its form, updated while you type
 
-To show the page in the editor, tell `mountEditor` where each entry lives on the site:
+To show entries in the editor, give their collection the address of an entry on the site, in the schema or under Edit collection on the Schema page:
 
 ```ts
-mountEditor(host.value, {
-  preview: ({ collection, entry, locale }) => collection === 'page' && entry ? entry.slug : undefined,
-})
+import type { Schema } from 'forgepress'
+
+export default {
+  collections: {
+    post: {
+      label: 'Post',
+      preview: '/{locale}/blog/{slug}',
+      fields: {
+        slug: { type: 'text', label: 'Slug', translate: true },
+      },
+    },
+  },
+  locales: ['en', 'de'],
+} as const satisfies Schema
 ```
 
-- `preview` is either a fixed address, such as `'/'`, or a function of the page the editor shows
-- The function gets the `collection`, the `entry` as the site queries it in that `locale`, and the `locale`; on a list of entries it gets only the `collection`
-- Returning `undefined` keeps the page that is already shown
+- Names in braces are filled in from the saved entry, the way the site queries it: `{id}`, `{locale}`, and text, number or single list fields
+- Values are URL-encoded except `/`, so a slug such as `/docs/schema` stays a path
+- `{locale}` adds a language switch to the preview
+- Entries of a collection with an address get a Preview button; a new entry shows its page once it's saved
+- The address has to be a path on the site; for one a template can't express, point it at a page of your site that looks the entry up and redirects, such as `/preview?id={id}`
 - On wide screens the preview sits beside the editor, with a divider to resize it; on small screens it slides in from the right
 - The editor and the site must share an origin, such as an `/admin` page on the site itself; the site needs the preview, which `forgepress/nuxt` and `forgepress/next` add by default
-- Pages that don't exist on a deployed site yet, such as a new entry, need a route that renders them in the browser
+- Pages that don't exist on a deployed site yet, such as an unpublished entry, need a route that renders them in the browser
 
 ## CLI
 

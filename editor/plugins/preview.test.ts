@@ -1,33 +1,39 @@
 import type { Schema } from '../../src/schema/types'
-import type { PreviewLink } from '../types'
 // @vitest-environment happy-dom
 import type { PreviewContext, PreviewPane, PreviewServer } from './preview'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { draftMessage, readyMessage } from '../../src/preview/frame'
 import { settle } from '../../test/settle'
-import { clampRatio, createPreviewPane, DEFAULT_RATIO, previewLink, previewPage } from './preview'
+import { clampRatio, createPreviewPane, DEFAULT_RATIO, previewTarget } from './preview'
+
+const ADDRESS = '{slug}?locale={locale}'
 
 const schema: Schema = {
   collections: {
-    page: { fields: { title: { type: 'text', translate: true }, slug: { type: 'text', translate: true } } },
+    page: { preview: ADDRESS, fields: { title: { type: 'text', label: 'Title', translate: true }, slug: { type: 'text', label: 'Slug', translate: true } } },
+    post: { preview: '/posts/{id}', fields: { title: { type: 'text', translate: true } } },
+    note: { fields: { text: { type: 'text' } } },
   },
   locales: ['en', 'de'],
   defaultLocale: 'de',
 }
 
-const plain: Schema = { collections: { note: { fields: { text: { type: 'text' } } } } }
+const plain: Schema = { collections: { note: { preview: '/notes/{id}', fields: { text: { type: 'text' } } } } }
 
-const row = { id: 'page_1', status: 'published' as const, createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', title: { en: 'Home', de: 'Start' }, slug: { en: '/home', de: '/start' } }
+const meta = { status: 'published' as const, createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' }
+const row = { id: 'page_1', ...meta, title: { en: 'Home', de: 'Start' }, slug: { en: '/home', de: '/start' } }
 
 const page: PreviewContext = { schema, collection: 'page', id: 'page_1', entry: row }
+const post: PreviewContext = { schema, collection: 'post', id: 'post_1', entry: { id: 'post_1', ...meta, title: { en: 'News', de: 'Neues' } } }
+const fresh: PreviewContext = { schema, collection: 'page' }
 
 const panes: PreviewPane[] = []
 
 let wide = true
 
-function pane(link: PreviewLink | undefined, server: PreviewServer = { local: false, devServer: '' }): PreviewPane {
-  const created = createPreviewPane(link, async () => server)
+function pane(server: PreviewServer = { local: false, devServer: '' }): PreviewPane {
+  const created = createPreviewPane(async () => server)
 
   panes.push(created)
 
@@ -78,34 +84,19 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('previewLink', () => {
-  it('takes a fixed address, or what the function returns for the page', () => {
-    expect(previewLink('/', {})).toBe('/')
-    expect(previewLink(({ collection }) => collection && `/${collection}`, { collection: 'page' })).toBe('/page')
-    expect(previewLink(() => '', {})).toBeUndefined()
-    expect(previewLink(undefined, {})).toBeUndefined()
+describe('previewTarget', () => {
+  it('fills the address of the collection from the saved entry, in the chosen language', () => {
+    expect(previewTarget(page, ADDRESS, 'en')).toEqual({ url: '/home?locale=en', hint: '' })
+    expect(previewTarget(page, ADDRESS, 'de')).toEqual({ url: '/start?locale=de', hint: '' })
   })
 
-  it('ignores a link function that fails', () => {
-    expect(previewLink(() => {
-      throw new Error('no slug')
-    }, {})).toBeUndefined()
-  })
-})
-
-describe('previewPage', () => {
-  it('hands the entry over the way the site queries it, in the chosen language', () => {
-    expect(previewPage(page, 'en')).toEqual({
-      collection: 'page',
-      id: 'page_1',
-      entry: { id: 'page_1', createdAt: row.createdAt, updatedAt: row.updatedAt, title: 'Home', slug: '/home' },
-      locale: 'en',
-    })
+  it('says what the entry still needs for an address', () => {
+    expect(previewTarget(fresh, ADDRESS, 'en')).toEqual({ hint: 'Save the entry to see its page.' })
+    expect(previewTarget({ ...page, entry: { id: 'page_1', ...meta, title: { en: 'Home', de: 'Start' } } }, ADDRESS, 'en')).toEqual({ hint: 'Fill in Slug and save to see the page.' })
   })
 
-  it('names only the collection, or nothing, on other pages', () => {
-    expect(previewPage({ schema, collection: 'page' }, 'de')).toEqual({ collection: 'page', locale: 'de' })
-    expect(previewPage(undefined, undefined)).toEqual({})
+  it('stays on the site', () => {
+    expect(previewTarget({ ...page, entry: { ...row, slug: { en: '//elsewhere.example/home', de: '/start' } } }, ADDRESS, 'en')).toEqual({ hint: 'The address of this entry leads off the site.' })
   })
 })
 
@@ -118,18 +109,37 @@ describe('clampRatio', () => {
 })
 
 describe('createPreviewPane', () => {
-  it('stays closed without a link to the site', () => {
-    const created = pane(undefined)
+  it('offers the preview only on collections with an address, and remembers it was open', async () => {
+    const created = pane()
 
     created.toggle()
+    await nextTick()
 
-    expect(created.available).toBe(false)
+    expect(created.available.value).toBe(false)
     expect(created.open.value).toBe(false)
+
+    created.show(page)
+    await nextTick()
+
+    expect(created.available.value).toBe(true)
+    expect(created.open.value).toBe(true)
+
+    created.show({ schema, collection: 'note' })
+    await nextTick()
+
+    expect(created.available.value).toBe(false)
+    expect(created.open.value).toBe(false)
+
+    created.show(post)
+    await nextTick()
+
+    expect(created.open.value).toBe(true)
   })
 
   it('docks beside the editor on wide screens and remembers it', async () => {
-    const created = pane('/')
+    const created = pane()
 
+    created.show(page)
     created.toggle()
     await nextTick()
 
@@ -146,8 +156,9 @@ describe('createPreviewPane', () => {
   it('slides over the editor on small screens without remembering it', async () => {
     wide = false
 
-    const created = pane('/')
+    const created = pane()
 
+    created.show(page)
     created.toggle()
     await nextTick()
 
@@ -157,7 +168,7 @@ describe('createPreviewPane', () => {
   })
 
   it('remembers the width once it was set', () => {
-    const created = pane('/')
+    const created = pane()
 
     created.resizing.value = true
     created.resize(0.7)
@@ -172,45 +183,69 @@ describe('createPreviewPane', () => {
     created.resize(0.3)
 
     expect(localStorage.getItem('forgepress:editor:preview-ratio')).toBe('0.3')
-    expect(pane('/').ratio.value).toBe(0.3)
+    expect(pane().ratio.value).toBe(0.3)
   })
 
-  it('follows the page of the editor and keeps the last address the link knew', async () => {
-    const created = pane(({ entry }) => entry?.slug as string | undefined)
+  it('follows the entry of the editor and its language, and has no address elsewhere', async () => {
+    const created = pane()
 
-    expect(created.url.value).toBe('/')
+    expect(created.url.value).toBeUndefined()
 
     const hide = created.show(page)
     await nextTick()
 
     expect(created.locale.value).toBe('de')
-    expect(created.url.value).toBe('/start')
+    expect(created.url.value).toBe('/start?locale=de')
 
     created.locale.value = 'en'
     await nextTick()
 
-    expect(created.url.value).toBe('/home')
+    expect(created.url.value).toBe('/home?locale=en')
 
     hide()
     await nextTick()
 
-    expect(created.url.value).toBe('/home')
+    expect(created.url.value).toBeUndefined()
   })
 
-  it('forgets the language for a schema without languages', async () => {
-    const created = pane('/')
+  it('tells why it has nothing to show', async () => {
+    const created = pane()
+
+    created.show(fresh)
+    await nextTick()
+
+    expect(created.url.value).toBeUndefined()
+    expect(created.hint.value).toBe('Save the entry to see its page.')
+  })
+
+  it('switches languages only when the address names one', async () => {
+    const created = pane()
 
     created.show(page)
     await nextTick()
-    created.show({ schema: plain, collection: 'note' })
+
+    expect(created.locales.value).toEqual(['en', 'de'])
+
+    created.show(post)
     await nextTick()
 
-    expect(created.locale.value).toBeUndefined()
     expect(created.locales.value).toEqual([])
   })
 
+  it('forgets the language for a schema without languages', async () => {
+    const created = pane()
+
+    created.show(page)
+    await nextTick()
+    created.show({ schema: plain, collection: 'note', id: 'note_1', entry: { id: 'note_1', ...meta, text: 'Hi' } })
+    await nextTick()
+
+    expect(created.locale.value).toBeUndefined()
+    expect(created.url.value).toBe('/notes/note_1')
+  })
+
   it('sends the draft to the frame once it says it is ready, and to nobody else', async () => {
-    const created = pane('/')
+    const created = pane()
     const { element, view, posted } = frame()
     const entries = [{ collection: 'page', entry: row }]
 
@@ -230,7 +265,7 @@ describe('createPreviewPane', () => {
   })
 
   it('tells the frame where the dev server is when the editor works on local files', async () => {
-    const created = pane('/', { local: true, devServer: 'http://localhost:4390' })
+    const created = pane({ local: true, devServer: 'http://localhost:4390' })
     const { element, view, posted } = frame()
 
     created.attach(element)
@@ -241,22 +276,38 @@ describe('createPreviewPane', () => {
   })
 
   it('loads the address once, then moves the frame without adding to the history', async () => {
-    const created = pane(({ entry }) => entry?.slug as string | undefined)
+    const created = pane()
     const { element, replaced, load } = frame()
-
-    created.attach(element)
-
-    expect(element.src).toBe(new URL('/', window.location.href).href)
-    expect(created.loading.value).toBe(true)
 
     created.show(page)
     await nextTick()
+    created.attach(element)
 
-    expect(replaced).toEqual([new URL('/start', window.location.href).href])
+    expect(element.src).toBe(new URL('/start?locale=de', window.location.href).href)
+    expect(created.loading.value).toBe(true)
+
+    created.locale.value = 'en'
+    await nextTick()
+
+    expect(replaced).toEqual([new URL('/home?locale=en', window.location.href).href])
 
     load()
 
     expect(created.loading.value).toBe(false)
     expect(created.address.value).toBe('/start?a=1')
+  })
+
+  it('stops loading once the entry has no address', async () => {
+    const created = pane()
+    const { element } = frame()
+
+    created.show(page)
+    await nextTick()
+    created.attach(element)
+    created.show(fresh)
+    await nextTick()
+
+    expect(created.loading.value).toBe(false)
+    expect(created.address.value).toBe('')
   })
 })

@@ -2,7 +2,7 @@
 import type { ColorMode } from '../../plugins'
 import { computed, onMounted, ref, watch } from 'vue'
 
-import { useColorMode, usePreview, usePreviewPane, usePublish, useRouter, useSession } from '../../composables'
+import { useColorMode, usePreview, usePublish, useRouter, useSession } from '../../composables'
 import PublishDialog from '../publish/PublishDialog.vue'
 
 import BuildStatus from './BuildStatus.vue'
@@ -17,10 +17,8 @@ const { mode, cycle } = useColorMode()
 const { identity, signOut } = useSession()
 const { count, refresh } = usePublish()
 const { enabled: previewing, set: setPreview } = usePreview()
-const pane = usePreviewPane()
 
 const showPublish = ref(false)
-const paneOpen = computed(() => pane?.open.value === true)
 const menu = ref(false)
 
 onMounted(refresh)
@@ -80,18 +78,6 @@ const setting = { root: 'flex-row-reverse items-center justify-between gap-3 px-
       />
 
       <BuildStatus v-if="deployed && identity" />
-
-      <UButton
-        v-if="pane?.available"
-        icon="i-hugeicons-view"
-        label="Preview"
-        color="neutral"
-        variant="ghost"
-        :class="paneOpen && 'sheet'"
-        :aria-pressed="paneOpen"
-        :ui="{ label: '@max-[40rem]:sr-only' }"
-        @click="pane.toggle()"
-      />
 
       <UButton
         v-if="identity && count"

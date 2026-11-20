@@ -5,12 +5,14 @@ export interface CollectionValues {
   label: string
   description: string
   key: string
+  preview: string
 }
 
 const props = defineProps<{
   name: string
   label: string
   description: string
+  preview?: string | undefined
   loading: boolean
   validate: (key: string) => string
 }>()
@@ -19,13 +21,13 @@ const emit = defineEmits<{ save: [values: CollectionValues] }>()
 
 const open = defineModel<boolean>('open', { required: true })
 
-const form = reactive<CollectionValues>({ label: '', description: '', key: '' })
+const form = reactive<CollectionValues>({ label: '', description: '', key: '', preview: '' })
 
 const invalid = computed(() => form.key === props.name ? '' : props.validate(form.key))
 
 watch(open, (value) => {
   if (value)
-    Object.assign(form, { label: props.label, description: props.description, key: props.name })
+    Object.assign(form, { label: props.label, description: props.description, key: props.name, preview: props.preview ?? '' })
 })
 </script>
 
@@ -39,6 +41,10 @@ watch(open, (value) => {
 
         <UFormField label="Description" description="Shown on the Content and Schema pages.">
           <UTextarea v-model="form.description" :rows="2" class="w-full" />
+        </UFormField>
+
+        <UFormField v-if="preview !== undefined" label="Preview" description="The address of an entry on the site, with {id}, {locale} or a field in braces, such as /blog/{slug}.">
+          <UInput v-model="form.preview" class="w-full font-mono" />
         </UFormField>
 
         <UFormField label="Key" description="How the collection is referenced in queries and content files.">

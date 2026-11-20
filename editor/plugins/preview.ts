@@ -1,10 +1,10 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue'
-import type { CollectionEntry, Entry, PreviewPage } from '../../src/entries'
+import type { CollectionEntry, Entry } from '../../src/entries'
 import type { Schema } from '../../src/schema'
-import type { PreviewLink } from '../types'
 import { computed, ref, shallowRef, watch } from 'vue'
 import { toOutputEntry } from '../../src/output'
 import { draftMessage, frameMessage } from '../../src/preview'
+import { fillPreview, previewPlaceholders } from '../../src/schema'
 import { readLocal, writeLocal } from '../../src/store'
 
 export interface PreviewContext {
@@ -20,7 +20,7 @@ export interface PreviewServer {
 }
 
 export interface PreviewPane {
-  available: boolean
+  available: ComputedRef<boolean>
   wide: Ref<boolean>
   docked: Ref<boolean>
   overlay: Ref<boolean>
@@ -29,7 +29,8 @@ export interface PreviewPane {
   resizing: Ref<boolean>
   locale: Ref<string | undefined>
   locales: ComputedRef<readonly string[]>
-  url: ComputedRef<string>
+  url: ComputedRef<string | undefined>
+  hint: ComputedRef<string>
   address: Ref<string>
   loading: Ref<boolean>
   toggle: () => void
@@ -52,32 +53,28 @@ const RATIO_KEY = 'forgepress:editor:preview-ratio'
 const MIN_RATIO = 0.2
 const MAX_RATIO = 0.8
 
+const names = new Intl.ListFormat('en')
+
 export function clampRatio(value: number): number {
   return Number.isFinite(value) ? Math.min(MAX_RATIO, Math.max(MIN_RATIO, value)) : DEFAULT_RATIO
 }
 
-export function previewPage(context: PreviewContext | undefined, locale: string | undefined): PreviewPage {
-  const language = locale === undefined ? {} : { locale }
-
-  if (!context)
-    return language
-
+export function previewTarget(context: PreviewContext, template: string, locale: string | undefined): { url?: string, hint: string } {
   if (context.id === undefined || !context.entry)
-    return { collection: context.collection, ...language }
+    return { hint: 'Save the entry to see its page.' }
 
-  return { collection: context.collection, id: context.id, entry: toOutputEntry(context.schema, context.collection, context.entry, locale), ...language } as PreviewPage
-}
+  const filled = fillPreview(template, { ...toOutputEntry(context.schema, context.collection, context.entry, locale), locale })
 
-export function previewLink(link: PreviewLink | undefined, page: PreviewPage): string | undefined {
-  if (typeof link !== 'function')
-    return link
+  if ('missing' in filled) {
+    const fields = context.schema.collections[context.collection]?.fields ?? {}
 
-  try {
-    return link(page) || undefined
+    return { hint: `Fill in ${names.format(filled.missing.map(name => fields[name]?.label ?? name))} and save to see the page.` }
   }
-  catch {
-    return undefined
-  }
+
+  if (new URL(filled.path, window.location.href).origin !== window.location.origin)
+    return { hint: 'The address of this entry leads off the site.' }
+
+  return { url: filled.path, hint: '' }
 }
 
 function addressOf(frame: HTMLIFrameElement, fallback: string): string {
@@ -91,8 +88,7 @@ function addressOf(frame: HTMLIFrameElement, fallback: string): string {
   }
 }
 
-export function createPreviewPane(link: PreviewLink | undefined, server: () => Promise<PreviewServer>): PreviewPane {
-  const available = link !== undefined
+export function createPreviewPane(server: () => Promise<PreviewServer>): PreviewPane {
   const media = typeof window.matchMedia === 'function' ? window.matchMedia(WIDE_QUERY) : undefined
 
   const wide = ref(media?.matches ?? true)
@@ -102,17 +98,24 @@ export function createPreviewPane(link: PreviewLink | undefined, server: () => P
   const resizing = ref(false)
   const context = shallowRef<PreviewContext>()
   const locale = ref<string>()
-  const last = ref<string>()
   const address = ref('')
   const loading = ref(false)
 
   let frame: HTMLIFrameElement | undefined
   let entries: CollectionEntry[] = []
 
-  const open = computed(() => available && (wide.value ? docked.value : overlay.value))
-  const locales = computed<readonly string[]>(() => context.value?.schema.locales ?? [])
-  const target = computed(() => previewLink(link, previewPage(context.value, locale.value)))
-  const url = computed(() => last.value ?? '/')
+  const template = computed(() => {
+    const current = context.value
+
+    return current ? current.schema.collections[current.collection]?.preview || undefined : undefined
+  })
+
+  const available = computed(() => template.value !== undefined)
+  const open = computed(() => available.value && (wide.value ? docked.value : overlay.value))
+  const locales = computed<readonly string[]>(() => template.value && previewPlaceholders(template.value).includes('locale') ? context.value?.schema.locales ?? [] : [])
+  const target = computed(() => context.value && template.value ? previewTarget(context.value, template.value, locale.value) : undefined)
+  const url = computed(() => target.value?.url)
+  const hint = computed(() => target.value?.hint ?? '')
 
   function follow(event: MediaQueryListEvent): void {
     wide.value = event.matches
@@ -137,7 +140,14 @@ export function createPreviewPane(link: PreviewLink | undefined, server: () => P
       post()
   }
 
-  function navigate(next: string): void {
+  function navigate(next: string | undefined): void {
+    if (next === undefined) {
+      loading.value = false
+      address.value = ''
+
+      return
+    }
+
     if (!frame)
       return
 
@@ -160,11 +170,6 @@ export function createPreviewPane(link: PreviewLink | undefined, server: () => P
 
   media?.addEventListener('change', follow)
   window.addEventListener('message', receive)
-
-  watch(target, (next) => {
-    if (next !== undefined)
-      last.value = next
-  }, { immediate: true })
 
   watch(url, navigate)
 
@@ -202,6 +207,7 @@ export function createPreviewPane(link: PreviewLink | undefined, server: () => P
     locale,
     locales,
     url,
+    hint,
     address,
     loading,
 
@@ -242,16 +248,19 @@ export function createPreviewPane(link: PreviewLink | undefined, server: () => P
 
     attach: (element) => {
       frame = element
-      loading.value = true
-      address.value = url.value
 
       const loaded = (): void => {
         loading.value = false
-        address.value = addressOf(element, url.value)
+        address.value = addressOf(element, url.value ?? '')
       }
 
       element.addEventListener('load', loaded)
-      element.src = new URL(url.value, window.location.href).href
+
+      if (url.value !== undefined) {
+        loading.value = true
+        address.value = url.value
+        element.src = new URL(url.value, window.location.href).href
+      }
 
       return () => {
         element.removeEventListener('load', loaded)
@@ -262,7 +271,7 @@ export function createPreviewPane(link: PreviewLink | undefined, server: () => P
     },
 
     reload: () => {
-      if (!frame)
+      if (!frame || url.value === undefined)
         return
 
       loading.value = true

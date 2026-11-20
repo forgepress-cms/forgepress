@@ -6,6 +6,7 @@ import { fieldTypeNames, fieldTypes } from './fields/registry'
 import { compilePattern } from './fields/text'
 import { META_KEYS } from './meta'
 import { isCollectionName } from './names'
+import { previewPlaceholders } from './preview'
 
 export const LOCALE_CODE = /^[a-z][\w-]*$/i
 export const RESERVED_FIELDS: readonly string[] = META_KEYS
@@ -28,7 +29,14 @@ type Group = 'collections' | 'components'
 const GROUP_NAMES: Record<Group, string> = { collections: 'Collection', components: 'Component' }
 
 const SCHEMA_KEYS = new Set(['components', 'collections', 'locales', 'defaultLocale'])
-const COLLECTION_KEYS = new Set(['label', 'description', 'fields'])
+
+const GROUP_KEYS: Record<Group, ReadonlySet<string>> = {
+  collections: new Set(['label', 'description', 'preview', 'fields']),
+  components: new Set(['label', 'description', 'fields']),
+}
+
+const ADDRESS_TYPES: ReadonlySet<unknown> = new Set(['text', 'number', 'list'])
+const SITE_PATH = /^(?:\/(?!\/)|\{)/
 
 export const BASE_OPTIONS: Record<keyof FieldBase, FieldOptionType> = {
   label: 'text',
@@ -215,6 +223,35 @@ function checkField(context: Context, path: ValuePath, owner: string, key: strin
     report([...path, 'translate'], `Field ${quote(label)} is translated, but the schema has no locales`)
 }
 
+function placeholderProblem(context: Context, fields: Record<string, unknown>, placeholder: string): string | undefined {
+  if (placeholder === 'id')
+    return undefined
+
+  if (placeholder === 'locale')
+    return context.locales.length === 0 ? 'but the schema has no locales' : undefined
+
+  const field = fields[placeholder]
+
+  if (!isRecord(field))
+    return `but the collection has no field ${quote(placeholder)}`
+
+  return ADDRESS_TYPES.has(field.type) && field.multiple !== true ? undefined : 'but only text, number and single list fields fit into an address'
+}
+
+function checkPreview(context: Context, path: ValuePath, name: string, template: string, fields: Record<string, unknown>): void {
+  const subject = `"preview" of collection ${quote(name)}`
+
+  if (!SITE_PATH.test(template))
+    context.report(path, `${subject} has to be a path on the site, such as "/blog/{slug}"`)
+
+  for (const placeholder of previewPlaceholders(template)) {
+    const problem = placeholderProblem(context, fields, placeholder)
+
+    if (problem)
+      context.report(path, `${subject} uses ${quote(`{${placeholder}}`)}, ${problem}`)
+  }
+}
+
 function checkGroup(context: Context, group: Group, name: string, value: unknown): void {
   const { report } = context
   const path = [group, name]
@@ -227,7 +264,7 @@ function checkGroup(context: Context, group: Group, name: string, value: unknown
     return report(path, `${noun} ${quote(name)} has to be an object`)
 
   for (const [key, option] of Object.entries(value)) {
-    if (!COLLECTION_KEYS.has(key))
+    if (!GROUP_KEYS[group].has(key))
       report([...path, key], `${noun} ${quote(name)} has no option ${quote(key)}`)
     else if (key !== 'fields' && typeof option !== 'string')
       report([...path, key], `${quote(key)} of ${noun.toLowerCase()} ${quote(name)} has to be a string`)
@@ -238,6 +275,9 @@ function checkGroup(context: Context, group: Group, name: string, value: unknown
 
   for (const [key, field] of Object.entries(value.fields))
     checkField(context, [...path, 'fields', key], name, key, field)
+
+  if (group === 'collections' && typeof value.preview === 'string')
+    checkPreview(context, [...path, 'preview'], name, value.preview, value.fields)
 }
 
 function includedComponents(component: unknown): string[] {

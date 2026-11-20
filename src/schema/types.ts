@@ -1,12 +1,14 @@
 import type { Field } from './fields/registry'
 
-export interface CollectionDefinition {
+export interface ComponentDefinition {
   label?: string
   description?: string
   fields: Record<string, Field>
 }
 
-export type ComponentDefinition = CollectionDefinition
+export interface CollectionDefinition extends ComponentDefinition {
+  preview?: string
+}
 
 export interface Schema {
   components?: Record<string, ComponentDefinition>

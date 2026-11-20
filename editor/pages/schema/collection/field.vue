@@ -4,7 +4,7 @@ import type { Field, FieldTypeDefinition, Schema } from '../../../../src/schema'
 import { computed, reactive, watch } from 'vue'
 
 import { planMigration } from '../../../../src/migrate'
-import { BASE_OPTIONS, fieldTypes, RESERVED_FIELDS } from '../../../../src/schema'
+import { BASE_OPTIONS, fieldTypes, renamePreviewField, RESERVED_FIELDS } from '../../../../src/schema'
 import { filled, plain } from '../../../../src/utils'
 import { DiscardDialog, ErrorAlert, FormLayout, ListSelect, MigrationDialog, MigrationNotice, PageHeader } from '../../../components'
 import { useDraft, useLeaveGuard, useParam, useRouter, useSchema, useSchemaGroup } from '../../../composables'
@@ -130,6 +130,9 @@ function apply(draft: SchemaDraft): void {
   const config = next()
 
   target.fields = Object.fromEntries(Object.entries(target.fields).map(([item, value]) => item === field ? [key.value, config] : [item, value]))
+
+  if (target.preview)
+    target.preview = renamePreviewField(target.preview, field, key.value)
 }
 
 const rewrites = computed(() => {

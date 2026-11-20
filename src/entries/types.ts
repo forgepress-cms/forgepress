@@ -195,22 +195,3 @@ export type Component<
 }
 
 export type Locale = [SchemaLocale<RegisteredSchema>] extends [never] ? string : SchemaLocale<RegisteredSchema>
-
-type CollectionKey = keyof RegisteredSchema['collections'] & string
-
-type EntryPage = {
-  [TName in CollectionKey]: { collection: TName, id: string, entry: Collection<TName>, locale?: Locale }
-}[CollectionKey]
-
-type CollectionPage = {
-  [TName in CollectionKey]: { collection: TName, id?: never, entry?: never, locale?: Locale }
-}[CollectionKey]
-
-interface EditorPage {
-  collection?: never
-  id?: never
-  entry?: never
-  locale?: Locale
-}
-
-export type PreviewPage = EntryPage | CollectionPage | EditorPage

@@ -15,9 +15,8 @@ const events: unknown[] = []
 
 let app: App | undefined
 
-function mount(available: boolean): void {
+function mount(provided: boolean): void {
   const pane = {
-    available,
     show: (next: PreviewContext) => {
       events.push(['show', next.collection])
 
@@ -35,7 +34,9 @@ function mount(available: boolean): void {
     },
   }))
 
-  app.provide(previewKey, pane as unknown as PreviewPane)
+  if (provided)
+    app.provide(previewKey, pane as unknown as PreviewPane)
+
   app.mount(document.createElement('div'))
 }
 
@@ -68,7 +69,7 @@ describe('usePreviewContext and usePreviewDraft', () => {
     expect(events.slice(2)).toEqual([['hide', 'page'], ['draft', []]])
   })
 
-  it('does nothing when the editor has no preview', async () => {
+  it('does nothing without a preview pane', async () => {
     mount(false)
 
     title.value = 'Homepage'

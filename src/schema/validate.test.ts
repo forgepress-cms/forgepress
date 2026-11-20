@@ -333,4 +333,65 @@ describe('validateSchema', () => {
       ])
     })
   })
+
+  describe('preview addresses', () => {
+    const path = ['collections', 'post', 'preview']
+
+    function schema(preview: unknown, extra: Record<string, unknown> = {}): unknown {
+      return {
+        locales: ['en'],
+        ...extra,
+        collections: {
+          post: {
+            preview,
+            fields: {
+              slug: { type: 'text' },
+              rank: { type: 'number' },
+              stage: { type: 'list', values: ['draft', 'final'] },
+              tags: { type: 'list', values: ['news', 'guide'], multiple: true },
+              body: { type: 'richtext' },
+            },
+          },
+        },
+      }
+    }
+
+    it('accept a path on the site built from the id, the locale and plain fields', () => {
+      expect(issues(schema('/{locale}/{stage}/{slug}?rank={rank}&id={id}'))).toEqual([])
+      expect(issues(schema('{slug}'))).toEqual([])
+      expect(issues(schema('/'))).toEqual([])
+    })
+
+    it('want a path on the site', () => {
+      for (const preview of ['https://example.com/{slug}', '//example.com/{slug}', 'blog/{slug}', '']) {
+        expect(issues(schema(preview))).toEqual([
+          { path, message: '"preview" of collection "post" has to be a path on the site, such as "/blog/{slug}"' },
+        ])
+      }
+
+      expect(issues(schema(1))).toEqual([
+        { path, message: '"preview" of collection "post" has to be a string' },
+      ])
+    })
+
+    it('fill in only fields of the collection that hold one plain value', () => {
+      expect(issues(schema('/{title}/{tags}/{body}'))).toEqual([
+        { path, message: '"preview" of collection "post" uses "{title}", but the collection has no field "title"' },
+        { path, message: '"preview" of collection "post" uses "{tags}", but only text, number and single list fields fit into an address' },
+        { path, message: '"preview" of collection "post" uses "{body}", but only text, number and single list fields fit into an address' },
+      ])
+    })
+
+    it('want locales before an address names one', () => {
+      expect(issues(schema('/{locale}{slug}', { locales: undefined }))).toEqual([
+        { path, message: '"preview" of collection "post" uses "{locale}", but the schema has no locales' },
+      ])
+    })
+
+    it('belong to collections only', () => {
+      expect(issues({ components: { card: { preview: '/{title}', fields: { title: { type: 'text' } } } }, collections: {} })).toEqual([
+        { path: ['components', 'card', 'preview'], message: 'Component "card" has no option "preview"' },
+      ])
+    })
+  })
 })

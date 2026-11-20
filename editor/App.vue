@@ -27,7 +27,7 @@ onMounted(async () => {
 })
 
 const locked = computed(() => ready.value && deployed.value && identity.value === undefined)
-const previewable = computed(() => ready.value && !locked.value && preview?.available === true)
+const previewable = computed(() => ready.value && !locked.value && preview?.available.value === true)
 const docked = computed(() => previewable.value && preview!.wide.value && preview!.open.value)
 const sliding = computed(() => previewable.value && !preview!.wide.value)
 const width = computed(() => `${(preview?.ratio.value ?? 0) * 100}%`)

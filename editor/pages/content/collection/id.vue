@@ -4,7 +4,7 @@ import type { EntryStatus } from '../../../../src/schema'
 import { computed, reactive, shallowRef } from 'vue'
 import { entryKey, unpublishedReferences } from '../../../../src/entries'
 import { DiscardDialog, ErrorAlert, FieldList, FormLayout, MetaItem, PageHeader, PublishLinkedDialog } from '../../../components'
-import { useCollection, useContent, useEntries, useEntryDraft, useIssues, useNestedEntries, useParam, usePreviewContext, usePreviewDraft, useRouter, useSave } from '../../../composables'
+import { useCollection, useContent, useEntries, useEntryDraft, useIssues, useNestedEntries, useParam, usePreviewContext, usePreviewDraft, usePreviewPane, useRouter, useSave } from '../../../composables'
 import { condense, missingFields, newEntry, statusColor, STATUSES, titleField, toLocalizedFields, withPublished } from '../../../utils'
 
 const { route, navigate, href } = useRouter()
@@ -41,6 +41,10 @@ const { values, status, draft, dirty, leaving, commit, cancel, discard, proceed 
 const original = JSON.stringify(draft())
 
 usePreviewContext(creating ? { schema, collection: name } : { schema, collection: name, id: row.id, entry: row })
+
+const pane = usePreviewPane()
+const previewable = computed(() => pane?.available.value === true)
+const previewing = computed(() => pane?.open.value === true)
 
 usePreviewDraft(() => {
   const current = draft()
@@ -127,6 +131,17 @@ async function submit(linkedStatus?: EntryStatus): Promise<void> {
       ]"
     >
       <template #actions>
+        <UButton
+          v-if="previewable"
+          icon="i-hugeicons-view"
+          label="Preview"
+          color="neutral"
+          variant="ghost"
+          :class="previewing && 'sheet'"
+          :aria-pressed="previewing"
+          @click="pane?.toggle()"
+        />
+
         <UButton label="Cancel" color="neutral" variant="ghost" @click="cancel()" />
 
         <UButton

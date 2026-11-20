@@ -13,7 +13,7 @@ export function usePreviewPane(): PreviewPane | undefined {
 export function usePreviewContext(context: PreviewContext): void {
   const pane = usePreviewPane()
 
-  if (!pane?.available)
+  if (!pane)
     return
 
   onBeforeUnmount(pane.show(context))
@@ -22,7 +22,7 @@ export function usePreviewContext(context: PreviewContext): void {
 export function usePreviewDraft(entries: () => readonly CollectionEntry[]): void {
   const pane = usePreviewPane()
 
-  if (!pane?.available)
+  if (!pane)
     return
 
   let stopped = false

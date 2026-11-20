@@ -1,20 +1,16 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
+import { computed, useTemplateRef, watch } from 'vue'
 import { usePreviewPane } from '../../composables'
 
 const pane = usePreviewPane()!
-const { address, loading, locale, locales, resizing } = pane
+const { address, hint, loading, locale, locales, resizing, url } = pane
 
 const frame = useTemplateRef<HTMLIFrameElement>('frame')
 
-let detach: (() => void) | undefined
-
-onMounted(() => {
-  if (frame.value)
-    detach = pane.attach(frame.value)
-})
-
-onBeforeUnmount(() => detach?.())
+watch(frame, (element, _, onCleanup) => {
+  if (element)
+    onCleanup(pane.attach(element))
+}, { flush: 'post' })
 
 const languages = computed(() => locales.value.map(value => ({ label: value.toUpperCase(), value })))
 
@@ -24,7 +20,7 @@ const language = computed({
     locale.value = value
   },
 })
-const external = computed(() => new URL(address.value || pane.url.value, window.location.href).href)
+const external = computed(() => url.value === undefined ? undefined : new URL(address.value || url.value, window.location.href).href)
 </script>
 
 <template>
@@ -51,17 +47,18 @@ const external = computed(() => new URL(address.value || pane.url.value, window.
         variant="ghost"
         aria-label="Reload the preview"
         title="Reload"
+        :disabled="!url"
         @click="pane.reload()"
       />
 
       <UButton
-        :to="external"
-        target="_blank"
+        v-bind="external ? { to: external, target: '_blank' } : {}"
         icon="i-hugeicons-arrow-up-right-01"
         color="neutral"
         variant="ghost"
         aria-label="Open the preview in a new tab"
         title="Open in a new tab"
+        :disabled="!url"
       />
 
       <UButton
@@ -75,10 +72,15 @@ const external = computed(() => new URL(address.value || pane.url.value, window.
     </div>
 
     <iframe
+      v-if="url"
       ref="frame"
       title="Preview of the site"
       class="block min-h-0 w-full flex-1 border-0"
       :class="resizing && 'pointer-events-none'"
     />
+
+    <p v-else class="flex min-h-0 flex-1 items-center justify-center p-8 text-center text-sm text-muted">
+      {{ hint }}
+    </p>
   </section>
 </template>

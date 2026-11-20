@@ -1,6 +1,6 @@
 export { defineForgePressConfig } from './config'
 export type { Config } from './config'
-export type { Collection, Component, Content, EntryRef, LinkedBlock, Locale, OutputEntry, PreviewPage, With } from './entries'
+export type { Collection, Component, Content, EntryRef, LinkedBlock, Locale, OutputEntry, With } from './entries'
 
 export type { OutputCollection, OutputConfig, OutputIndex, OutputManifest } from './output'
 export { createClient, query } from './query'

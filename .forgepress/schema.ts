@@ -500,6 +500,7 @@ export default {
     page: {
       label: 'Page',
       description: 'Every page of the site, from the home page to a page of the documentation',
+      preview: '{slug}?locale={locale}',
       fields: {
         title: {
           type: 'text',
