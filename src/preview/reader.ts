@@ -1,21 +1,15 @@
-import type { Changes } from '../changes/types'
-import type { CollectionEntry, ContentEntries } from '../entries/references'
-import type { Entry } from '../entries/types'
-import type { OAuthTokens } from '../forge/types'
-import type { ContentStore } from '../store/types'
+import type { Changes } from '../changes'
+import type { CollectionEntry, ContentEntries, Entry } from '../entries'
+import type { OAuthTokens } from '../forge'
+import type { ContentStore } from '../store'
 import type { PreviewSettings, PreviewSource } from './state'
-import { emptyChanges, readChanges } from '../changes'
-import { createContentChanges } from '../changes/content'
-import { localUploads } from '../changes/media'
-import { createPreviews } from '../changes/previews'
-import { createEndpoint } from '../endpoint/client'
-import { createPaths, repositoryPaths } from '../files/paths'
-import { createForge } from '../forge'
-import { createTokenGetter, storedTokens } from '../forge/oauth'
-import { createForgeSource } from '../forge/source'
+import { createContentChanges, createPreviews, emptyChanges, localUploads, readChanges } from '../changes'
+import { createEndpoint } from '../endpoint'
+import { createPaths, repositoryPaths } from '../files'
+import { createForge, createForgeSource, createTokenGetter, storedTokens } from '../forge'
 import { createOutput } from '../output'
 import { CHANGES_KEY, persist, repositoryCache, TOKEN_KEY } from '../store'
-import { isRecord } from '../utils/value'
+import { isRecord } from '../utils'
 
 export type PreviewFiles = ReadonlyMap<string, string>
 
@@ -36,7 +30,7 @@ function swap(value: unknown, urls: ReadonlyMap<string, string>): unknown {
   return value
 }
 
-export function withDraft(changes: Changes, draft: readonly CollectionEntry[]): Changes {
+function withDraft(changes: Changes, draft: readonly CollectionEntry[]): Changes {
   if (draft.length === 0)
     return changes
 

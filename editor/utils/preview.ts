@@ -1,4 +1,4 @@
-import { isRecord } from '../../src/utils/value'
+import { isRecord } from '../../src/utils'
 
 const LABELS = ['url', 'label', 'title', 'name', 'type', 'id']
 

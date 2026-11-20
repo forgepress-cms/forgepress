@@ -1,6 +1,5 @@
-import type { MediaKind } from '../../src/media'
-import type { MediaAsset, MediaContent } from '../../src/media/types'
-import { asList, isRecord } from '../../src/utils/value'
+import type { MediaAsset, MediaContent, MediaKind } from '../../src/media'
+import { asList, isRecord } from '../../src/utils'
 
 export interface Size {
   width: number

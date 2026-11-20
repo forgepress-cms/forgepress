@@ -1,6 +1,6 @@
-import type { Entry } from '../entries/types'
-import type { ContentIssue } from '../files/issues'
-import type { Schema } from '../schema/types'
+import type { Entry } from '../entries'
+import type { ContentIssue } from '../issues'
+import type { Schema } from '../schema'
 
 export interface ContentSource {
   schema: () => Promise<Schema>

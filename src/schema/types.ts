@@ -1,4 +1,4 @@
-import type { Field } from '../schema/fields'
+import type { Field } from './fields/registry'
 
 export interface CollectionDefinition {
   label?: string

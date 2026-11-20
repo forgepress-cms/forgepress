@@ -1,5 +1,23 @@
-import type { ContentConfig } from '../config/types'
-import type { ContentPaths } from '../files/paths'
+import type { ContentConfig, ContentPaths } from '../files'
+
+export type ProviderType = 'github' | 'gitlab' | 'forgejo'
+
+interface ProviderRepository {
+  owner: string
+  name: string
+  branch?: string
+}
+
+export interface ProviderConfig {
+  type: ProviderType
+  repository: ProviderRepository
+  base?: string
+  url?: string
+  clientId?: string
+  scopes?: readonly string[]
+  redirectUri?: string
+  commitMessage?: string
+}
 
 export interface ForgeIdentity {
   login: string

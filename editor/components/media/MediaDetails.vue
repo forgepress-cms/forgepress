@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { MediaAsset } from '../../../src/media/types'
-import type { Size } from '../../utils/media'
+import type { MediaAsset } from '../../../src/media'
+import type { Size } from '../../utils'
 import { computed, shallowRef, watch } from 'vue'
 import { mediaKind } from '../../../src/media'
-import { formatSize, measure } from '../../utils/media'
-import MetaItem from '../MetaItem.vue'
+import { formatSize, measure } from '../../utils'
+import MetaItem from '../common/MetaItem.vue'
 import MediaPreview from './MediaPreview.vue'
 
 const props = defineProps<{

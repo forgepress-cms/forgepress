@@ -1,4 +1,4 @@
-import type { MediaContent } from '../../media/types'
+import type { MediaContent } from '../../media'
 import type { Listed } from './picked'
 import type { FieldOf, FieldTypeDefinition } from './types'
 

@@ -1,5 +1,4 @@
 import type { SchemaDraft } from '../../src/migrate/schema'
-import type { Schema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { removeCollection, removeLocale, renameCollection, renameField, renameLocale, setDefaultLocale, uses } from '../../src/migrate/schema'
 
@@ -33,7 +32,7 @@ describe('schema changes', () => {
   it('removes a collection together with the links to it', () => {
     const schema = draft()
 
-    expect(uses(schema as Schema, 'collections', 'author')).toEqual([{ kind: 'collection', holder: 'post', field: 'by' }, { kind: 'collection', holder: 'post', field: 'blocks' }])
+    expect(uses(schema, 'collections', 'author')).toEqual([{ kind: 'collection', holder: 'post', field: 'by' }, { kind: 'collection', holder: 'post', field: 'blocks' }])
 
     removeCollection(schema, 'author')
 

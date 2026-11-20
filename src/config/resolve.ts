@@ -1,8 +1,9 @@
-import type { ContentPaths } from '../files/paths'
-import type { ResolvedMedia } from '../media/types'
+import type { ContentConfig, ContentPaths } from '../files'
+import type { ProviderConfig } from '../forge'
+import type { ResolvedMedia } from '../media'
 import type { ResolvedOutput } from '../output'
-import type { Config, ContentConfig, ProviderConfig } from './types'
-import { createPaths, prefixer } from '../files/paths'
+import type { Config } from './types'
+import { createPaths, prefixer } from '../files'
 import { resolveMedia } from '../media'
 import { resolveOutput } from '../output'
 

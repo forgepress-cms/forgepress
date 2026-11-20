@@ -1,15 +1,10 @@
-import type { ResolvedConfig } from '../config/resolve'
-import type { EffectGroup } from '../migrate/report'
-import type { Fill, Fix, Migration, RenameQuestion } from '../migrate/types'
-import type { Schema } from '../schema/types'
+import type { ResolvedConfig } from '../config'
+import type { Decisions, EffectGroup, Entries, Fill, Fix, Migration, RenameQuestion, Renames } from '../migrate'
+import type { Schema } from '../schema'
 import { execFileSync } from 'node:child_process'
-import { diskFiles } from '../disk/files'
-import { createWriter } from '../disk/writer'
-import { createFileSource, readEntries } from '../files/content'
-import { parseSchemaFile } from '../files/parse'
-import { planMigration } from '../migrate/plan'
-import { renameQuestions } from '../migrate/questions'
-import { describeValue, fillOptions, fixOptions, groupCount, groupEffects, groupTitle, questionText, renameHints } from '../migrate/report'
+import { createWriter, diskFiles } from '../disk'
+import { createFileSource, parseSchemaFile, readEntries } from '../files'
+import { describeValue, fillOptions, fixOptions, groupCount, groupEffects, groupTitle, planMigration, questionText, renameHints, renameQuestions } from '../migrate'
 
 export interface Ask {
   select: (message: string, options: { label: string, value: string }[]) => Promise<string>
@@ -86,11 +81,7 @@ function report(migration: Migration, before: Schema, after: Schema, log: (messa
   }
 }
 
-export async function migrate(root: string, config: ResolvedConfig, { ask, yes, log }: MigrateOptions): Promise<void> {
-  const files = diskFiles(root)
-  const after = await createFileSource(files, config.paths).schema()
-  const content = await readEntries(files, config.paths)
-  const before = committedSchema(root, config.paths.schema) ?? after
+async function askRenames(ask: Ask | undefined, before: Schema, after: Schema, content: Entries): Promise<Renames> {
   const renames = { collections: {} as Record<string, string>, fields: {} as Record<string, Record<string, string>>, locales: {} as Record<string, string>, components: {} as Record<string, string>, componentFields: {} as Record<string, Record<string, string>> }
   const answered = new Set<string>()
 
@@ -98,7 +89,7 @@ export async function migrate(root: string, config: ResolvedConfig, { ask, yes, 
     const question = renameQuestions({ before, after, content, renames, repair: true }).find(item => !answered.has(questionKey(item)))
 
     if (!question)
-      break
+      return renames
 
     if (!ask)
       throw new Error(`[forgepress] ${questionText(question, after, before)} Run forgepress migrate in a terminal to say whether it was renamed.`)
@@ -124,9 +115,37 @@ export async function migrate(root: string, config: ResolvedConfig, { ask, yes, 
     else
       (renames.fields[question.collection!] ??= {})[question.from] = answer
   }
+}
 
+async function askDecisions(ask: Ask, migration: Migration, before: Schema, after: Schema): Promise<Decisions> {
   const decisions = { fills: {} as Record<string, Record<string, Fill>>, fixes: {} as Record<string, Record<string, Fix>>, create: {} as Record<string, string[]> }
-  const plan = (): Migration => planMigration({ before, after, content, renames, decisions, repair: true })
+
+  for (const group of groupEffects(migration.effects, ['missing'], false))
+    (decisions.fills[group.collection] ??= {})[group.field!] = await fill(ask, after, group, groupTitle(group, after, before))
+
+  for (const group of groupEffects(migration.effects, ['invalid'], false))
+    (decisions.fixes[group.collection] ??= {})[group.field!] = await ask.select(`${groupTitle(group, after, before)} breaks its rules in ${groupCount(group)}: ${group.effects[0]!.message}`, fixOptions(after, group)) as Fix
+
+  for (const group of groupEffects(migration.effects, ['unmatched'], false)) {
+    const choice = await ask.select(`${groupTitle(group, after, before)} holds text without a matching entry in ${groupCount(group)}.`, [
+      { label: 'Leave the field empty', value: 'drop' },
+      { label: 'Create the missing entries', value: 'create' },
+    ])
+
+    if (choice === 'create')
+      (decisions.create[group.collection] ??= []).push(group.field!)
+  }
+
+  return decisions
+}
+
+export async function migrate(root: string, config: ResolvedConfig, { ask, yes, log }: MigrateOptions): Promise<void> {
+  const files = diskFiles(root)
+  const after = await createFileSource(files, config.paths).schema()
+  const content = await readEntries(files, config.paths)
+  const before = committedSchema(root, config.paths.schema) ?? after
+  const renames = await askRenames(ask, before, after, content)
+  const plan = (decisions: Decisions = {}): Migration => planMigration({ before, after, content, renames, decisions, repair: true })
 
   let migration = plan()
 
@@ -136,25 +155,8 @@ export async function migrate(root: string, config: ResolvedConfig, { ask, yes, 
   if (migration.changeset.write.length === 0 && migration.changeset.collections.length === 0)
     return log('The content fits the schema, nothing to migrate')
 
-  if (ask) {
-    for (const group of groupEffects(migration.effects, ['missing'], false))
-      (decisions.fills[group.collection] ??= {})[group.field!] = await fill(ask, after, group, groupTitle(group, after, before))
-
-    for (const group of groupEffects(migration.effects, ['invalid'], false))
-      (decisions.fixes[group.collection] ??= {})[group.field!] = await ask.select(`${groupTitle(group, after, before)} breaks its rules in ${groupCount(group)}: ${group.effects[0]!.message}`, fixOptions(after, group)) as Fix
-
-    for (const group of groupEffects(migration.effects, ['unmatched'], false)) {
-      const choice = await ask.select(`${groupTitle(group, after, before)} holds text without a matching entry in ${groupCount(group)}.`, [
-        { label: 'Leave the field empty', value: 'drop' },
-        { label: 'Create the missing entries', value: 'create' },
-      ])
-
-      if (choice === 'create')
-        (decisions.create[group.collection] ??= []).push(group.field!)
-    }
-
-    migration = plan()
-  }
+  if (ask)
+    migration = plan(await askDecisions(ask, migration, before, after))
 
   report(migration, before, after, log)
 

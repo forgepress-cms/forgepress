@@ -1,4 +1,4 @@
-import type { ContentReader } from './client'
+import type { ContentReader } from './loader'
 
 export type ContentOverlay = (path: string, base: ContentReader) => Promise<unknown>
 

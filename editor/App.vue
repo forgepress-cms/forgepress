@@ -1,13 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import Header from './components/layout/Header.vue'
-import PageView from './components/layout/PageView.vue'
-import PreviewDivider from './components/preview/PreviewDivider.vue'
-import PreviewPanel from './components/preview/PreviewPanel.vue'
-import SignIn from './components/SignIn.vue'
-import { useContent } from './composables/useContent'
-import { usePreviewPane } from './composables/usePreviewPane'
-import { useSession } from './composables/useSession'
+import { Header, PageView, PreviewDivider, PreviewPanel, SignIn } from './components'
+import { useContent, usePreviewPane, useSession } from './composables'
 
 defineProps<{
   container: HTMLElement
@@ -62,9 +56,9 @@ const resizing = computed(() => preview?.resizing.value === true)
       </div>
 
       <template v-if="docked && preview">
-        <PreviewDivider :pane="preview" />
+        <PreviewDivider />
 
-        <PreviewPanel :pane="preview" class="max-w-[calc(100%-30rem)] min-w-80 shrink-0" :style="{ width }" />
+        <PreviewPanel class="max-w-[calc(100%-30rem)] min-w-80 shrink-0" :style="{ width }" />
       </template>
     </div>
 
@@ -77,7 +71,7 @@ const resizing = computed(() => preview?.resizing.value === true)
       :ui="{ content: 'w-full max-w-none sm:max-w-2xl' }"
     >
       <template #content>
-        <PreviewPanel :pane="preview" />
+        <PreviewPanel />
       </template>
     </USlideover>
   </UApp>

@@ -1,4 +1,4 @@
-import type { NumberField } from '../schema/fields/number'
+import type { NumberField } from '../schema'
 
 export function slugify(text: string): string {
   return text

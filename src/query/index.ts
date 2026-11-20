@@ -1,24 +1,6 @@
-import type { RegisteredSchema, Schema } from '../schema/types'
-import type { Query } from './types'
-import { reader } from '#content-reader'
-import { Builder } from './builder'
-import { createLoader } from './client'
-import { fetchReader } from './fetch'
-import { overlaid } from './overlay'
-
-export interface ClientOptions {
-  url?: string
-}
-
-export interface Client<TSchema extends Schema = RegisteredSchema> {
-  query: Query<TSchema>
-}
-
-export function createClient<TSchema extends Schema = RegisteredSchema>(options: ClientOptions = {}): Client<TSchema> {
-  const loader = createLoader(overlaid(options.url === undefined ? reader : fetchReader(options.url)))
-  const query = (collection: string): Builder => new Builder(loader, collection)
-
-  return { query: query as unknown as Query<TSchema> }
-}
-
-export const query: Query<RegisteredSchema> = createClient().query
+export type { Client, ClientOptions } from './client'
+export { createClient, query } from './client'
+export { reader } from './fetch'
+export type { ContentReader } from './loader'
+export { overlayContent } from './overlay'
+export type { Operator, QueryBuilder } from './types'

@@ -1,0 +1,192 @@
+// @vitest-environment happy-dom
+import type { App } from 'vue'
+import type { FileIssues } from '../../../../editor/utils/issues'
+import type { Resolution } from '../../../../src/changes/types'
+import type { Conflict } from '../../../../src/forge/types'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createApp, defineComponent, h, ref, shallowRef } from 'vue'
+import { routerKey } from '../../../../editor/plugins/router'
+import { settle } from '../../../settle'
+
+const conflicts = shallowRef<readonly Conflict[]>([])
+const issues = shallowRef<readonly FileIssues[]>([])
+const calls: string[] = []
+const outcomes: (() => string | undefined)[] = []
+const reload = vi.fn()
+
+vi.doMock('../../../../editor/composables/session/usePublish', () => ({
+  usePublish: () => ({
+    summary: ref({}),
+    diff: ref([]),
+    count: ref(1),
+    publishing: ref(false),
+    error: ref(''),
+    conflicts,
+    issues,
+    left: ref([]),
+    refresh: async () => {},
+    publish: async () => {
+      calls.push('publish')
+
+      return outcomes.shift()?.()
+    },
+    resolve: async (keep: Resolution) => {
+      calls.push(`resolve ${keep}`)
+      conflicts.value = []
+
+      return true
+    },
+  }),
+}))
+
+vi.doMock('../../../../editor/composables/session/useSession', () => ({
+  useSession: () => ({ branch: ref('main') }),
+}))
+
+const { default: PublishDialog } = await import('../../../../editor/components/publish/PublishDialog.vue')
+
+const stubs = {
+  UModal: defineComponent({
+    props: { open: Boolean },
+    setup: (props, { slots }) => () => props.open ? h('div', { role: 'dialog' }, [slots.body?.(), slots.footer?.()]) : null,
+  }),
+  UAlert: defineComponent({
+    props: { title: String, description: String, actions: Array },
+    setup: (props, { slots }) => () => h('div', { role: 'alert' }, [
+      props.title,
+      slots.description?.() ?? props.description,
+      ...(props.actions as { label: string, onClick: () => void }[] | undefined ?? []).map(action => h('button', { onClick: action.onClick }, action.label)),
+    ]),
+  }),
+  UButton: defineComponent({
+    props: { label: String, disabled: Boolean },
+    emits: ['click'],
+    setup: (props, { emit }) => () => h('button', { disabled: props.disabled, onClick: () => emit('click') }, props.label),
+  }),
+  UFormField: defineComponent({ setup: (_, { slots }) => () => h('div', slots.default?.()) }),
+  UInput: defineComponent({ setup: () => () => h('input') }),
+  UIcon: defineComponent({ setup: () => () => h('span') }),
+}
+
+let app: App
+let container: HTMLElement
+
+async function click(label: string): Promise<void> {
+  const button = [...container.querySelectorAll('button')].find(element => element.textContent === label)
+
+  if (!button)
+    throw new Error(`no button "${label}" in: ${container.textContent}`)
+
+  button.click()
+  await settle()
+}
+
+function conflicted(): undefined {
+  conflicts.value = [{ path: '.forgepress/content/author/a.ts', hash: 'h-theirs' }]
+
+  return undefined
+}
+
+beforeEach(async () => {
+  conflicts.value = []
+  issues.value = []
+  calls.length = 0
+  outcomes.length = 0
+  reload.mockClear()
+
+  const open = ref(true)
+
+  container = document.createElement('div')
+  app = createApp(defineComponent({
+    setup: () => () => h(PublishDialog, { 'open': open.value, 'onUpdate:open': (value: boolean) => open.value = value }),
+  }))
+
+  for (const [name, component] of Object.entries(stubs))
+    app.component(name, component)
+
+  app.provide(routerKey, { reload, href: (path: string) => `/admin?path=/${path}` } as never)
+  app.mount(container)
+
+  await settle()
+})
+
+afterEach(() => {
+  app.unmount()
+})
+
+describe('publish dialog', () => {
+  it('names the files that changed in the repository', async () => {
+    outcomes.push(conflicted)
+
+    await click('Publish')
+
+    expect(container.textContent).toContain('Changed in the repository since your edit')
+    expect(container.textContent).toContain('.forgepress/content/author/a.ts')
+  })
+
+  it('drops my edits to them and reloads the page once closed', async () => {
+    outcomes.push(conflicted)
+
+    await click('Publish')
+    await click('Drop my edits')
+
+    expect(calls).toEqual(['publish', 'resolve theirs'])
+    expect(container.textContent).not.toContain('Changed in the repository')
+    expect(reload).not.toHaveBeenCalled()
+
+    await click('Close')
+
+    expect(reload).toHaveBeenCalledTimes(1)
+  })
+
+  it('publishes mine anyway', async () => {
+    outcomes.push(conflicted, () => 'c2abcdef')
+
+    await click('Publish')
+    await click('Publish mine anyway')
+
+    expect(calls).toEqual(['publish', 'resolve mine', 'publish'])
+    expect(container.textContent).toContain('Published as c2abcde')
+
+    await click('Close')
+
+    expect(reload).toHaveBeenCalledTimes(1)
+  })
+
+  it('lists what would break the build and links the entries to fix', async () => {
+    outcomes.push(() => {
+      issues.value = [
+        { path: '.forgepress/content/blog-post/post_1.ts', entry: { collection: 'blogPost', id: 'post_1' }, messages: ['Field "author" references author/author_3, which doesn\'t exist'] },
+        { path: '.forgepress/schema.ts', entry: undefined, messages: ['`defineSchema` is not a literal value'] },
+      ]
+
+      return undefined
+    })
+
+    await click('Publish')
+
+    const links = [...container.querySelectorAll('a')]
+
+    expect(container.textContent).toContain('The site wouldn\'t build')
+    expect(container.textContent).toContain('Field "author" references author/author_3, which doesn\'t exist')
+    expect(container.textContent).toContain('.forgepress/schema.ts')
+    expect(links.map(link => [link.textContent, link.getAttribute('href')])).toEqual([
+      ['.forgepress/content/blog-post/post_1.ts', '/admin?path=/content/blogPost/post_1'],
+    ])
+
+    links[0]!.click()
+    await settle()
+
+    expect(container.querySelector('[role=dialog]')).toBeNull()
+    expect(reload).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves the page alone when publishing changed nothing', async () => {
+    outcomes.push(() => undefined)
+
+    await click('Publish')
+    await click('Close')
+
+    expect(reload).not.toHaveBeenCalled()
+  })
+})

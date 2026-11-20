@@ -1,6 +1,6 @@
-import type { ContentReader } from './client'
-import { OUTPUT_INDEX } from '../output/types'
-import { isPage } from '../utils/response'
+import type { ContentReader } from './loader'
+import { OUTPUT_INDEX } from '../output'
+import { isPage } from '../utils'
 
 export function fetchReader(url: string): ContentReader {
   const base = url.replace(/\/+$/, '')

@@ -1,8 +1,8 @@
-import type { ContentFiles } from '../files/content'
-import type { ContentIssue } from '../files/issues'
+import type { ContentFiles } from '../files'
+import type { ContentIssue } from '../issues'
 import type { FileChange, RepoTarget } from './types'
-import { readContent } from '../files/content'
-import { base64ToText } from '../utils/encoding'
+import { readContent } from '../files'
+import { base64ToText } from '../utils'
 
 type Text = () => Promise<string>
 

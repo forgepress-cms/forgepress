@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { resolveConfig } from '../config/resolve'
+import { resolveConfig } from '../config'
 import { loadConfig } from './config'
 import { findRoot } from './root'
 

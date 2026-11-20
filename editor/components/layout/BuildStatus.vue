@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import type { BuildState } from '../../../src/forge/build'
-import type { CheckState } from '../../../src/forge/types'
+import type { BuildState, CheckState } from '../../../src/forge'
 import { computed, onMounted } from 'vue'
-import { commitUrl, describe } from '../../../src/forge/providers'
-import { PATIENCE, useBuild } from '../../composables/useBuild'
-import { useSession } from '../../composables/useSession'
+import { commitUrl, describe } from '../../../src/forge'
+import { PATIENCE, useBuild, useSession } from '../../composables'
 
 interface Look {
   label: string

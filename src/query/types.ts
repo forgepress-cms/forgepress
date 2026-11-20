@@ -1,5 +1,5 @@
-import type { Linkable, LinkPicks, OutputOf, Simplify } from '../entries/types'
-import type { Schema, SchemaLocale } from '../schema/types'
+import type { Linkable, LinkPicks, OutputOf, Simplify } from '../entries'
+import type { Schema, SchemaLocale } from '../schema'
 
 export type Operator = 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'contains'
 
@@ -9,7 +9,7 @@ export interface WhereClause {
   value: unknown
 }
 
-export interface SortClause {
+interface SortClause {
   field: string
   dir: 'asc' | 'desc'
 }
@@ -25,7 +25,7 @@ export interface QueryPlan {
   with: string[]
 }
 
-export type CollectionName<TSchema extends Schema> = keyof TSchema['collections'] & string
+type CollectionName<TSchema extends Schema> = keyof TSchema['collections'] & string
 
 type Fields<TSchema extends Schema, TName extends CollectionName<TSchema>> = TSchema['collections'][TName]['fields']
 
@@ -55,7 +55,7 @@ type KindOf<TSchema extends Schema, TName extends CollectionName<TSchema>, TKey>
       ? Kind<Fields<TSchema, TName>[TKey]>
       : 'none'
 
-export interface Operands {
+interface Operands {
   text: { eq: string, ne: string, in: readonly string[], contains: string }
   number: { eq: number, ne: number, gt: number, gte: number, lt: number, lte: number, in: readonly number[] }
   boolean: { eq: boolean, ne: boolean }
@@ -96,8 +96,6 @@ type Path<TSchema extends Schema, TName extends CollectionName<TSchema>, TResult
 type Loaded<TSchema extends Schema, TName extends CollectionName<TSchema>, TResult, TUsed, TPath extends string, TKeep> = 'pick' extends TUsed
   ? Simplify<Pick<OutputOf<TSchema, TName, TPath, TKeep>, keyof TResult & keyof OutputOf<TSchema, TName, TPath, TKeep>>>
   : OutputOf<TSchema, TName, TPath, TKeep>
-
-export type { LinkedBlock } from '../entries/types'
 
 type SiteLocale<TSchema extends Schema> = [SchemaLocale<TSchema>] extends [never] ? string : SchemaLocale<TSchema>
 

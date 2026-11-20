@@ -1,8 +1,8 @@
 import type { FileChange } from '../../src/forge/types'
 import { describe, expect, it } from 'vitest'
-import { formatIssue } from '../../src/files/issues'
 import { defaultPaths, repositoryPaths } from '../../src/files/paths'
 import { checkResult } from '../../src/forge/check'
+import { formatIssue } from '../../src/issues'
 
 const target = { paths: defaultPaths, mediaDir: 'public/uploads' }
 

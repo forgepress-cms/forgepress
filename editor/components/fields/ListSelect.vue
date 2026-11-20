@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { StatusColor } from '../../utils/entry'
+import type { StatusColor } from '../../utils'
 import { computed, ref, watch } from 'vue'
-import { useDragOrder } from '../../composables/useDragOrder'
-import { moveItem } from '../../utils/order'
-import DragHandle from '../DragHandle.vue'
+import { useDragOrder } from '../../composables'
+import { moveItem } from '../../utils'
+import DragHandle from '../common/DragHandle.vue'
 
 interface Option {
   label: string

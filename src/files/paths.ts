@@ -1,10 +1,9 @@
-import type { EntryRef } from '../entries/types'
+import type { EntryRef } from '../entries'
+import { isEntryId } from '../entries'
 
 export const DEFAULT_CONTENT_PATH = '.forgepress'
 
 const ENTRY_FILE = /\.ts$/
-const ENTRY_ID = /^[\w-]+$/
-const COLLECTION_NAME = /^[a-z][a-zA-Z\d]*$/
 const EDGE_SLASHES = /^\/+|\/+$/g
 
 export interface ContentPaths {
@@ -34,14 +33,6 @@ export function toEntryFile(id: string): string {
 
 export function toEntryId(file: string): string {
   return file.replace(ENTRY_FILE, '')
-}
-
-export function isEntryId(id: string): boolean {
-  return ENTRY_ID.test(id)
-}
-
-export function isCollectionName(name: string): boolean {
-  return COLLECTION_NAME.test(name)
 }
 
 export function isEntryFile(file: string): boolean {

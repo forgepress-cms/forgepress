@@ -1,30 +1,15 @@
 <script setup lang="ts">
-import type { Field } from '../../../../src/schema/fields'
-import type { CollectionValues } from '../../../components/CollectionDialog.vue'
-import type { FormField } from '../../../utils/schema'
-import type { Column } from '../../../utils/table'
+import type { Field } from '../../../../src/schema'
+import type { CollectionValues, Column } from '../../../components'
+import type { FormField } from '../../../utils'
 
 import { computed, ref } from 'vue'
 
-import { isCollectionName } from '../../../../src/files/paths'
-import { renameCollection, renameComponent } from '../../../../src/migrate/schema'
-import { fieldTypeNames } from '../../../../src/schema/fields'
-import { RESERVED_FIELDS } from '../../../../src/schema/validate'
-import CollectionDialog from '../../../components/CollectionDialog.vue'
-import CreateDialog from '../../../components/CreateDialog.vue'
-import DataTable from '../../../components/DataTable.vue'
-import DragHandle from '../../../components/DragHandle.vue'
-import ErrorAlert from '../../../components/ErrorAlert.vue'
-import PageHeader from '../../../components/layout/PageHeader.vue'
-import MigrationDialog from '../../../components/MigrationDialog.vue'
-import MigrationNotice from '../../../components/MigrationNotice.vue'
-import { useDragOrder } from '../../../composables/useDragOrder'
-import { useRouter } from '../../../composables/useRouter'
-import { useSchema } from '../../../composables/useSchema'
-import { groupOf, groupPath, useSchemaGroup } from '../../../composables/useSchemaGroup'
-import { moveKey } from '../../../utils/order'
-import { allowsOptional, FIELD_TYPE_ITEMS, KEY_PATTERN, seedField, toFields } from '../../../utils/schema'
-import { actionsColumn, dragColumn } from '../../../utils/table'
+import { renameCollection, renameComponent } from '../../../../src/migrate'
+import { fieldTypeNames, isCollectionName, RESERVED_FIELDS } from '../../../../src/schema'
+import { actionsColumn, CollectionDialog, CreateDialog, DataTable, dragColumn, DragHandle, ErrorAlert, MigrationDialog, MigrationNotice, PageHeader } from '../../../components'
+import { groupOf, groupPath, useDragOrder, useRouter, useSchema, useSchemaGroup } from '../../../composables'
+import { allowsOptional, FIELD_TYPE_ITEMS, KEY_PATTERN, moveKey, seedField, toFields } from '../../../utils'
 
 const { navigate, href } = useRouter()
 

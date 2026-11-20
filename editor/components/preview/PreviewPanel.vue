@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import type { PreviewPane } from '../../plugins/preview'
 import { computed, onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
+import { usePreviewPane } from '../../composables'
 
-const props = defineProps<{
-  pane: PreviewPane
-}>()
-
-const { address, loading, locale, locales, resizing } = props.pane
+const pane = usePreviewPane()!
+const { address, loading, locale, locales, resizing } = pane
 
 const frame = useTemplateRef<HTMLIFrameElement>('frame')
 
@@ -14,7 +11,7 @@ let detach: (() => void) | undefined
 
 onMounted(() => {
   if (frame.value)
-    detach = props.pane.attach(frame.value)
+    detach = pane.attach(frame.value)
 })
 
 onBeforeUnmount(() => detach?.())
@@ -27,7 +24,7 @@ const language = computed({
     locale.value = value
   },
 })
-const external = computed(() => new URL(address.value || props.pane.url.value, window.location.href).href)
+const external = computed(() => new URL(address.value || pane.url.value, window.location.href).href)
 </script>
 
 <template>

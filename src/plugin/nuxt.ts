@@ -1,11 +1,10 @@
 import type { NuxtModule } from '@nuxt/schema'
-import type { Options } from './project'
+import type { Options } from '../server'
 import { join, relative } from 'node:path'
 import { addPluginTemplate, addVitePlugin, defineNuxtModule } from '@nuxt/kit'
-import { configFile } from '../disk/config'
-import { toPosix } from '../disk/paths'
-import { vitePlugin } from './index'
-import { loadProject, syncTypes } from './project'
+import { configFile, toPosix } from '../disk'
+import { loadProject, syncTypes } from '../server'
+import { vitePlugin } from './unplugin'
 
 export interface ModuleOptions extends Options {
   preview?: boolean

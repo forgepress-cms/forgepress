@@ -1,8 +1,8 @@
-import type { Entry } from '../entries/types'
-import type { ContentIssue } from '../files/issues'
-import type { MediaAsset, MediaClient } from '../media/types'
-import type { Schema } from '../schema/types'
-import type { ContentSource, ContentWriter, MigrationState, SchemaStore } from '../store/types'
+import type { Entry } from '../entries'
+import type { ContentIssue } from '../issues'
+import type { MediaAsset, MediaClient } from '../media'
+import type { Schema } from '../schema'
+import type { ContentSource, ContentWriter, MigrationState, SchemaStore } from '../store'
 import { ENDPOINT, route, ROUTES } from './routes'
 
 export interface Endpoint {

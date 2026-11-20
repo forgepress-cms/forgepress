@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import type { MediaKind } from '../../../src/media'
-import type { MediaAsset } from '../../../src/media/types'
+import type { MediaAsset, MediaKind } from '../../../src/media'
 import { ref } from 'vue'
 import { mediaAccept } from '../../../src/media'
-import { useMedia } from '../../composables/useMedia'
+import { useMedia } from '../../composables'
 
 const props = withDefaults(defineProps<{
   kind?: MediaKind | undefined

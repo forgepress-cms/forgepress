@@ -1,6 +1,5 @@
 import type { AuthorizationServer, Client, TokenEndpointRequestOptions, TokenEndpointResponse } from 'oauth4webapi'
-import type { ProviderConfig } from '../config/types'
-import type { OAuthEndpoints, OAuthTokens, TokenGetter } from './types'
+import type { OAuthEndpoints, OAuthTokens, ProviderConfig, TokenGetter } from './types'
 import { allowInsecureRequests, authorizationCodeGrantRequest, AuthorizationResponseError, None, processAuthorizationCodeResponse, processRefreshTokenResponse, refreshTokenGrantRequest, ResponseBodyError, validateAuthResponse } from 'oauth4webapi'
 import { describe } from './providers'
 

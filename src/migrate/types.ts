@@ -1,6 +1,6 @@
-import type { Entry } from '../entries/types'
-import type { Schema } from '../schema/types'
-import type { SchemaChangeset } from '../store/types'
+import type { Entry } from '../entries'
+import type { Schema } from '../schema'
+import type { SchemaChangeset } from '../store'
 
 export interface Renames {
   collections?: Readonly<Record<string, string>>

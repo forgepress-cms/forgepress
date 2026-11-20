@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import type { EntryRef } from '../../../src/entries/types'
-import type { Entries } from '../../composables/useEntries'
-import type { NestedEntries } from '../../composables/useNestedEntries'
-import type { EntryValues } from '../../utils/entry'
-import type { LocalizedField } from '../../utils/schema'
-import { localeItems, picked } from '../../utils/entry'
+import type { EntryRef } from '../../../src/entries'
+import type { Entries, NestedEntries } from '../../composables'
+import type { EntryValues, LocalizedField } from '../../utils'
+import { computed } from 'vue'
+import { localeItems, picked } from '../../utils'
 import BlockInput from './BlockInput.vue'
 import ComponentInput from './ComponentInput.vue'
 import EntrySelect from './EntrySelect.vue'
@@ -21,7 +20,7 @@ const props = defineProps<{
   trail: readonly EntryRef[]
 }>()
 
-const localeTabs = localeItems(props.locales)
+const localeTabs = computed(() => localeItems(props.locales))
 </script>
 
 <template>

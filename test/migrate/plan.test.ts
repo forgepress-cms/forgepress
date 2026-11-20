@@ -1,6 +1,6 @@
 import type { Entry } from '../../src/entries/types'
 import type { MigrationInput } from '../../src/migrate/types'
-import type { Field } from '../../src/schema/fields'
+import type { Field } from '../../src/schema'
 import type { Schema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { planMigration } from '../../src/migrate/plan'
@@ -434,8 +434,8 @@ describe('required values', () => {
     expect(write({ type: 'boolean' }).effects.filter(effect => effect.kind === 'missing')).toEqual([])
 
     const kept = plan({
-      before: schema({ title: required, featured: { type: 'boolean' } as Field }),
-      after: schema({ title: required, featured: { type: 'boolean', default: true } as Field }),
+      before: schema({ title: required, featured: { type: 'boolean' } }),
+      after: schema({ title: required, featured: { type: 'boolean', default: true } }),
       content: { post: [entry('post_1', { title: 'A', featured: false })] },
     })
 

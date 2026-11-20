@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
-import { ContentError } from '../../src/files/issues'
+import { ContentError } from '../../src/issues'
 import { withForgePress } from '../../src/plugin/next'
 
 const scratch = fileURLToPath(new URL('../../node_modules/.forgepress-next-test', import.meta.url))

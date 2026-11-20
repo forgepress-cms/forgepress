@@ -1,4 +1,4 @@
-import type { OutputEntry } from '../../src/output/types'
+import type { OutputEntry } from '../../src/entries/types'
 import type { QueryPlan } from '../../src/query/types'
 import { describe, expect, it } from 'vitest'
 import { evaluate } from '../../src/query/evaluator'

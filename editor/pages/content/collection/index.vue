@@ -1,27 +1,13 @@
 <script setup lang="ts">
-import type { Entry } from '../../../../src/entries/types'
-import type { Column } from '../../../utils/table'
+import type { Entry } from '../../../../src/entries'
+import type { Column } from '../../../components'
 
 import UBadge from '@nuxt/ui/components/Badge.vue'
 import { computed, h, ref } from 'vue'
 
-import ConfirmDialog from '../../../components/ConfirmDialog.vue'
-import DataTable from '../../../components/DataTable.vue'
-import ErrorAlert from '../../../components/ErrorAlert.vue'
-import PageHeader from '../../../components/layout/PageHeader.vue'
-import { useCollection } from '../../../composables/useCollection'
-import { useColumnVisibility } from '../../../composables/useColumnVisibility'
-import { useContent } from '../../../composables/useContent'
-import { useEntries } from '../../../composables/useEntries'
-import { useIssues } from '../../../composables/useIssues'
-import { useParam } from '../../../composables/useParam'
-import { usePreviewContext } from '../../../composables/usePreviewPane'
-import { useRouter } from '../../../composables/useRouter'
-import { useSave } from '../../../composables/useSave'
-import { clamp, fieldCell } from '../../../utils/cells'
-import { entryLabel, statusColor, statusLabel, titleField } from '../../../utils/entry'
-import { localized } from '../../../utils/preview'
-import { actionsColumn, selectionColumn } from '../../../utils/table'
+import { actionsColumn, clamp, ConfirmDialog, DataTable, ErrorAlert, fieldCell, PageHeader, selectionColumn } from '../../../components'
+import { useCollection, useColumnVisibility, useContent, useEntries, useIssues, useParam, usePreviewContext, useRouter, useSave } from '../../../composables'
+import { entryLabel, localized, statusColor, statusLabel, titleField } from '../../../utils'
 
 const { navigate, href } = useRouter()
 

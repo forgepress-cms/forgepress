@@ -1,4 +1,8 @@
-import type { MediaConfig } from '../config/types'
+export interface MediaConfig {
+  dir?: string
+  url?: string
+  maxSize?: number
+}
 
 export interface MediaContent {
   url: string
@@ -32,7 +36,7 @@ export interface MediaSource {
   served: (url: string) => Promise<boolean>
 }
 
-export interface MediaUpload {
+interface MediaUpload {
   name: string
   data: Uint8Array<ArrayBuffer>
 }

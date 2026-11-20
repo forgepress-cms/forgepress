@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { BreadcrumbItem } from '@nuxt/ui'
-import { useTitle } from '../../composables/useTitle'
+import { useTitle } from '../../composables'
 
 const props = defineProps<{
   title: string

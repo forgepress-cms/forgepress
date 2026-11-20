@@ -1,5 +1,4 @@
 import type { Entry } from '../../src/entries/types'
-import type { Field } from '../../src/schema/fields'
 import type { Schema } from '../../src/schema/types'
 import { describe, expect, it } from 'vitest'
 import { validateEntry } from '../../src/entries/validate'
@@ -47,7 +46,7 @@ describe('list fields', () => {
 
   it('pick up text that matches one of their values when a field becomes a list', () => {
     const before: Schema = { collections: { post: { fields: { stage: { type: 'text', optional: true } } } } }
-    const after: Schema = { collections: { post: { fields: { stage: { type: 'list', values: ['Draft', 'Final'], optional: true } as Field } } } }
+    const after: Schema = { collections: { post: { fields: { stage: { type: 'list', values: ['Draft', 'Final'], optional: true } } } } }
     const migration = planMigration({ before, after, content: { post: [post({ stage: ' draft ' }), { ...post({ stage: 'maybe' }), id: 'post_2' }] } })
 
     expect(migration.changeset.write.map(write => write.entry.stage)).toEqual(['Draft', undefined])

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onErrorCaptured, ref, watch } from 'vue'
-import { errorMessage } from '../../../src/utils/error'
-import { useRouter } from '../../composables/useRouter'
-import ErrorAlert from '../ErrorAlert.vue'
+import { errorMessage } from '../../../src/utils'
+import { useRouter } from '../../composables'
+import ErrorAlert from '../common/ErrorAlert.vue'
 
 const { route } = useRouter()
 

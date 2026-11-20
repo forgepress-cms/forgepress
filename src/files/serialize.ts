@@ -1,8 +1,12 @@
-import type { ContentConfig } from '../config/types'
-import type { Entry } from '../entries/types'
-import type { Schema } from '../schema/types'
-import { META_KEYS } from '../entries/meta'
-import { isRecord } from '../utils/value'
+import type { Entry } from '../entries'
+import type { Schema } from '../schema'
+import { META_KEYS } from '../schema'
+import { isRecord } from '../utils'
+
+export interface ContentConfig {
+  indent?: number
+  semi?: boolean
+}
 
 const IDENTIFIER = /^[A-Z_$][\w$]*$/i
 const WIDTH = 80

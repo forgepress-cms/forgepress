@@ -1,11 +1,10 @@
-import type { ContentFiles } from '../files/content'
-import type { ContentPaths } from '../files/paths'
-import type { ContentSource, RepositoryCache } from '../store/types'
+import type { ContentFiles, ContentPaths } from '../files'
+import type { ContentSource, RepositoryCache } from '../store'
 import type { Forge, HashSource } from './types'
-import { createFileSource } from '../files/content'
-import { isEntryId } from '../files/paths'
+import { isEntryId } from '../entries'
+import { createFileSource } from '../files'
 import { isMediaFile } from '../media'
-import { once } from '../utils/once'
+import { once } from '../utils'
 
 const CONCURRENCY = 8
 

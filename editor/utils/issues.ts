@@ -1,7 +1,7 @@
-import type { EntryRef } from '../../src/entries/types'
-import type { ContentIssue } from '../../src/files/issues'
-import type { RepoTarget } from '../../src/forge/types'
-import { toEntryRef } from '../../src/files/paths'
+import type { EntryRef } from '../../src/entries'
+import type { RepoTarget } from '../../src/forge'
+import type { ContentIssue } from '../../src/issues'
+import { toEntryRef } from '../../src/files'
 
 export interface FileIssues {
   path: string

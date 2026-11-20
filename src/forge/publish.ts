@@ -1,7 +1,7 @@
-import type { ContentIssue } from '../files/issues'
+import type { ContentIssue } from '../issues'
 import type { Conflict, FileChange, Forge, RepoTarget } from './types'
-import { ContentError } from '../files/issues'
-import { base64ToBytes, digest } from '../utils/encoding'
+import { ContentError } from '../issues'
+import { base64ToBytes, digest } from '../utils'
 
 export type Verify = (listing: ReadonlyMap<string, string>) => Promise<readonly ContentIssue[]>
 

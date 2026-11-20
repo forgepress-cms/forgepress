@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 import type { App } from 'vue'
-import type { Entries } from '../../../../editor/composables/useEntries'
-import type { NestedEntries } from '../../../../editor/composables/useNestedEntries'
+import type { Entries, NestedEntries } from '../../../../editor/composables'
 import type { EditorRouter } from '../../../../editor/plugins/router'
 import type { Schema } from '../../../../src/schema/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -19,7 +18,7 @@ const schema = {
   },
 } as const satisfies Schema
 
-vi.doMock('../../../../editor/composables/useContent', () => ({
+vi.doMock('../../../../editor/composables/content/useContent', () => ({
   useContent: () => ({ store: { schema: async () => schema } }),
 }))
 
@@ -59,6 +58,9 @@ async function mount(items: unknown) {
   const container = document.createElement('div')
   const model = ref(items)
 
+  const entries = {} as Entries
+  const nested = {} as NestedEntries
+
   app = createApp({
     render: () => h(ComponentInput, {
       'modelValue': model.value,
@@ -68,8 +70,8 @@ async function mount(items: unknown) {
       'forms': cards!.components!,
       'multiple': true,
       'tagged': false,
-      'entries': {} as Entries,
-      'nested': {} as NestedEntries,
+      'entries': entries,
+      'nested': nested,
       'locales': [],
       'trail': [],
     }),

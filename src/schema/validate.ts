@@ -1,11 +1,11 @@
-import type { ValueIssue, ValuePath } from '../files/issues'
+import type { ValueIssue, ValuePath } from '../issues'
 import type { FieldBase, FieldOptionType, FieldTypeDefinition } from './fields/types'
-import { META_KEYS } from '../entries/meta'
-import { isCollectionName } from '../files/paths'
-import { isRecord, quote } from '../utils/value'
-import { fieldTypeNames, fieldTypes } from './fields'
+import { isRecord, quote } from '../utils'
 import { COMPONENT_KEY } from './fields/picked'
+import { fieldTypeNames, fieldTypes } from './fields/registry'
 import { compilePattern } from './fields/text'
+import { META_KEYS } from './meta'
+import { isCollectionName } from './names'
 
 export const LOCALE_CODE = /^[a-z][\w-]*$/i
 export const RESERVED_FIELDS: readonly string[] = META_KEYS
@@ -165,6 +165,21 @@ function checkNestedTranslations(context: Context, path: ValuePath, label: strin
     context.report(path, `Field ${quote(label)} is translated, and so ${translated.length === 1 ? 'is component' : 'are the components'} ${translated.map(quote).join(', ')}; translate one or the other`)
 }
 
+function checkFieldOption(context: Context, path: ValuePath, label: string, type: FieldType, option: string, value: unknown, components: unknown): void {
+  const kind = optionKinds(type)[option]
+
+  if (context.nested && option === 'index')
+    context.report(path, `Field ${quote(label)} is inside a component and can't be indexed`)
+  else if (option === 'translate' && value === true && type === 'component')
+    checkNestedTranslations(context, path, label, components)
+  else if (kind)
+    checkOption(context, path, label, option, kind, value)
+  else if (option === 'index')
+    context.report(path, `Field ${quote(label)} can't be indexed; only ${INDEXABLE.slice(0, -1).join(', ')} and ${INDEXABLE.at(-1)} fields can`)
+  else
+    context.report(path, `Field ${quote(label)} has no option ${quote(option)}`)
+}
+
 function checkField(context: Context, path: ValuePath, owner: string, key: string, field: unknown): void {
   const { report } = context
   const label = `${owner}.${key}`
@@ -184,24 +199,9 @@ function checkField(context: Context, path: ValuePath, owner: string, key: strin
   if (!isFieldType(field.type))
     return report([...path, 'type'], `Field ${quote(label)} has unknown type ${quote(field.type)}; use one of ${fieldTypeNames.join(', ')}`)
 
-  const kinds = optionKinds(field.type)
-
   for (const [option, value] of Object.entries(field)) {
-    const kind = kinds[option]
-
-    if (option === 'type')
-      continue
-
-    if (context.nested && option === 'index')
-      report([...path, option], `Field ${quote(label)} is inside a component and can't be indexed`)
-    else if (option === 'translate' && value === true && field.type === 'component')
-      checkNestedTranslations(context, [...path, option], label, field.components)
-    else if (kind)
-      checkOption(context, [...path, option], label, option, kind, value)
-    else if (option === 'index')
-      report([...path, option], `Field ${quote(label)} can't be indexed; only ${INDEXABLE.slice(0, -1).join(', ')} and ${INDEXABLE.at(-1)} fields can`)
-    else
-      report([...path, option], `Field ${quote(label)} has no option ${quote(option)}`)
+    if (option !== 'type')
+      checkFieldOption(context, [...path, option], label, field.type, option, value, field.components)
   }
 
   for (const [option, spec] of Object.entries(fieldTypes[field.type].options)) {

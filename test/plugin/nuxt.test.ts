@@ -53,7 +53,7 @@ describe('nuxt module', () => {
 
     await install()
 
-    const { config } = await call('vite:extend', { config: {} as { plugins?: { name: string }[] } })
+    const { config } = await call<{ config: { plugins?: { name: string }[] } }>('vite:extend', { config: {} })
 
     expect(config.plugins?.map(plugin => plugin.name)).toEqual(['unplugin-forgepress'])
   })
@@ -141,7 +141,7 @@ describe('nuxt module', () => {
 
     await install({ root: '../content' })
 
-    const types = await call('prepare:types', { tsConfig: {} as { include?: string[] }, nodeTsConfig: {} as { include?: string[] } })
+    const types = await call<{ tsConfig: { include?: string[] }, nodeTsConfig: { include?: string[] } }>('prepare:types', { tsConfig: {}, nodeTsConfig: {} })
 
     expect(types.tsConfig.include).toEqual(['../../content/.forgepress/**/*.ts'])
     expect(types.nodeTsConfig.include).toEqual(['../../content/forgepress.config.mjs'])

@@ -1,10 +1,10 @@
-import type { Entry } from '../entries/types'
-import type { Schema } from '../schema/types'
-import type { ContentIssue, ValueIssue } from './issues'
+import type { Entry } from '../entries'
+import type { ContentIssue, ValueIssue } from '../issues'
+import type { Schema } from '../schema'
 import type { ParsedModule } from './module'
-import { validateSchema } from '../schema/validate'
-import { isRecord } from '../utils/value'
-import { ContentError } from './issues'
+import { ContentError } from '../issues'
+import { validateSchema } from '../schema'
+import { isRecord } from '../utils'
 import { parseModule } from './module'
 
 export interface ContentFile {

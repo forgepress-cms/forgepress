@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import type { EntryRef } from '../../../src/entries/types'
-import type { Entries } from '../../composables/useEntries'
-import type { NestedEntries } from '../../composables/useNestedEntries'
+import type { EntryRef } from '../../../src/entries'
+import type { Entries, NestedEntries } from '../../composables'
 import { computed, ref, watchEffect } from 'vue'
-import { isEntryRef } from '../../../src/entries/references'
-import { useDragOrder } from '../../composables/useDragOrder'
-import { useRouter } from '../../composables/useRouter'
-import { NESTED_DEPTH } from '../../utils/entry'
-import { moveItem } from '../../utils/order'
-import DragHandle from '../DragHandle.vue'
+import { isEntryRef } from '../../../src/entries'
+import { useDragOrder, useRouter } from '../../composables'
+import { moveItem, NESTED_DEPTH } from '../../utils'
+import DragHandle from '../common/DragHandle.vue'
 import FieldList from './FieldList.vue'
 
 const props = defineProps<{

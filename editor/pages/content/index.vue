@@ -1,15 +1,11 @@
 <script setup lang="ts">
-import type { Column } from '../../utils/table'
+import type { Column } from '../../components'
 
 import UBadge from '@nuxt/ui/components/Badge.vue'
 import { h } from 'vue'
 
-import DataTable from '../../components/DataTable.vue'
-import PageHeader from '../../components/layout/PageHeader.vue'
-import { useContent } from '../../composables/useContent'
-import { useIssues } from '../../composables/useIssues'
-import { useRouter } from '../../composables/useRouter'
-import { clamp } from '../../utils/cells'
+import { clamp, DataTable, PageHeader } from '../../components'
+import { useContent, useIssues, useRouter } from '../../composables'
 
 interface CollectionRow {
   id: string

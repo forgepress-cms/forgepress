@@ -1,7 +1,6 @@
-import type { ComponentField } from '../schema/fields/component'
-import { itemComponent } from '../schema/fields/component'
-import { items } from '../schema/fields/picked'
-import { isRecord } from '../utils/value'
+import type { ComponentField } from '../schema'
+import { itemComponent, items } from '../schema'
+import { isRecord } from '../utils'
 
 export interface ComponentItem {
   name: string

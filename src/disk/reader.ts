@@ -1,7 +1,7 @@
-import type { ContentReader } from '../query/client'
+import type { ContentReader } from '../query'
 import { join } from 'node:path'
 import { cwd, env } from 'node:process'
-import { once } from '../utils/once'
+import { once } from '../utils'
 import { readText } from './files'
 
 export const OUTPUT_VARIABLE = 'FORGEPRESS_OUTPUT'

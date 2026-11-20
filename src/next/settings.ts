@@ -1,4 +1,4 @@
-import type { EditorSettings } from '../config/settings'
+import type { EditorSettings } from '../config'
 
 declare const __FORGEPRESS_SETTINGS__: string
 

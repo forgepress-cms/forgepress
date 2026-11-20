@@ -7,8 +7,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 let previewing = false
 const listeners = new Set<() => void>()
 
-vi.doMock('../../src/preview/index', () => ({
+vi.doMock('../../src/preview/enable', () => ({
   enablePreview: () => previewing,
+}))
+
+vi.doMock('../../src/preview/state', () => ({
   onPreviewChange: (listener: () => void) => {
     listeners.add(listener)
 

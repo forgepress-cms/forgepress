@@ -1,12 +1,11 @@
-import type { ContentConfig } from '../config/types'
-import type { ContentPaths } from '../files/paths'
-import type { ContentWriter, SchemaChangeset } from '../store/types'
+import type { ContentConfig, ContentPaths } from '../files'
+import type { ContentWriter, SchemaChangeset } from '../store'
 import { mkdir, rm, rmdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { parseSchemaFile } from '../files/parse'
-import { defaultPaths, isCollectionName, isEntryFile, isEntryId } from '../files/paths'
-import { serializeEntry, serializeSchema } from '../files/serialize'
-import { same } from '../utils/value'
+import { isEntryId } from '../entries'
+import { defaultPaths, isEntryFile, parseSchemaFile, serializeEntry, serializeSchema } from '../files'
+import { isCollectionName } from '../schema'
+import { same } from '../utils'
 import { listFiles, readText } from './files'
 
 interface WrittenFile {

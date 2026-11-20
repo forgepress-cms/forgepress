@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { Entries } from '../../composables/useEntries'
+import type { Entries } from '../../composables'
 import { computed } from 'vue'
-import { useRouter } from '../../composables/useRouter'
+import { useRouter } from '../../composables'
 import ListSelect from './ListSelect.vue'
 
 const props = defineProps<{

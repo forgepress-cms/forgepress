@@ -1,9 +1,9 @@
-import type { Config } from '../config/types'
+import type { Config } from '../config'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
-import { errorMessage } from '../utils/error'
+import { errorMessage } from '../utils'
 import { CONFIG_FILES } from './root'
 
 interface ConfigModule {

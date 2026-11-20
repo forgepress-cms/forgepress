@@ -1,7 +1,7 @@
-import type { ContentSource, ContentStore } from '../store/types'
+import type { ContentSource, ContentStore } from '../store'
 import type { Changes } from './types'
-import { sortByCreation } from '../entries/order'
-import { plain } from '../utils/value'
+import { sortByCreation } from '../entries'
+import { plain } from '../utils'
 import { mergeEntries, stage } from './entries'
 
 export type Mutate = (apply: (changes: Changes) => void) => Promise<void>

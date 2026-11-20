@@ -1,11 +1,10 @@
-import type { EntryRef } from '../entries/types'
-import type { LinkedFields, LinkItems, LinkTarget, OutputEntry, OutputManifest } from '../output/types'
-import type { ContentLoader, Snapshot } from './client'
+import type { EntryRef, OutputEntry } from '../entries'
+import type { LinkedFields, LinkItems, LinkTarget, OutputManifest } from '../output'
+import type { ContentLoader, Snapshot } from './loader'
 import type { Operator, Picks, QueryPlan } from './types'
-import { OUTPUT_META_KEYS } from '../entries/meta'
-import { entryKey, isEntryRef } from '../entries/references'
-import { COMPONENT_KEY, items, mapItems, onlyName } from '../schema/fields/picked'
-import { isRecord, pick, quote } from '../utils/value'
+import { entryKey, isEntryRef } from '../entries'
+import { COMPONENT_KEY, items, mapItems, onlyName, OUTPUT_META_KEYS } from '../schema'
+import { isRecord, pick, quote } from '../utils'
 import { evaluate } from './evaluator'
 
 type Components = Readonly<Record<string, LinkedFields>>
@@ -117,12 +116,17 @@ function listing(names: readonly string[]): string {
 }
 
 export class Builder {
+  private readonly loader: ContentLoader
+  private readonly collection: string
   private readonly plan: QueryPlan = { where: [], sort: [], offset: 0, with: [] }
   private readonly called = new Set<string>()
   private keep: Picks | undefined
   private chosen: string | undefined
 
-  constructor(private readonly loader: ContentLoader, private readonly collection: string) {}
+  constructor(loader: ContentLoader, collection: string) {
+    this.loader = loader
+    this.collection = collection
+  }
 
   where(field: string, operatorOrValue: unknown, value?: unknown): this {
     this.plan.where.push(arguments.length >= 3

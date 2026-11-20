@@ -1,4 +1,4 @@
-import type { MediaAsset, PendingUpload } from '../media/types'
+import type { MediaAsset, PendingUpload } from '../media'
 import { assetUrl } from '../media'
 
 export interface Previews {

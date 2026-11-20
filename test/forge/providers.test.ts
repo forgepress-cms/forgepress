@@ -1,4 +1,4 @@
-import type { ProviderConfig } from '../../src/config/types'
+import type { ProviderConfig } from '../../src/forge/types'
 import { expect, describe as group, it } from 'vitest'
 import { commitUrl, describe as descriptor } from '../../src/forge/providers'
 

@@ -1,9 +1,7 @@
-import type { Field } from '../../src/schema/fields'
-import type { FieldOption, FieldTypeDefinition } from '../../src/schema/fields/types'
-import type { CollectionDefinition, ComponentDefinition } from '../../src/schema/types'
-import { fieldTypeNames, fieldTypes, isTranslated } from '../../src/schema/fields'
+import type { CollectionDefinition, ComponentDefinition, Field, FieldOption, FieldTypeDefinition } from '../../src/schema'
+import { fieldTypeNames, fieldTypes, isTranslated } from '../../src/schema'
 
-export const FIELD_ICONS: Record<string, string> = {
+const FIELD_ICONS: Record<string, string> = {
   text: 'i-hugeicons-text',
   richtext: 'i-hugeicons-text-align-left',
   number: 'i-hugeicons-hashtag',

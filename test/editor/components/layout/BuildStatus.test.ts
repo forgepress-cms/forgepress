@@ -12,7 +12,7 @@ const checks = shallowRef<readonly BuildCheck[]>([])
 const error = ref('')
 const calls: string[] = []
 
-vi.doMock('../../../../editor/composables/useBuild', () => ({
+vi.doMock('../../../../editor/composables/session/useBuild', () => ({
   PATIENCE: 30 * 60_000,
   useBuild: () => ({
     commit,
@@ -32,7 +32,7 @@ vi.doMock('../../../../editor/composables/useBuild', () => ({
   }),
 }))
 
-vi.doMock('../../../../editor/composables/useSession', () => ({
+vi.doMock('../../../../editor/composables/session/useSession', () => ({
   useSession: () => ({ provider: ref({ type: 'forgejo', url: 'http://127.0.0.1:3310', repository: { owner: 'fred', name: 'site' } }) }),
 }))
 

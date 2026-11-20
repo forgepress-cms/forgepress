@@ -22,7 +22,7 @@ const heads: string[] = []
 let head = 'c1'
 let tokens: TokenGetter | undefined
 
-vi.doMock('../../src/store', () => ({
+vi.doMock('../../src/store/persist', () => ({
   TOKEN_KEY: 'token',
   CHANGES_KEY: 'changes',
   persist: (key: string) => ({
@@ -33,7 +33,7 @@ vi.doMock('../../src/store', () => ({
   repositoryCache: () => undefined,
 }))
 
-vi.doMock('../../src/forge', () => ({
+vi.doMock('../../src/forge/create', () => ({
   createForge: (_config: unknown, token: TokenGetter) => {
     tokens = token
 

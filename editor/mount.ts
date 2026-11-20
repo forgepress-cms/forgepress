@@ -1,0 +1,84 @@
+import type { MountEditor } from './types'
+
+import ui from '@nuxt/ui/vue-plugin'
+import { createApp } from 'vue'
+import App from './App.vue'
+import { routes } from './pages'
+import { colorModeKey, createColorMode, createPreviewPane, createRouter, createTitle, previewKey, routerKey, titleKey } from './plugins'
+import { baked } from './settings'
+import styles from './styles.css?inline'
+import { documentRules } from './utils'
+
+const DOCUMENT_RULES_ID = 'forgepress-document-rules'
+const EDITOR_ATTRIBUTE = 'data-forgepress-editor'
+
+function registerDocumentRules(): (() => void) | undefined {
+  if (document.getElementById(DOCUMENT_RULES_ID))
+    return undefined
+
+  const rules = documentRules(styles)
+
+  if (!rules.length)
+    return undefined
+
+  const sheet = document.createElement('style')
+  sheet.id = DOCUMENT_RULES_ID
+  sheet.textContent = rules.join('\n')
+  document.head.append(sheet)
+
+  return () => sheet.remove()
+}
+
+function resolve(target?: Element | string | null): Element {
+  const el = typeof target === 'string'
+    ? document.querySelector(target)
+    : typeof target === 'undefined' || target === null
+      ? document.getElementById('forgepress')
+      : target
+
+  if (!el)
+    throw new Error(`[forgepress] editor mount target not found: ${String(target)}`)
+
+  return el
+}
+
+export const mountEditor: MountEditor = (target, options = {}) => {
+  const host = resolve(target)
+  const root = host.shadowRoot ?? host.attachShadow({ mode: 'open' })
+
+  const sheet = document.createElement('style')
+  sheet.textContent = styles
+
+  const container = document.createElement('div')
+  container.className = 'forgepress-root'
+  root.replaceChildren(sheet, container)
+  host.setAttribute(EDITOR_ATTRIBUTE, '')
+
+  const unregister = registerDocumentRules()
+
+  const app = createApp(App, { container })
+  const router = createRouter(routes)
+  const colorMode = createColorMode(container)
+  const title = createTitle()
+  const preview = createPreviewPane(options.preview, baked)
+
+  app.use(ui)
+  app.provide(routerKey, router)
+  app.provide(colorModeKey, colorMode)
+  app.provide(titleKey, title)
+  app.provide(previewKey, preview)
+  app.mount(container)
+  container.addEventListener('click', router.follow)
+
+  return () => {
+    container.removeEventListener('click', router.follow)
+    app.unmount()
+    router.dispose()
+    colorMode.dispose()
+    title.dispose()
+    preview.dispose()
+    unregister?.()
+    root.replaceChildren()
+    host.removeAttribute(EDITOR_ATTRIBUTE)
+  }
+}

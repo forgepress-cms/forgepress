@@ -1,14 +1,8 @@
-import type { EntryRef } from '../entries/types'
-import type { Field } from '../schema/fields'
-import type { CollectionField } from '../schema/fields/collection'
-import type { ComponentField } from '../schema/fields/component'
-import type { ListField } from '../schema/fields/list'
-import type { ComponentDefinition } from '../schema/types'
-import { isEntryRef } from '../entries/references'
-import { isTranslated } from '../schema/fields'
-import { itemComponent } from '../schema/fields/component'
-import { COMPONENT_KEY, onlyName } from '../schema/fields/picked'
-import { filled, isRecord } from '../utils/value'
+import type { EntryRef } from '../entries'
+import type { CollectionField, ComponentDefinition, ComponentField, Field, ListField } from '../schema'
+import { isEntryRef } from '../entries'
+import { COMPONENT_KEY, isTranslated, itemComponent, onlyName } from '../schema'
+import { filled, isRecord } from '../utils'
 
 const ADDRESS = /^(?:\/|https?:\/\/)\S+$/
 const TRUE = ['true', 'yes', 'on', '1']
@@ -73,7 +67,7 @@ export function hasTranslations(value: unknown, before: Field | undefined, after
   return Object.keys(value).every(key => locales.before.includes(key) || locales.after.includes(key))
 }
 
-export function isListed(field: Field): boolean {
+function isListed(field: Field): boolean {
   return 'multiple' in field && field.multiple === true
 }
 
@@ -84,7 +78,7 @@ function onlyCollection(field: Field | undefined): string | undefined {
 export function single(field: Field): Field {
   const { translate: _, ...rest } = field
 
-  return rest as Field
+  return rest
 }
 
 function kindOf(item: unknown, before: Field | undefined): Kind {
@@ -237,7 +231,7 @@ function toEntry(item: unknown, kind: Kind, before: Field | undefined, field: Co
   return only === undefined ? toBlock(item, kind, before, field, links) : toOnly(item, kind, before, only, links)
 }
 
-export function migrateItem(item: Row, previous: Readonly<Record<string, Field>>, fields: Readonly<Record<string, Field>>, renames: Readonly<Record<string, string>>, conversion: Conversion): Row {
+function migrateItem(item: Row, previous: Readonly<Record<string, Field>>, fields: Readonly<Record<string, Field>>, renames: Readonly<Record<string, string>>, conversion: Conversion): Row {
   const sources = Object.fromEntries(Object.entries(renames).map(([from, to]) => [to, from]))
   const next: Row = {}
 

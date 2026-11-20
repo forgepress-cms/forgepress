@@ -1,4 +1,4 @@
-import type { MediaClient, MediaSource, PendingUpload } from '../media/types'
+import type { MediaClient, MediaSource, PendingUpload } from '../media'
 import type { Mutate, Ready } from './content'
 import type { Previews } from './previews'
 import type { Changes } from './types'

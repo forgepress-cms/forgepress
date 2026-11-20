@@ -1,12 +1,9 @@
-import type { CollectionEntry } from '../../src/entries/references'
-import type { Entry, EntryStatus } from '../../src/entries/types'
-import type { CollectionDefinition, ComponentDefinition } from '../../src/schema/types'
+import type { CollectionEntry, Entry } from '../../src/entries'
+import type { CollectionDefinition, ComponentDefinition, EntryStatus } from '../../src/schema'
 import type { ComponentForm, FormField, LocalizedField } from './schema'
-import { entryId } from '../../src/entries/id'
-import { entryKey } from '../../src/entries/references'
-import { itemComponent } from '../../src/schema/fields/component'
-import { onlyName } from '../../src/schema/fields/picked'
-import { asList, filled, isRecord } from '../../src/utils/value'
+import { entryId, entryKey } from '../../src/entries'
+import { itemComponent, onlyName } from '../../src/schema'
+import { asList, filled, isRecord } from '../../src/utils'
 import { markdownLines } from './markdown'
 import { chips, localized } from './preview'
 import { toFields } from './schema'
@@ -74,7 +71,7 @@ export function toLocalizedFields(collection: CollectionDefinition, locales: rea
   return toFields(collection, locales, components).map(field => ({ ...field, locale: fieldLocale(field, locales) }))
 }
 
-export function empty(field: FormField): unknown {
+function empty(field: FormField): unknown {
   const config = field.config
 
   if (config.type === 'component')
@@ -157,7 +154,7 @@ function itemsOf(value: unknown): unknown[] {
   return Array.isArray(value) ? value : value === null || value === undefined ? [] : [value]
 }
 
-export function componentForm(field: FormField, item: unknown): ComponentForm | undefined {
+function componentForm(field: FormField, item: unknown): ComponentForm | undefined {
   if (field.config.type !== 'component')
     return undefined
 

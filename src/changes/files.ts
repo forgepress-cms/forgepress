@@ -1,9 +1,9 @@
-import type { Entry } from '../entries/types'
-import type { FileChange, RepoTarget } from '../forge/types'
-import type { PendingUpload } from '../media/types'
+import type { Entry } from '../entries'
+import type { FileChange, RepoTarget } from '../forge'
+import type { PendingUpload } from '../media'
 import type { Changes } from './types'
-import { serializeEntry } from '../files/serialize'
-import { toBase64 } from '../utils/encoding'
+import { serializeEntry } from '../files'
+import { toBase64 } from '../utils'
 
 export interface ChangedEntry {
   path: string

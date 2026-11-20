@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { enablePreview, onPreviewChange } from './index'
+import { enablePreview } from './enable'
+import { onPreviewChange } from './state'
 
 interface Previewed<TData> {
   from: TData

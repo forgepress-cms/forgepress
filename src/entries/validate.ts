@@ -1,20 +1,10 @@
-import type { ValueIssue, ValuePath } from '../files/issues'
-import type { Field } from '../schema/fields'
-import type { CollectionField } from '../schema/fields/collection'
-import type { ComponentField } from '../schema/fields/component'
-import type { ListField } from '../schema/fields/list'
-import type { NumberField } from '../schema/fields/number'
-import type { TextField } from '../schema/fields/text'
-import type { ComponentDefinition, Schema } from '../schema/types'
-import { isEntryId } from '../files/paths'
-import { isTranslated } from '../schema/fields'
-import { itemComponent } from '../schema/fields/component'
-import { COMPONENT_KEY, onlyName } from '../schema/fields/picked'
-import { compilePattern } from '../schema/fields/text'
-import { isRecord, quote } from '../utils/value'
-import { ENTRY_STATUSES, META_KEYS } from './meta'
+import type { ValueIssue, ValuePath } from '../issues'
+import type { CollectionField, ComponentDefinition, ComponentField, Field, ListField, NumberField, Schema, TextField } from '../schema'
+import { compilePattern, COMPONENT_KEY, ENTRY_STATUSES, isTranslated, itemComponent, META_KEYS, onlyName } from '../schema'
+import { isRecord, quote } from '../utils'
+import { isEntryId } from './id'
 
-export type IssueKind = 'missing' | 'type' | 'constraint'
+type IssueKind = 'missing' | 'type' | 'constraint'
 
 export interface FieldIssue extends ValueIssue {
   kind: IssueKind
@@ -151,6 +141,27 @@ function checkChoice(report: Report, path: ValuePath, label: string, field: List
     report(path, `Field ${label} has to be one of ${field.values.map(quote).join(', ') || 'no values yet'}`, 'constraint')
 }
 
+function checkLinks(report: Report, path: ValuePath, label: string, field: CollectionField, value: unknown): void {
+  const only = onlyName(field.collections)
+  const entry = (at: ValuePath, item: unknown): void => only === undefined
+    ? checkBlock(report, at, label, field, item)
+    : checkId(report, at, label, only, item)
+
+  if (field.multiple)
+    checkList(report, path, value, `Field ${label} has to be a list of ${only === undefined ? 'blocks' : `${quote(only)} entry ids`}`, entry)
+  else
+    entry(path, value)
+}
+
+function checkItems(report: Report, path: ValuePath, label: string, field: ComponentField, value: unknown, components: Components, locales: readonly string[]): void {
+  const only = onlyName(field.components)
+
+  if (field.multiple)
+    checkList(report, path, value, `Field ${label} has to be a list of ${only === undefined ? 'items' : `${quote(only)} items`}`, (at, item) => checkItem(report, at, label, field, item, components, locales))
+  else
+    checkItem(report, path, label, field, value, components, locales)
+}
+
 function checkValue(report: Report, path: ValuePath, label: string, field: Field, value: unknown, components: Components, locales: readonly string[]): void {
   switch (field.type) {
     case 'text':
@@ -192,28 +203,12 @@ function checkValue(report: Report, path: ValuePath, label: string, field: Field
         checkMedia(report, path, label, value)
       return
 
-    case 'collection': {
-      const only = onlyName(field.collections)
-      const entry = (at: ValuePath, item: unknown): void => only === undefined
-        ? checkBlock(report, at, label, field, item)
-        : checkId(report, at, label, only, item)
-
-      if (field.multiple)
-        checkList(report, path, value, `Field ${label} has to be a list of ${only === undefined ? 'blocks' : `${quote(only)} entry ids`}`, entry)
-      else
-        entry(path, value)
-
+    case 'collection':
+      checkLinks(report, path, label, field, value)
       return
-    }
 
-    case 'component': {
-      const only = onlyName(field.components)
-
-      if (field.multiple)
-        checkList(report, path, value, `Field ${label} has to be a list of ${only === undefined ? 'items' : `${quote(only)} items`}`, (at, item) => checkItem(report, at, label, field, item, components, locales))
-      else
-        checkItem(report, path, label, field, value, components, locales)
-    }
+    case 'component':
+      checkItems(report, path, label, field, value, components, locales)
   }
 }
 

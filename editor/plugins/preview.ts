@@ -1,12 +1,11 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue'
-import type { CollectionEntry } from '../../src/entries/references'
-import type { Entry, PreviewPage } from '../../src/entries/types'
-import type { Schema } from '../../src/schema/types'
+import type { CollectionEntry, Entry, PreviewPage } from '../../src/entries'
+import type { Schema } from '../../src/schema'
 import type { PreviewLink } from '../types'
 import { computed, ref, shallowRef, watch } from 'vue'
-import { toOutputEntry } from '../../src/output/entry'
-import { draftMessage, frameMessage } from '../../src/preview/frame'
-import { readLocal, writeLocal } from '../../src/store/local'
+import { toOutputEntry } from '../../src/output'
+import { draftMessage, frameMessage } from '../../src/preview'
+import { readLocal, writeLocal } from '../../src/store'
 
 export interface PreviewContext {
   schema: Schema
@@ -45,7 +44,7 @@ export interface PreviewPane {
 
 export const previewKey: InjectionKey<PreviewPane> = Symbol('forgepress:editor:preview')
 
-export const WIDE_QUERY = '(min-width: 64rem)'
+const WIDE_QUERY = '(min-width: 64rem)'
 export const DEFAULT_RATIO = 0.5
 
 const DOCKED_KEY = 'forgepress:editor:preview'

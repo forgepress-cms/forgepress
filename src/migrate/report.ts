@@ -1,7 +1,7 @@
-import type { Schema } from '../schema/types'
+import type { Schema } from '../schema'
 import type { Effect, EffectKind, Fill, Fix, RenameQuestion, Renames } from './types'
-import { isEntryRef } from '../entries/references'
-import { isTranslated } from '../schema/fields'
+import { isEntryRef } from '../entries'
+import { isTranslated } from '../schema'
 import { isMedia, isTranslations } from './convert'
 
 export interface EffectGroup {
@@ -28,6 +28,7 @@ export interface FillOptions {
 }
 
 const WIDTH = 60
+const SAME_VALUE_TYPES: ReadonlySet<string> = new Set(['text', 'richtext', 'number', 'list'])
 
 function truncate(text: string, width: number): string {
   return text.length > width ? `${text.slice(0, width - 1)}…` : text
@@ -59,7 +60,7 @@ export function collectionLabel(name: string, ...schemas: Schema[]): string {
   return schemas.map(schema => schema.collections[name]?.label).find(label => label !== undefined) ?? name
 }
 
-export function componentLabel(name: string, ...schemas: Schema[]): string {
+function componentLabel(name: string, ...schemas: Schema[]): string {
   return schemas.map(schema => schema.components?.[name]?.label).find(label => label !== undefined) ?? name
 }
 
@@ -122,7 +123,7 @@ export function fillOptions(schema: Schema, group: EffectGroup): FillOptions {
     locales: field && isTranslated(field, locales) ? locales.filter(locale => !group.locales.includes(locale)).map(locale => ({ label: locale.toUpperCase(), value: locale })) : [],
   }
 
-  if (field?.type === 'text' || field?.type === 'richtext' || field?.type === 'number' || field?.type === 'list')
+  if (field && SAME_VALUE_TYPES.has(field.type))
     options.types.push({ label: 'Use the same value', value: 'value' })
 
   if (options.locales.length > 0)

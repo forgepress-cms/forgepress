@@ -1,7 +1,7 @@
 import type { Component, InjectionKey, Ref } from 'vue'
 
 import { shallowRef } from 'vue'
-import { updateAddress } from '../utils/address'
+import { updateAddress } from '../utils'
 
 export type EditorRoutes = Record<string, Component>
 
@@ -11,7 +11,7 @@ export interface EditorRoute {
   page: Component
 }
 
-export type NavigationGuard = (resume: () => void) => boolean
+type NavigationGuard = (resume: () => void) => boolean
 
 export interface EditorRouter {
   route: Ref<EditorRoute>

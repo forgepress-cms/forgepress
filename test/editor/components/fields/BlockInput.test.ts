@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 import type { App } from 'vue'
-import type { Entries } from '../../../../editor/composables/useEntries'
-import type { NestedEntries } from '../../../../editor/composables/useNestedEntries'
+import type { Entries, NestedEntries } from '../../../../editor/composables'
 import type { EditorRouter } from '../../../../editor/plugins/router'
 import type { Entry, EntryRef } from '../../../../src/entries/types'
 import type { Schema } from '../../../../src/schema/types'
@@ -17,13 +16,13 @@ const schema = {
   },
 } as const satisfies Schema
 
-vi.doMock('../../../../editor/composables/useContent', () => ({
+vi.doMock('../../../../editor/composables/content/useContent', () => ({
   useContent: () => ({ store: { schema: async () => schema } }),
 }))
 
 const { default: BlockInput } = await import('../../../../editor/components/fields/BlockInput.vue')
 const { default: EntrySelect } = await import('../../../../editor/components/fields/EntrySelect.vue')
-const { useNestedEntries } = await import('../../../../editor/composables/useNestedEntries')
+const { useNestedEntries } = await import('../../../../editor/composables/content/useNestedEntries')
 
 const rows: Record<string, Entry> = {
   'hero/hero_1': { id: 'hero_1', status: 'published', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', headline: 'Welcome' },
@@ -136,7 +135,7 @@ async function mount(blocks: EntryRef[], trail: EntryRef[] = [{ collection: 'pag
     await nextTick()
   }
 
-  return { container, model, nested: nested!, chain, arrow, click, openChain }
+  return { container, model, nested, chain, arrow, click, openChain }
 }
 
 describe('block fields', () => {

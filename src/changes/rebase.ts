@@ -1,12 +1,9 @@
-import type { Entry } from '../entries/types'
-import type { Conversion } from '../migrate/convert'
-import type { Field } from '../schema/fields'
-import type { ComponentDefinition, Schema } from '../schema/types'
-import { META_KEYS } from '../entries/meta'
-import { convertField, sameComponents } from '../migrate/convert'
-import { leaves } from '../migrate/plan'
-import { defaultLocale } from '../schema/locales'
-import { same } from '../utils/value'
+import type { Entry } from '../entries'
+import type { Conversion } from '../migrate'
+import type { ComponentDefinition, Field, Schema } from '../schema'
+import { convertField, leaves, sameComponents } from '../migrate'
+import { defaultLocale, META_KEYS } from '../schema'
+import { same } from '../utils'
 
 export interface Adapted {
   entry: Entry
@@ -35,14 +32,14 @@ function later(left: string, right: string): string {
   return left > right ? left : right
 }
 
-export function adaptEntry(pending: Entry, schema: Schema, collection: string, base?: Entry, head?: Entry): Adapted {
-  const fields: Readonly<Record<string, Field>> = schema.collections[collection]?.fields ?? {}
-  const context = conversion(schema.locales ?? [], defaultLocale(schema), schema.components)
-  const fit = (value: unknown, field: Field): unknown => value === undefined ? undefined : convertField(value, undefined, field, context)
+function renamedFields(fields: Readonly<Record<string, Field>>, fit: (value: unknown, field: Field) => unknown, base?: Entry, head?: Entry): Map<string, string> {
   const renamed = new Map<string, string>()
 
+  if (!base || !head)
+    return renamed
+
   for (const [key, field] of Object.entries(fields)) {
-    if (!base || !head || base[key] !== undefined || head[key] === undefined)
+    if (base[key] !== undefined || head[key] === undefined)
       continue
 
     const from = Object.keys(base).find(old => !META.has(old) && !fields[old] && same(fit(base[old], field), head[key]))
@@ -51,6 +48,14 @@ export function adaptEntry(pending: Entry, schema: Schema, collection: string, b
       renamed.set(key, from)
   }
 
+  return renamed
+}
+
+export function adaptEntry(pending: Entry, schema: Schema, collection: string, base?: Entry, head?: Entry): Adapted {
+  const fields: Readonly<Record<string, Field>> = schema.collections[collection]?.fields ?? {}
+  const context = conversion(schema.locales ?? [], defaultLocale(schema), schema.components)
+  const fit = (value: unknown, field: Field): unknown => value === undefined ? undefined : convertField(value, undefined, field, context)
+  const renamed = renamedFields(fields, fit, base, head)
   const read = (entry: Entry, key: string): unknown => entry[key] ?? (renamed.has(key) ? entry[renamed.get(key)!] : undefined)
   const moved = new Set(renamed.values())
   const next: Record<string, unknown> = { ...head ?? {}, id: pending.id, status: pending.status, createdAt: head?.createdAt ?? pending.createdAt, updatedAt: head ? later(pending.updatedAt, head.updatedAt) : pending.updatedAt }

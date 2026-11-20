@@ -6,8 +6,8 @@ import { fileURLToPath } from 'node:url'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { diskFiles } from '../../src/disk/files'
 import { createFileSource, readContent } from '../../src/files/content'
-import { formatIssue } from '../../src/files/issues'
 import { defaultPaths } from '../../src/files/paths'
+import { formatIssue } from '../../src/issues'
 import { unpluginFactory } from '../../src/unplugin'
 
 const fixture = fileURLToPath(new URL('../fixtures/project', import.meta.url))

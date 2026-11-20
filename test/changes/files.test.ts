@@ -15,7 +15,7 @@ function row(id: string): Entry {
 }
 
 function upload(name: string, text: string) {
-  return { name, type: 'image/png', size: text.length, modifiedAt: '', data: new TextEncoder().encode(text).buffer as ArrayBuffer }
+  return { name, type: 'image/png', size: text.length, modifiedAt: '', data: new TextEncoder().encode(text).buffer }
 }
 
 describe('file changes', () => {

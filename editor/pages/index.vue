@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { useContent } from '../composables/useContent'
-import { useRouter } from '../composables/useRouter'
+import { useContent, useRouter } from '../composables'
 
 const { href } = useRouter()
 

@@ -1,14 +1,9 @@
 <script setup lang="ts">
-import type { ColorMode } from '../../plugins/color-mode'
+import type { ColorMode } from '../../plugins'
 import { computed, onMounted, ref, watch } from 'vue'
 
-import { useColorMode } from '../../composables/useColorMode'
-import { usePreview } from '../../composables/usePreview'
-import { usePreviewPane } from '../../composables/usePreviewPane'
-import { usePublish } from '../../composables/usePublish'
-import { useRouter } from '../../composables/useRouter'
-import { useSession } from '../../composables/useSession'
-import PublishDialog from '../PublishDialog.vue'
+import { useColorMode, usePreview, usePreviewPane, usePublish, useRouter, useSession } from '../../composables'
+import PublishDialog from '../publish/PublishDialog.vue'
 
 import BuildStatus from './BuildStatus.vue'
 import Logo from './Logo.vue'

@@ -1,5 +1,5 @@
-import type { ContentIssue } from '../../src/files/issues'
 import type { FileChange, Forge } from '../../src/forge/types'
+import type { ContentIssue } from '../../src/issues'
 import { describe, expect, it } from 'vitest'
 import { defaultPaths, repositoryPaths } from '../../src/files/paths'
 import { commitMessage, ConflictError, gitHash, InvalidContentError, publishable, publishFiles } from '../../src/forge/publish'
@@ -59,7 +59,7 @@ function repository(files: Record<string, string>) {
     read: async () => {
       throw new Error('not used')
     },
-    commit: async (changes, message, parent) => {
+    commit: async (changes, _message, parent) => {
       calls.push(`commit ${parent} ${changes.map(change => change.path).join(' ')}`)
       state.during.shift()?.()
 

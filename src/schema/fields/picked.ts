@@ -1,6 +1,4 @@
-import { isRecord } from '../../utils/value'
-
-export const COLLECTION_KEY = 'collection'
+import { isRecord } from '../../utils'
 
 export const COMPONENT_KEY = 'component'
 
@@ -14,10 +12,6 @@ export type ComponentItem = Record<string, unknown>
 export type Listed<TField, TItem> = TField extends { multiple: true } ? TItem[] : TItem
 
 export type Picked<TNames extends readonly string[], TOne, TMany> = TNames extends readonly [string] ? TOne : TMany
-
-export type Named<TField> = TField extends { collections: readonly string[] }
-  ? TField['collections']
-  : TField extends { components: readonly string[] } ? TField['components'] : readonly string[]
 
 export function onlyName(names: readonly string[] | undefined): string | undefined {
   return names?.length === 1 ? names[0] : undefined

@@ -1,7 +1,7 @@
 import type { InjectionKey, Ref } from 'vue'
 
 import { ref, watchEffect } from 'vue'
-import { readLocal, writeLocal } from '../../src/store/local'
+import { readLocal, writeLocal } from '../../src/store'
 
 export type ColorMode = 'light' | 'dark'
 

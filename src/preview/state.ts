@@ -1,8 +1,8 @@
-import type { ProviderConfig } from '../config/types'
-import type { CollectionEntry } from '../entries/references'
-import type { KeyValueStore } from '../store/types'
+import type { CollectionEntry } from '../entries'
+import type { ProviderConfig } from '../forge'
+import type { KeyValueStore } from '../store'
 import type { FrameDraft } from './frame'
-import { readLocal, readLocalJson, writeLocal } from '../store/local'
+import { readLocal, readLocalJson, writeLocal } from '../store'
 
 export interface PreviewSettings {
   provider: ProviderConfig

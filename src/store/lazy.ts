@@ -1,4 +1,4 @@
-import type { MediaClient } from '../media/types'
+import type { MediaClient } from '../media'
 import type { ContentStore } from './types'
 
 export function lazyStore(select: () => Promise<ContentStore>): ContentStore {

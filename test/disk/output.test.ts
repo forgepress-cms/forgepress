@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveConfig } from '../../src/config/resolve'
 import { buildOutput, writeOutput } from '../../src/disk/output'
-import { ContentError } from '../../src/files/issues'
+import { ContentError } from '../../src/issues'
 
 const scratch = fileURLToPath(new URL('../../node_modules/.forgepress-output-test', import.meta.url))
 const out = join(scratch, 'public/content')

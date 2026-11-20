@@ -1,10 +1,14 @@
-import type { OutputMeta } from '../entries/types'
+import type { OutputEntry } from '../entries'
+
+export interface OutputConfig {
+  dir?: string
+}
 
 export const OUTPUT_VERSION = 3
 
 export const OUTPUT_INDEX = 'index.json'
 
-export interface LinkField {
+interface LinkField {
   collections: string[]
   multiple: boolean
 }
@@ -21,10 +25,6 @@ export type LinkedFields = Record<string, LinkTarget>
 export interface OutputFile {
   path: string
   text: string
-}
-
-export interface OutputEntry extends OutputMeta {
-  [field: string]: unknown
 }
 
 export interface OutputManifest {

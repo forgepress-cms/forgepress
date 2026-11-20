@@ -1,8 +1,7 @@
-import type { ProviderConfig } from '../config/types'
-import type { ForgeFile, ForgeIdentity, TokenGetter } from './types'
+import type { ForgeFile, ForgeIdentity, ProviderConfig, TokenGetter } from './types'
 import { describe } from './providers'
 
-export type ApiInit = Omit<RequestInit, 'headers'> & { headers?: Record<string, string> }
+type ApiInit = Omit<RequestInit, 'headers'> & { headers?: Record<string, string> }
 
 export interface TreeItem {
   path: string

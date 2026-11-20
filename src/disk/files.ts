@@ -1,4 +1,4 @@
-import type { ContentFiles } from '../files/content'
+import type { ContentFiles } from '../files'
 import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'

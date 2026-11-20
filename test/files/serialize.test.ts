@@ -91,7 +91,7 @@ export default {
       id: 'a',
       createdAt: 'c',
       status: 'unpublished',
-    } as Entry
+    }
 
     const keys = [...serializeEntry('post', shuffled).matchAll(/^ {2}(\w+):/gm)].map(match => match[1])
 

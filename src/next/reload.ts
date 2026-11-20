@@ -1,4 +1,4 @@
-import { EVENTS } from '../endpoint/routes'
+import { EVENTS } from '../endpoint'
 import settings from './settings'
 
 const RETRY = 1000

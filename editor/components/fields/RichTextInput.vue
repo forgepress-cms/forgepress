@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { EditorCustomHandlers, EditorHandler, EditorToolbarItem } from '@nuxt/ui'
-import type { MediaAsset } from '../../../src/media/types'
+import type { MediaAsset } from '../../../src/media'
 import { ref, shallowRef } from 'vue'
 import MediaLibrary from '../media/MediaLibrary.vue'
 

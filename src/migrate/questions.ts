@@ -1,10 +1,8 @@
-import type { Entry } from '../entries/types'
-import type { Field } from '../schema/fields'
-import type { Schema } from '../schema/types'
+import type { Entry } from '../entries'
+import type { CollectionDefinition, Field, Schema } from '../schema'
 import type { Entries, RenameQuestion, Renames } from './types'
-import { componentItems } from '../entries/items'
-import { META_KEYS } from '../entries/meta'
-import { isTranslated } from '../schema/fields'
+import { componentItems } from '../entries'
+import { isTranslated, META_KEYS } from '../schema'
 import { isTranslations } from './convert'
 import { invert, leaves } from './plan'
 
@@ -54,11 +52,9 @@ function itemsByComponent(schema: Schema, content: Entries): Map<string, Row[]> 
   return found
 }
 
-function componentQuestions(before: Schema, after: Schema, content: Entries, renames: Renames): RenameQuestion[] {
+function componentNameQuestions(before: Schema, after: Schema, items: Map<string, Row[]>, renames: Renames): RenameQuestion[] {
   const questions: RenameQuestion[] = []
-  const items = itemsByComponent(before, content)
   const componentRenames = renames.components ?? {}
-  const componentSources = invert(componentRenames)
   const takenComponents = new Set(Object.values(componentRenames))
   const previous = before.components ?? {}
   const current = after.components ?? {}
@@ -73,7 +69,15 @@ function componentQuestions(before: Schema, after: Schema, content: Entries, ren
       questions.push({ kind: 'component', from, to })
   }
 
-  for (const [target, definition] of Object.entries(current)) {
+  return questions
+}
+
+function componentFieldQuestions(before: Schema, after: Schema, items: Map<string, Row[]>, renames: Renames): RenameQuestion[] {
+  const questions: RenameQuestion[] = []
+  const componentSources = invert(renames.components ?? {})
+  const previous = before.components ?? {}
+
+  for (const [target, definition] of Object.entries(after.components ?? {})) {
     const source = componentSources[target] ?? target
     const fields = previous[source]?.fields
 
@@ -99,12 +103,16 @@ function componentQuestions(before: Schema, after: Schema, content: Entries, ren
   return questions
 }
 
-export function renameQuestions({ before, after, content, renames = {}, repair = false }: QuestionInput): RenameQuestion[] {
+function componentQuestions(before: Schema, after: Schema, content: Entries, renames: Renames): RenameQuestion[] {
+  const items = itemsByComponent(before, content)
+
+  return [...componentNameQuestions(before, after, items, renames), ...componentFieldQuestions(before, after, items, renames)]
+}
+
+function collectionQuestions(before: Schema, after: Schema, content: Entries, sources: readonly string[], renames: Renames, repair: boolean): RenameQuestion[] {
   const questions: RenameQuestion[] = []
   const rows = (name: string): readonly Entry[] => content[name] ?? []
-  const sources = [...new Set([...Object.keys(before.collections), ...repair ? Object.keys(content) : []])]
   const collectionRenames = renames.collections ?? {}
-  const collectionSources = invert(collectionRenames)
   const takenCollections = new Set(Object.values(collectionRenames))
 
   for (const from of sources) {
@@ -117,46 +125,48 @@ export function renameQuestions({ before, after, content, renames = {}, repair =
       questions.push({ kind: 'collection', from, to })
   }
 
-  questions.push(...componentQuestions(before, after, content, renames))
+  return questions
+}
 
-  const records: Record<string, unknown>[] = []
+function fieldQuestions(target: string, definition: CollectionDefinition, previous: Readonly<Record<string, Field>>, entries: readonly Entry[], fieldRenames: Readonly<Record<string, string>>, repair: boolean): RenameQuestion[] {
+  const questions: RenameQuestion[] = []
+  const taken = new Set(Object.values(fieldRenames))
+  const keys = [...new Set([...Object.keys(previous), ...repair ? entries.flatMap(row => Object.keys(row)).filter(key => !META.has(key)) : []])]
 
-  for (const [target, definition] of Object.entries(after.collections)) {
-    const source = collectionSources[target] ?? target
-
-    if (!sources.includes(source))
+  for (const from of keys) {
+    if (from in fieldRenames || definition.fields[from])
       continue
 
-    const entries = rows(source)
-    const previous = before.collections[source]?.fields ?? {}
-    const fieldRenames = renames.fields?.[target] ?? {}
-    const fieldSources = invert(fieldRenames)
-    const taken = new Set(Object.values(fieldRenames))
-    const keys = [...new Set([...Object.keys(previous), ...repair ? entries.flatMap(row => Object.keys(row)).filter(key => !META.has(key)) : []])]
+    const holders = entries.filter(row => leaves(row[from]) > 0)
+    const to = Object.keys(definition.fields).filter(key => !taken.has(key) && !(key in fieldRenames) && empty(holders, key))
 
-    for (const from of keys) {
-      if (from in fieldRenames || definition.fields[from])
-        continue
+    if (holders.length > 0 && to.length > 0)
+      questions.push({ kind: 'field', collection: target, from, to })
+  }
 
-      const holders = entries.filter(row => leaves(row[from]) > 0)
-      const to = Object.keys(definition.fields).filter(key => !taken.has(key) && !(key in fieldRenames) && empty(holders, key))
+  return questions
+}
 
-      if (holders.length > 0 && to.length > 0)
-        questions.push({ kind: 'field', collection: target, from, to })
-    }
+function translationRecords(before: Schema, after: Schema, definition: CollectionDefinition, previous: Readonly<Record<string, Field>>, entries: readonly Entry[], fieldRenames: Readonly<Record<string, string>>): Row[] {
+  const records: Row[] = []
+  const fieldSources = invert(fieldRenames)
 
-    for (const row of entries) {
-      for (const [key, value] of Object.entries(row)) {
-        const field = definition.fields[fieldRenames[key] ?? key]
-        const was = previous[fieldSources[key] ?? key] ?? previous[key]
-        const translated = (field && isTranslated(field, after.locales ?? [])) || (was && isTranslated(was, before.locales ?? []))
+  for (const row of entries) {
+    for (const [key, value] of Object.entries(row)) {
+      const field = definition.fields[fieldRenames[key] ?? key]
+      const was = previous[fieldSources[key] ?? key] ?? previous[key]
+      const translated = (field && isTranslated(field, after.locales ?? [])) || (was && isTranslated(was, before.locales ?? []))
 
-        if (!META.has(key) && translated && isTranslations(value))
-          records.push(value)
-      }
+      if (!META.has(key) && translated && isTranslations(value))
+        records.push(value)
     }
   }
 
+  return records
+}
+
+function localeQuestions(before: Schema, after: Schema, records: readonly Row[], renames: Renames, repair: boolean): RenameQuestion[] {
+  const questions: RenameQuestion[] = []
   const localeRenames = renames.locales ?? {}
   const takenLocales = new Set(Object.values(localeRenames))
   const afterLocales = after.locales ?? []
@@ -174,4 +184,27 @@ export function renameQuestions({ before, after, content, renames = {}, repair =
   }
 
   return questions
+}
+
+export function renameQuestions({ before, after, content, renames = {}, repair = false }: QuestionInput): RenameQuestion[] {
+  const sources = [...new Set([...Object.keys(before.collections), ...repair ? Object.keys(content) : []])]
+  const collectionSources = invert(renames.collections ?? {})
+  const questions = [...collectionQuestions(before, after, content, sources, renames, repair), ...componentQuestions(before, after, content, renames)]
+  const records: Row[] = []
+
+  for (const [target, definition] of Object.entries(after.collections)) {
+    const source = collectionSources[target] ?? target
+
+    if (!sources.includes(source))
+      continue
+
+    const entries = content[source] ?? []
+    const previous = before.collections[source]?.fields ?? {}
+    const fieldRenames = renames.fields?.[target] ?? {}
+
+    questions.push(...fieldQuestions(target, definition, previous, entries, fieldRenames, repair))
+    records.push(...translationRecords(before, after, definition, previous, entries, fieldRenames))
+  }
+
+  return [...questions, ...localeQuestions(before, after, records, renames, repair)]
 }

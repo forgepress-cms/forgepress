@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { MediaAsset } from '../../../src/media/types'
+import type { MediaAsset } from '../../../src/media'
 import { mediaKind } from '../../../src/media'
-import { formatSize } from '../../utils/media'
+import { formatSize } from '../../utils'
 import MediaPreview from './MediaPreview.vue'
 
 const props = defineProps<{

@@ -151,15 +151,27 @@ beforeAll(() => {
   mkdirSync(scratch, { recursive: true })
   writeFileSync(join(scratch, 'schema.ts'), schemaText)
 
-  cases.forEach((item, index) => writeFileSync(file(index), [
-    'import type { EntryOf } from \'../../src/entries/types\'',
+  writeFileSync(join(scratch, 'registry.ts'), [
     'import type schema from \'./schema\'',
     '',
-    `export default ${JSON.stringify(item.entry, null, 2)} satisfies EntryOf<typeof schema, 'post'>`,
+    'declare module \'../../src/schema/types\' {',
+    '  interface SchemaRegistry {',
+    '    schema: typeof schema',
+    '  }',
+    '}',
+    '',
+    'export {}',
+    '',
+  ].join('\n'))
+
+  cases.forEach((item, index) => writeFileSync(file(index), [
+    'import type { Content } from \'../../src/entries/types\'',
+    '',
+    `export default ${JSON.stringify(item.entry, null, 2)} satisfies Content<'post'>`,
     '',
   ].join('\n')))
 
-  const program = ts.createProgram([join(scratch, 'schema.ts'), ...cases.map((_, index) => file(index))], {
+  const program = ts.createProgram([join(scratch, 'schema.ts'), join(scratch, 'registry.ts'), ...cases.map((_, index) => file(index))], {
     strict: true,
     exactOptionalPropertyTypes: true,
     noEmit: true,

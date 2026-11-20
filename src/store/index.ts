@@ -1,14 +1,4 @@
-import type { KeyValueStore, RepositoryCache } from './types'
-import { createIdbCache, createIdbStore } from './idb'
-import { createMemoryStore } from './memory'
-
-export const TOKEN_KEY = 'token'
-export const CHANGES_KEY = 'changes'
-
-export function persist<TValue>(key: string): KeyValueStore<TValue> {
-  return typeof indexedDB === 'undefined' ? createMemoryStore<TValue>() : createIdbStore<TValue>(key)
-}
-
-export function repositoryCache(): RepositoryCache | undefined {
-  return typeof indexedDB === 'undefined' ? undefined : createIdbCache()
-}
+export { lazyMedia, lazyStore } from './lazy'
+export { readLocal, readLocalJson, writeLocal } from './local'
+export { CHANGES_KEY, persist, repositoryCache, TOKEN_KEY } from './persist'
+export type { ContentSource, ContentStore, ContentWriter, EntryWrite, KeyValueStore, MigrationState, RepositoryCache, SchemaChangeset, SchemaStore } from './types'

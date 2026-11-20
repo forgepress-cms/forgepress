@@ -75,6 +75,8 @@ export default defineConfig({
     ui({
       router: false,
       colorMode: false,
+      components: { dts: 'nuxt-ui-components.d.ts' },
+      autoImport: { dts: 'nuxt-ui-imports.d.ts' },
       icon: {
         clientBundle: {
           icons: Object.values(ICONS),
@@ -102,7 +104,7 @@ export default defineConfig({
     emptyOutDir: false,
     minify: true,
     lib: {
-      entry: 'index.ts',
+      entry: 'mount.ts',
       formats: ['es'],
       fileName: () => 'index.mjs',
     },

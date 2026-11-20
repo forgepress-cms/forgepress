@@ -9,10 +9,11 @@ const { data: home } = await useAsyncData('home', () =>
 
 const { data: pages } = await useAsyncData('pages', () =>
   query('page')
+    .locale('en')
     .sort('slug', 'asc')
     .pick('id', 'title', 'slug'))
 
-const testQuery = () => query('page').sort('updatedAt', 'desc').first()
+const testQuery = () => query('page').locale('en').sort('updatedAt', 'desc').first()
 const test = ref<Awaited<ReturnType<typeof testQuery>>>()
 async function getInBrowser() {
   test.value = await testQuery()

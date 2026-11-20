@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import type { PreviewPane } from '../../plugins/preview'
 import { computed } from 'vue'
-import { DEFAULT_RATIO } from '../../plugins/preview'
+import { usePreviewPane } from '../../composables'
+import { DEFAULT_RATIO } from '../../plugins'
 
-const props = defineProps<{
-  pane: PreviewPane
-}>()
+const pane = usePreviewPane()!
+const { ratio, resizing } = pane
 
 const STEP = 0.02
 const KEYS: Record<string, number> = { ArrowLeft: STEP, ArrowRight: -STEP, PageUp: STEP * 5, PageDown: -STEP * 5, Home: 1, End: -1 }
-
-const { ratio, resizing } = props.pane
 
 const percent = computed(() => Math.round(ratio.value * 100))
 
@@ -31,7 +28,7 @@ function start(event: PointerEvent): void {
   resizing.value = true
 
   const move = (next: PointerEvent): void => {
-    props.pane.resize(ratioAt(handle, next.clientX))
+    pane.resize(ratioAt(handle, next.clientX))
   }
 
   const end = (): void => {
@@ -53,7 +50,7 @@ function press(event: KeyboardEvent): void {
     return
 
   event.preventDefault()
-  props.pane.resize(ratio.value + step)
+  pane.resize(ratio.value + step)
 }
 </script>
 

@@ -1,7 +1,7 @@
-import type { Entry, EntryRef } from '../entries/types'
-import type { Conflict, FileChange, RepoTarget } from '../forge/types'
-import type { MediaAsset, MediaClient, PendingUpload } from '../media/types'
-import type { ContentStore } from '../store/types'
+import type { Entry, EntryRef } from '../entries'
+import type { Conflict, FileChange, RepoTarget } from '../forge'
+import type { MediaAsset, MediaClient, PendingUpload } from '../media'
+import type { ContentStore } from '../store'
 
 export interface Changes {
   entries: Record<string, Record<string, Entry | null>>
@@ -24,7 +24,7 @@ export interface ChangeSummary {
   deleted: string[]
 }
 
-export type DiffKind = 'keep' | 'add' | 'remove'
+type DiffKind = 'keep' | 'add' | 'remove'
 
 export interface DiffLine {
   kind: DiffKind

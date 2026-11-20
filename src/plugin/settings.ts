@@ -1,5 +1,5 @@
-import type { ResolvedConfig } from '../config/resolve'
-import { editorSettings } from '../config/settings'
+import type { ResolvedConfig } from '../config'
+import { editorSettings } from '../config'
 
 export const SETTINGS_ID = 'virtual:forgepress/settings'
 

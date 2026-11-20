@@ -1,4 +1,5 @@
 import antfu from '@antfu/eslint-config'
+import architecture from './scripts/architecture.ts'
 
 export default antfu({
   vue: true,
@@ -11,20 +12,27 @@ export default antfu({
     'pnpm/yaml-enforce-settings': 'off',
   },
 }, {
-  files: ['src/**/*.ts', 'src/**/*.vue', 'editor/**/*.ts', 'editor/**/*.vue'],
-  ignores: ['src/cli/**', 'src/disk/**', 'src/plugin/**', 'src/unplugin.ts'],
+  files: ['src/**/*.ts', 'editor/**/*.ts', 'editor/**/*.vue'],
+  ignores: ['**/*.d.ts'],
+  plugins: { forgepress: architecture },
   rules: {
-    'no-restricted-imports': ['error', {
-      patterns: [
-        {
-          group: ['node:*'],
-          message: 'Only src/cli, src/disk and src/plugin run in Node. Everything else has to work in the browser too.',
-        },
-        {
-          group: ['**/cli/*', '**/disk/*', '**/plugin', '**/plugin/*', '**/unplugin'],
-          message: 'src/cli, src/disk and src/plugin use Node. Code that runs in the browser can\'t import them.',
-        },
-      ],
-    }],
+    'forgepress/layers': 'error',
+    'forgepress/entries': 'error',
+  },
+}, {
+  files: ['src/**/*.ts', 'editor/**/*.ts', 'editor/pages/**/*.vue', 'scripts/**/*.ts'],
+  ignores: ['**/*.d.ts', 'editor/composables/**/use*.ts'],
+  rules: {
+    'unicorn/filename-case': ['error', { case: 'kebabCase' }],
+  },
+}, {
+  files: ['editor/composables/**/use*.ts'],
+  rules: {
+    'unicorn/filename-case': ['error', { case: 'camelCase', checkDirectories: false }],
+  },
+}, {
+  files: ['editor/App.vue', 'editor/components/**/*.vue'],
+  rules: {
+    'unicorn/filename-case': ['error', { case: 'pascalCase', checkDirectories: false }],
   },
 })

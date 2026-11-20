@@ -1,5 +1,5 @@
-import type { CollectionEntry } from '../entries/references'
-import { isRecord } from '../utils/value'
+import type { CollectionEntry } from '../entries'
+import { isRecord } from '../utils'
 
 export const FRAME_SOURCE = 'forgepress:frame'
 

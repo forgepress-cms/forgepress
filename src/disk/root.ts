@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import process from 'node:process'
-import { createPaths, DEFAULT_CONTENT_PATH } from '../files/paths'
+import { createPaths, DEFAULT_CONTENT_PATH } from '../files'
 
 export const CONFIG_FILES = ['forgepress.config.ts', 'forgepress.config.mts', 'forgepress.config.mjs', 'forgepress.config.js'] as const
 

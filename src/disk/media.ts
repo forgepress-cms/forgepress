@@ -1,5 +1,4 @@
-import type { MediaConfig } from '../config/types'
-import type { MediaAsset, MediaStore } from '../media/types'
+import type { MediaAsset, MediaConfig, MediaStore } from '../media'
 import { existsSync } from 'node:fs'
 import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'

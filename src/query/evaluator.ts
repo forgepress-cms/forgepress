@@ -1,6 +1,6 @@
-import type { OutputEntry } from '../output/types'
+import type { OutputEntry } from '../entries'
 import type { QueryPlan, WhereClause } from './types'
-import { isEntryRef } from '../entries/references'
+import { isEntryRef } from '../entries'
 
 function comparable(value: unknown): unknown {
   return isEntryRef(value) ? value.id : value

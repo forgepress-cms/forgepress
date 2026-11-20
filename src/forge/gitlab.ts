@@ -1,5 +1,4 @@
-import type { ProviderConfig } from '../config/types'
-import type { BuildCheck, CheckState, Forge, ForgeAccess, ForgeFile, TokenGetter } from './types'
+import type { BuildCheck, CheckState, Forge, ForgeAccess, ForgeFile, ProviderConfig, TokenGetter } from './types'
 import { describe } from './providers'
 import { publishable } from './publish'
 import { createRepositoryApi, toIdentity } from './repository'

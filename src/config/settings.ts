@@ -1,6 +1,7 @@
-import type { ResolvedMedia } from '../media/types'
+import type { ContentConfig } from '../files'
+import type { ProviderConfig } from '../forge'
+import type { ResolvedMedia } from '../media'
 import type { ResolvedConfig } from './resolve'
-import type { ContentConfig, ProviderConfig } from './types'
 
 export interface EditorSettings {
   local: boolean

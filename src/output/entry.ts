@@ -1,13 +1,8 @@
-import type { Entry } from '../entries/types'
-import type { Field } from '../schema/fields'
-import type { ComponentField } from '../schema/fields/component'
-import type { ComponentDefinition, Schema } from '../schema/types'
-import type { LinkedFields, LinkTarget, OutputEntry } from './types'
-import { OUTPUT_META_KEYS } from '../entries/meta'
-import { isTranslated, translatesAnything } from '../schema/fields'
-import { itemComponent } from '../schema/fields/component'
-import { mapItems, onlyName } from '../schema/fields/picked'
-import { isRecord, pick } from '../utils/value'
+import type { Entry, OutputEntry } from '../entries'
+import type { ComponentDefinition, ComponentField, Field, Schema } from '../schema'
+import type { LinkedFields, LinkTarget } from './types'
+import { isTranslated, itemComponent, mapItems, onlyName, OUTPUT_META_KEYS, translatesAnything } from '../schema'
+import { isRecord, pick } from '../utils'
 
 function fieldsOf(schema: Schema, collection: string): [string, Field][] {
   return Object.entries(schema.collections[collection]?.fields ?? {})

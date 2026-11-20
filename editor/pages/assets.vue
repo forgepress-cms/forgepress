@@ -1,14 +1,8 @@
 <script setup lang="ts">
-import type { MediaAsset } from '../../src/media/types'
+import type { MediaAsset } from '../../src/media'
 import { computed, ref, shallowRef } from 'vue'
-import ConfirmDialog from '../components/ConfirmDialog.vue'
-import ErrorAlert from '../components/ErrorAlert.vue'
-import PageHeader from '../components/layout/PageHeader.vue'
-import MediaDetails from '../components/media/MediaDetails.vue'
-import MediaGrid from '../components/media/MediaGrid.vue'
-import MediaUpload from '../components/media/MediaUpload.vue'
-import { useContent } from '../composables/useContent'
-import { useMedia } from '../composables/useMedia'
+import { ConfirmDialog, ErrorAlert, MediaDetails, MediaGrid, MediaUpload, PageHeader } from '../components'
+import { useContent, useMedia } from '../composables'
 
 const library = useMedia()
 

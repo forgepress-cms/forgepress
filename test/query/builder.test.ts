@@ -4,7 +4,7 @@ import type { Schema } from '../../src/schema/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createOutput } from '../../src/output'
 import { Builder } from '../../src/query/builder'
-import { createLoader } from '../../src/query/client'
+import { createLoader } from '../../src/query/loader'
 
 const schema = {
   locales: ['en', 'de'],

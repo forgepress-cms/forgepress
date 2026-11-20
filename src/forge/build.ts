@@ -1,12 +1,11 @@
 import type { BuildCheck, Forge } from './types'
-import { errorMessage } from '../utils/error'
-import { keyed } from '../utils/once'
+import { errorMessage, keyed } from '../utils'
 
 export type BuildState = 'building' | 'passed' | 'live' | 'failed' | 'stalled'
 
 export type Deployed = () => Promise<string | null | undefined>
 
-export interface BuildReport {
+interface BuildReport {
   state: BuildState
   checks: BuildCheck[]
   error: string

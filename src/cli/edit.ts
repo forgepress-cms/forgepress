@@ -1,23 +1,20 @@
 import type { FSWatcher } from 'node:fs'
 import type { IncomingMessage, Server, ServerResponse } from 'node:http'
-import type { ResolvedConfig } from '../config/resolve'
-import type { ContentIssue } from '../files/issues'
+import type { ResolvedConfig } from '../config'
+import type { ContentIssue } from '../issues'
 import { createReadStream, existsSync, watch } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { join, normalize, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { debounce } from 'perfect-debounce'
-import { editorSettings } from '../config/settings'
-import { diskFiles } from '../disk/files'
-import { createWriter } from '../disk/writer'
-import { ENDPOINT } from '../endpoint/routes'
-import { readContent } from '../files/content'
+import { editorSettings } from '../config'
+import { createWriter, diskFiles } from '../disk'
+import { ENDPOINT } from '../endpoint'
+import { readContent } from '../files'
 import { mediaType } from '../media'
-import { EndpointError, handle } from '../plugin/endpoint'
-import { createMigrations } from '../plugin/migrations'
-import { syncTypes } from '../plugin/project'
-import { errorMessage } from '../utils/error'
+import { createMigrations, EndpointError, handle, syncTypes } from '../server'
+import { errorMessage } from '../utils'
 
 export const DEFAULT_PORT = 4390
 
@@ -211,9 +208,9 @@ export async function edit(root: string, config: ResolvedConfig, options: EditOp
   const server = createServer((request, response) => {
     serve(request, response).catch((error: unknown) => {
       if (response.headersSent)
-        return response.end()
-
-      send(response, error instanceof EndpointError ? error.status : 500, 'text/plain', errorMessage(error))
+        response.end()
+      else
+        send(response, error instanceof EndpointError ? error.status : 500, 'text/plain', errorMessage(error))
     })
   })
 

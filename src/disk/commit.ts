@@ -3,7 +3,7 @@ import process from 'node:process'
 
 const COMMIT = /^[\da-f]{40}(?:[\da-f]{24})?$/i
 
-export const COMMIT_VARIABLES = [
+const COMMIT_VARIABLES = [
   'GITHUB_SHA',
   'CI_COMMIT_SHA',
   'COMMIT_REF',

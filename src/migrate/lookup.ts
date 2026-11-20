@@ -1,6 +1,6 @@
-import type { Entry } from '../entries/types'
-import type { CollectionDefinition } from '../schema/types'
-import { isRecord } from '../utils/value'
+import type { Entry } from '../entries'
+import type { CollectionDefinition } from '../schema'
+import { isRecord } from '../utils'
 
 export function titleKey(collection: CollectionDefinition | undefined): string | undefined {
   const fields = Object.entries(collection?.fields ?? {})

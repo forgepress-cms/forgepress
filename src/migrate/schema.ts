@@ -1,6 +1,5 @@
-import type { Field } from '../schema/fields'
-import type { CollectionDefinition, ComponentDefinition, Schema } from '../schema/types'
-import { defaultLocale } from '../schema/locales'
+import type { CollectionDefinition, ComponentDefinition, Field, Schema } from '../schema'
+import { defaultLocale } from '../schema'
 
 export interface SchemaDraft {
   components?: Record<string, ComponentDefinition>
@@ -17,7 +16,7 @@ export interface Usage {
   field: string
 }
 
-export function pickedNames(field: Field, group: Group): readonly string[] | undefined {
+function pickedNames(field: Field, group: Group): readonly string[] | undefined {
   if (group === 'collections')
     return field.type === 'collection' ? field.collections : undefined
 
@@ -31,7 +30,7 @@ function repick(field: Field, group: Group, names: string[]): void {
     field.components = names
 }
 
-export function renameKey<TValue>(record: Readonly<Record<string, TValue>>, from: string, to: string): Record<string, TValue> {
+function renameKey<TValue>(record: Readonly<Record<string, TValue>>, from: string, to: string): Record<string, TValue> {
   return Object.fromEntries(Object.entries(record).map(([key, value]) => [key === from ? to : key, value]))
 }
 
@@ -101,13 +100,6 @@ export function renameComponent(draft: SchemaDraft, from: string, to: string): v
 export function removeComponent(draft: SchemaDraft, name: string): void {
   delete draft.components?.[name]
   removePick(draft, 'components', name)
-}
-
-export function renameComponentField(draft: SchemaDraft, component: string, from: string, to: string): void {
-  const definition = draft.components?.[component]
-
-  if (definition)
-    definition.fields = renameKey(definition.fields, from, to)
 }
 
 export function setDefaultLocale(draft: SchemaDraft, locale: string): void {

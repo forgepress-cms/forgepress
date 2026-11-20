@@ -1,5 +1,5 @@
-import type { Entry } from '../entries/types'
-import { same } from '../utils/value'
+import type { Entry } from '../entries'
+import { same } from '../utils'
 
 export type Overlay = Record<string, Entry | null>
 

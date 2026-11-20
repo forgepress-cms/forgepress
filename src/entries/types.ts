@@ -1,28 +1,12 @@
-import type { OutputEntry } from '../output/types'
-import type { Field, FieldContent } from '../schema/fields'
-import type { CollectionField } from '../schema/fields/collection'
-import type { ComponentField } from '../schema/fields/component'
-import type { ComponentItem, EntryRef, Listed, Picked } from '../schema/fields/picked'
-import type { CollectionDefinition, ComponentDefinition, RegisteredSchema, Schema, SchemaLocale } from '../schema/types'
+import type { CollectionDefinition, CollectionField, ComponentDefinition, ComponentField, ComponentItem, EntryMeta, EntryRef, Field, FieldContent, Listed, OutputMeta, Picked, RegisteredSchema, Schema, SchemaLocale } from '../schema'
 
 export type { EntryRef }
 
-export type EntryStatus = 'published' | 'unpublished'
-
-export interface EntryMeta {
-  id: string
-  status: EntryStatus
-  createdAt: string
-  updatedAt: string
-}
-
-export interface OutputMeta {
-  id: string
-  createdAt: string
-  updatedAt: string
-}
-
 export type Entry = EntryMeta & {
+  [field: string]: unknown
+}
+
+export interface OutputEntry extends OutputMeta {
   [field: string]: unknown
 }
 
@@ -40,7 +24,7 @@ type OptionalKeys<TFields extends Fields> = {
 
 type RequiredKeys<TFields extends Fields> = Exclude<keyof TFields, OptionalKeys<TFields>>
 
-export type ComponentFields<TSchema extends Schema, TName> = TSchema['components'] extends Record<string, ComponentDefinition>
+type ComponentFields<TSchema extends Schema, TName> = TSchema['components'] extends Record<string, ComponentDefinition>
   ? TName extends keyof TSchema['components'] ? TSchema['components'][TName]['fields'] : Fields
   : Fields
 
@@ -144,7 +128,7 @@ type FieldValue<
 
 type CollectionContent<TSchema extends Schema, TCollection extends CollectionDefinition> = EntryMeta & Item<TSchema, TCollection['fields'], 'content'>
 
-export type EntryOf<
+type EntryOf<
   TSchema extends Schema,
   TCollectionName extends keyof TSchema['collections'],
 > = CollectionContent<TSchema, TSchema['collections'][TCollectionName]>
@@ -158,7 +142,7 @@ export type OutputOf<
   TPicks = Whole,
 > = CollectionOutput<TSchema, TSchema['collections'][TCollectionName], TPath, TPicks>
 
-export type ComponentOf<TSchema extends Schema, TName, TPath extends string = '', TPicks = Whole>
+type ComponentOf<TSchema extends Schema, TName, TPath extends string = '', TPicks = Whole>
   = Simplify<Item<TSchema, ComponentFields<TSchema, TName>, 'output', TPath, TPicks>>
 
 type PathsOf<TSchema extends Schema, TGroup> = TGroup extends Record<string, CollectionDefinition>

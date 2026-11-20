@@ -1,15 +1,10 @@
-import type { ProviderConfig } from '../config/types'
-import type { Forge, TokenGetter } from './types'
-import { createForgejoForge } from './forgejo'
-import { createGitHubForge } from './github'
-import { createGitLabForge } from './gitlab'
-
-export function createForge(config: ProviderConfig, token: TokenGetter): Forge {
-  if (config.type === 'gitlab')
-    return createGitLabForge(config, token)
-
-  if (config.type === 'forgejo')
-    return createForgejoForge(config, token)
-
-  return createGitHubForge(config, token)
-}
+export type { BuildState } from './build'
+export { createBuildReader } from './build'
+export { checkResult } from './check'
+export { createForge } from './create'
+export { authorizeUrl, createChallenge, createState, createTokenGetter, createVerifier, exchange, expired, storedTokens } from './oauth'
+export { commitUrl, describe } from './providers'
+export { commitMessage, ConflictError, InvalidContentError, publishFiles } from './publish'
+export type { ForgeSource } from './source'
+export { createForgeSource } from './source'
+export type { BuildCheck, CheckState, Conflict, FileChange, Forge, ForgeIdentity, HashSource, OAuthTokens, ProviderConfig, RepoTarget } from './types'

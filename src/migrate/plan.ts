@@ -1,18 +1,11 @@
-import type { Entry } from '../entries/types'
-import type { Field } from '../schema/fields'
-import type { CollectionDefinition, ComponentDefinition } from '../schema/types'
-import type { EntryWrite } from '../store/types'
+import type { Entry } from '../entries'
+import type { CollectionDefinition, ComponentDefinition, Field, Schema } from '../schema'
+import type { EntryWrite } from '../store'
 import type { ComponentMap, Conversion, Links, LocaleMap } from './convert'
-import type { Effect, Fill, Fix, Migration, MigrationInput } from './types'
-import { entryId } from '../entries/id'
-import { componentItems } from '../entries/items'
-import { META_KEYS } from '../entries/meta'
-import { isEntryRef } from '../entries/references'
-import { validateField } from '../entries/validate'
-import { isTranslated } from '../schema/fields'
-import { COMPONENT_KEY } from '../schema/fields/picked'
-import { defaultLocale } from '../schema/locales'
-import { filled, isRecord, same } from '../utils/value'
+import type { Effect, Fill, Fix, Migration, MigrationInput, Renames } from './types'
+import { componentItems, entryId, isEntryRef, validateField } from '../entries'
+import { COMPONENT_KEY, defaultLocale, isTranslated, META_KEYS } from '../schema'
+import { filled, isRecord, same } from '../utils'
 import { convertField, hasTranslations, isTranslations, single } from './convert'
 import { nearest, slugify } from './fill'
 import { entryTitle, normalize, textOf, titleKey } from './lookup'
@@ -99,6 +92,64 @@ function constraints(key: string, field: Field | undefined, value: unknown, loca
   return validateField(key, { ...field, optional: true } as Field, value, locales).filter(issue => issue.kind === 'constraint')
 }
 
+function componentMap(before: Schema, after: Schema, renames: Renames): ComponentMap {
+  const componentRenames = renames.components ?? {}
+
+  return {
+    before: before.components ?? {},
+    after: after.components ?? {},
+    rename: name => componentRenames[name] ?? name,
+    fields: name => renames.componentFields?.[name] ?? {},
+  }
+}
+
+function localeMap(before: Schema, after: Schema, renames: Renames): LocaleMap {
+  const localeRenames = renames.locales ?? {}
+  const localeSources = invert(localeRenames)
+
+  return {
+    before: before.locales ?? [],
+    after: after.locales ?? [],
+    defaults: { before: defaultLocale(before), after: defaultLocale(after) },
+    rename: locale => localeRenames[locale] ?? locale,
+    source: locale => localeSources[locale] ?? locale,
+  }
+}
+
+function replaceValue(next: Row, key: string, locale: string | undefined, replacement: unknown): void {
+  const current = next[key]
+
+  if (locale === undefined) {
+    if (replacement === undefined)
+      delete next[key]
+    else
+      next[key] = replacement
+  }
+  else if (isRecord(current)) {
+    const { [locale]: _, ...rest } = current
+
+    next[key] = replacement === undefined ? rest : { ...rest, [locale]: replacement }
+
+    if (Object.keys(next[key] as Row).length === 0)
+      delete next[key]
+  }
+}
+
+function typeErrors(write: readonly EntryWrite[], after: Schema, locales: LocaleMap, components: ComponentMap): string[] {
+  const errors: string[] = []
+
+  for (const { collection, entry } of write) {
+    for (const [key, field] of Object.entries(after.collections[collection]?.fields ?? {})) {
+      for (const issue of validateField(key, { ...field, optional: true } as Field, entry[key], locales.after, components.after)) {
+        if (issue.kind === 'type')
+          errors.push(`${collection}/${entry.id}: ${issue.message}`)
+      }
+    }
+  }
+
+  return errors
+}
+
 export function planMigration(input: MigrationInput): Migration {
   const { before, after, content, renames = {}, decisions = {}, repair = false } = input
   const now = input.now ?? new Date().toISOString()
@@ -110,25 +161,8 @@ export function planMigration(input: MigrationInput): Migration {
 
   const collectionRenames = renames.collections ?? {}
   const rename = (name: string): string => collectionRenames[name] ?? name
-  const localeRenames = renames.locales ?? {}
-  const localeSources = invert(localeRenames)
-
-  const componentRenames = renames.components ?? {}
-
-  const components: ComponentMap = {
-    before: before.components ?? {},
-    after: after.components ?? {},
-    rename: name => componentRenames[name] ?? name,
-    fields: name => renames.componentFields?.[name] ?? {},
-  }
-
-  const locales: LocaleMap = {
-    before: before.locales ?? [],
-    after: after.locales ?? [],
-    defaults: { before: defaultLocale(before), after: defaultLocale(after) },
-    rename: locale => localeRenames[locale] ?? locale,
-    source: locale => localeSources[locale] ?? locale,
-  }
+  const components = componentMap(before, after, renames)
+  const locales = localeMap(before, after, renames)
 
   const sources = [...new Set([...Object.keys(before.collections), ...repair ? Object.keys(content) : []])]
   const targets = new Map<string, Target>()
@@ -223,39 +257,31 @@ export function planMigration(input: MigrationInput): Migration {
     return { links: links(collection, field, holder, unmatched), locales, components }
   }
 
-  function record(note: Note, key: string, renamed: boolean, was: Field | undefined, field: Field, value: unknown, converted: unknown, unmatched: boolean): void {
-    const label = field.label ?? key
-    const from = hasTranslations(value, was, field, locales)
-    const into = field.type === 'component' ? isTranslated(field, locales.after) && isRecord(converted) : isTranslations(converted)
+  function recordCollapsed(note: Note, key: string, label: string, value: Row, converted: unknown, unmatched: boolean): void {
+    const kept = [locales.source(locales.defaults.after ?? ''), locales.defaults.before ?? '', ...Object.keys(value)].find(locale => filled(value[locale]))
 
-    if (from && !into && !isTranslated(field, locales.after)) {
-      const kept = [locales.source(locales.defaults.after ?? ''), locales.defaults.before ?? '', ...Object.keys(value)].find(locale => filled(value[locale]))
-
-      for (const [locale, item] of Object.entries(value)) {
-        if (locale === kept && leaves(converted) < leaves(item))
-          note({ kind: unmatched ? 'unmatched' : 'lost', field: key, label, locale, before: item, after: converted })
-        else if (locale === kept)
-          note({ kind: 'converted', field: key, label, locale, before: item, after: converted })
-        else if (leaves(item) > 0)
-          note({ kind: 'lost', field: key, label, locale, before: item })
-      }
-
-      return
+    for (const [locale, item] of Object.entries(value)) {
+      if (locale === kept && leaves(converted) < leaves(item))
+        note({ kind: unmatched ? 'unmatched' : 'lost', field: key, label, locale, before: item, after: converted })
+      else if (locale === kept)
+        note({ kind: 'converted', field: key, label, locale, before: item, after: converted })
+      else if (leaves(item) > 0)
+        note({ kind: 'lost', field: key, label, locale, before: item })
     }
+  }
 
-    if (from && into && isRecord(converted)) {
-      for (const [locale, item] of Object.entries(value)) {
-        const kept = converted[locales.rename(locale)]
+  function recordTranslations(note: Note, key: string, label: string, renamed: boolean, value: Row, converted: Row, unmatched: boolean): void {
+    for (const [locale, item] of Object.entries(value)) {
+      const kept = converted[locales.rename(locale)]
 
-        if (leaves(kept) < leaves(item))
-          note({ kind: unmatched ? 'unmatched' : 'lost', field: key, label, locale, before: item, after: kept })
-        else if (renamed || locales.rename(locale) !== locale || !same(item, kept))
-          note({ kind: 'converted', field: key, label, locale, before: item, after: kept })
-      }
-
-      return
+      if (leaves(kept) < leaves(item))
+        note({ kind: unmatched ? 'unmatched' : 'lost', field: key, label, locale, before: item, after: kept })
+      else if (renamed || locales.rename(locale) !== locale || !same(item, kept))
+        note({ kind: 'converted', field: key, label, locale, before: item, after: kept })
     }
+  }
 
+  function recordValue(note: Note, key: string, label: string, renamed: boolean, value: unknown, converted: unknown, unmatched: boolean): void {
     if (leaves(converted) < leaves(value)) {
       const kept = (Array.isArray(converted) ? converted : [converted]).map(identity)
       const items: unknown[] = Array.isArray(value) ? value : []
@@ -266,6 +292,19 @@ export function planMigration(input: MigrationInput): Migration {
     else if (renamed || !same(value, converted)) {
       note({ kind: 'converted', field: key, label, before: value, after: converted })
     }
+  }
+
+  function record(note: Note, key: string, renamed: boolean, was: Field | undefined, field: Field, value: unknown, converted: unknown, unmatched: boolean): void {
+    const label = field.label ?? key
+    const from = hasTranslations(value, was, field, locales)
+    const into = field.type === 'component' ? isTranslated(field, locales.after) && isRecord(converted) : isTranslations(converted)
+
+    if (from && !into && !isTranslated(field, locales.after))
+      recordCollapsed(note, key, label, value, converted, unmatched)
+    else if (from && into && isRecord(converted))
+      recordTranslations(note, key, label, renamed, value, converted, unmatched)
+    else
+      recordValue(note, key, label, renamed, value, converted, unmatched)
   }
 
   function fillValue(next: Row, collection: string, key: string, field: Field, fill: Fill, locale: string | undefined, fields: Readonly<Record<string, Field>>): unknown {
@@ -297,7 +336,7 @@ export function planMigration(input: MigrationInput): Migration {
       case 'locale':
         return isRecord(next[key]) ? next[key][fill.locale] : undefined
 
-      default:
+      case 'empty':
         return undefined
     }
   }
@@ -335,22 +374,19 @@ export function planMigration(input: MigrationInput): Migration {
         continue
       }
 
-      const replacement = fix === 'nearest' && field.type === 'number' ? nearest(value as number, field) : undefined
+      replaceValue(next, key, locale, fix === 'nearest' && field.type === 'number' ? nearest(value as number, field) : undefined)
+    }
+  }
 
-      if (locale === undefined) {
-        if (replacement === undefined)
-          delete next[key]
-        else
-          next[key] = replacement
-      }
-      else if (isRecord(current)) {
-        const { [locale]: _, ...rest } = current
+  function noteMissing(next: Row, key: string, field: Field, was: Field | undefined, raw: unknown, note: Note): void {
+    for (const locale of gaps(next[key], field, locales.after))
+      note({ kind: 'missing', field: key, label: field.label ?? key, ...locale === undefined ? {} : { locale } })
 
-        next[key] = replacement === undefined ? rest : { ...rest, [locale]: replacement }
+    const known = itemGaps(was, raw, components.before, locales.before, key, field.label ?? key)
 
-        if (Object.keys(next[key] as Row).length === 0)
-          delete next[key]
-      }
+    for (const [path, label] of itemGaps(field, next[key], components.after, locales.after, key, field.label ?? key)) {
+      if (!known.has(path))
+        note({ kind: 'missing', field: path, label })
     }
   }
 
@@ -369,18 +405,8 @@ export function planMigration(input: MigrationInput): Migration {
 
       applyFix(next, key, field, valid ? decisions.fixes?.[collection]?.[key] ?? 'keep' : 'keep', valid ? note : undefined)
 
-      if (!complete)
-        continue
-
-      for (const locale of gaps(next[key], field, locales.after))
-        note({ kind: 'missing', field: key, label: field.label ?? key, ...locale === undefined ? {} : { locale } })
-
-      const known = itemGaps(was, raw, components.before, locales.before, key, field.label ?? key)
-
-      for (const [path, label] of itemGaps(field, next[key], components.after, locales.after, key, field.label ?? key)) {
-        if (!known.has(path))
-          note({ kind: 'missing', field: path, label })
-      }
+      if (complete)
+        noteMissing(next, key, field, was, raw, note)
     }
   }
 
@@ -423,7 +449,7 @@ export function planMigration(input: MigrationInput): Migration {
     return next as Entry
   }
 
-  for (const source of sources) {
+  function migrateCollection(source: string): void {
     const target = rename(source)
     const definition = after.collections[target]
     const rows = content[source] ?? []
@@ -433,11 +459,12 @@ export function planMigration(input: MigrationInput): Migration {
         effects.push({ kind: 'removed', collection: source, id: row.id, title: entryTitle(row, before.collections[source], locales.before) })
 
       removed.push(source)
-      continue
+
+      return
     }
 
     if (targets.get(target)?.source !== source)
-      continue
+      return
 
     if (target !== source)
       removed.push(source)
@@ -450,27 +477,26 @@ export function planMigration(input: MigrationInput): Migration {
     }
   }
 
-  for (const [target, index] of created) {
-    const definition = after.collections[target]!
+  function writeCreated(): void {
+    for (const [target, index] of created) {
+      const definition = after.collections[target]!
 
-    for (const entry of index.values()) {
-      const title = entryTitle(entry, definition, locales.after)
-      const note: Note = effect => effects.push({ collection: target, id: entry.id, title, ...effect })
+      for (const entry of index.values()) {
+        const title = entryTitle(entry, definition, locales.after)
+        const note: Note = effect => effects.push({ collection: target, id: entry.id, title, ...effect })
 
-      effects.push({ kind: 'created', collection: target, id: entry.id, title })
-      settle(entry, target, definition.fields, {}, key => key, undefined, note)
-      write.push({ collection: target, entry })
-    }
-  }
-
-  for (const { collection, entry } of write) {
-    for (const [key, field] of Object.entries(after.collections[collection]?.fields ?? {})) {
-      for (const issue of validateField(key, { ...field, optional: true } as Field, entry[key], locales.after, components.after)) {
-        if (issue.kind === 'type')
-          blocked.push(`${collection}/${entry.id}: ${issue.message}`)
+        effects.push({ kind: 'created', collection: target, id: entry.id, title })
+        settle(entry, target, definition.fields, {}, key => key, undefined, note)
+        write.push({ collection: target, entry })
       }
     }
   }
+
+  for (const source of sources)
+    migrateCollection(source)
+
+  writeCreated()
+  blocked.push(...typeErrors(write, after, locales, components))
 
   return {
     changeset: { schema: after, write, collections: removed },

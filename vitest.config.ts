@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '#content-reader': fileURLToPath(new URL('./src/disk/reader.ts', import.meta.url)),
+      'virtual:forgepress/settings': fileURLToPath(new URL('./test/fixtures/settings.ts', import.meta.url)),
     },
   },
 

@@ -1,8 +1,8 @@
 /// <reference path="./virtual.d.ts" />
-import type { EditorSettings } from '../src/config/settings'
-import type { ContentPaths } from '../src/files/paths'
-import { createPaths } from '../src/files/paths'
-import { once } from '../src/utils/once'
+import type { EditorSettings } from '../src/config'
+import type { ContentPaths } from '../src/files'
+import { createPaths } from '../src/files'
+import { once } from '../src/utils'
 
 export interface BakedSettings extends Omit<EditorSettings, 'contentPath'> {
   paths: ContentPaths

@@ -1,13 +1,8 @@
-import type { ValueIssue, ValuePath } from '../files/issues'
-import type { Field } from '../schema/fields'
-import type { CollectionField } from '../schema/fields/collection'
-import type { ComponentField } from '../schema/fields/component'
-import type { ComponentDefinition, Schema } from '../schema/types'
+import type { ValueIssue, ValuePath } from '../issues'
+import type { CollectionField, ComponentDefinition, ComponentField, Field, Schema } from '../schema'
 import type { Entry, EntryRef } from './types'
-import { isTranslated } from '../schema/fields'
-import { itemComponent } from '../schema/fields/component'
-import { items, onlyName } from '../schema/fields/picked'
-import { isRecord, quote } from '../utils/value'
+import { isTranslated, itemComponent, items, onlyName } from '../schema'
+import { isRecord, quote } from '../utils'
 
 export interface EntryIssue extends ValueIssue {
   collection: string
