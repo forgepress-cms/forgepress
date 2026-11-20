@@ -45,6 +45,7 @@ const stubs = {
   }),
   UTabs: defineComponent({ setup: () => () => null }),
   UIcon: defineComponent({ setup: () => () => h('span') }),
+  UBadge: defineComponent({ props: { label: String }, setup: props => () => h('span', props.label) }),
 }
 
 let app: App | undefined
@@ -105,38 +106,62 @@ async function mount(items: unknown) {
     await settle()
   }
 
-  return { container, model, click, type }
+  function inputs(): string[] {
+    return [...container.querySelectorAll<HTMLInputElement>('input:not([data-switch])')].map(input => input.value)
+  }
+
+  return { container, model, click, type, inputs }
 }
 
 describe('component items', () => {
-  it('show every item as a form titled by its first text field', async () => {
-    const { container } = await mount([{ title: 'One', wide: false }, { title: 'Two', wide: true }])
+  it('show every item closed, titled by its first text field', async () => {
+    const { container, inputs } = await mount([{ title: 'One', wide: false }, { title: 'Two', wide: true }])
 
-    expect([...container.querySelectorAll<HTMLInputElement>('input:not([data-switch])')].map(input => input.value)).toEqual(['One', 'Two'])
+    expect(inputs()).toEqual([])
     expect(container.textContent).toContain('One')
     expect(container.textContent).toContain('Two')
+    expect([...container.querySelectorAll('[aria-expanded]')].map(toggle => toggle.getAttribute('aria-expanded'))).toEqual(['false', 'false'])
   })
 
-  it('title an item that has no text yet by the component it holds', async () => {
-    const { container } = await mount([{ wide: false }])
+  it('open to show their form, and close again', async () => {
+    const { click, inputs } = await mount([{ title: 'One', wide: false }, { title: 'Two', wide: true }])
+
+    await click('Two')
+
+    expect(inputs()).toEqual(['Two'])
+
+    await click('Two')
+
+    expect(inputs()).toEqual([])
+  })
+
+  it('title an item that has no text yet by the component it holds, and mark it while it misses a required field', async () => {
+    const { container, click } = await mount([{ wide: false }])
 
     expect(container.querySelector('.flex-1')?.textContent?.trim()).toBe('Card')
+    expect(container.textContent).toContain('Incomplete')
+
+    await click('CardIncomplete')
+
+    expect(container.textContent).not.toContain('Incomplete')
   })
 
   it('write edits back as plain items', async () => {
-    const { model, type } = await mount([{ title: 'One', wide: false }])
+    const { model, click, type } = await mount([{ title: 'One', wide: false }])
 
+    await click('One')
     await type(0, 'First')
 
     expect(model.value).toEqual([{ title: 'First', wide: false }])
   })
 
-  it('add items with their defaults and remove them', async () => {
-    const { model, click } = await mount([{ title: 'One', wide: false }])
+  it('add items open, with their defaults, and remove them', async () => {
+    const { model, click, inputs } = await mount([{ title: 'One', wide: false }])
 
     await click('Add a card')
 
     expect(model.value).toEqual([{ title: 'One', wide: false }, { wide: true }])
+    expect(inputs()).toEqual([''])
 
     await click('Remove One')
 
