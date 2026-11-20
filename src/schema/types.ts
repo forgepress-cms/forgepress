@@ -8,6 +8,7 @@ export interface ComponentDefinition {
 
 export interface CollectionDefinition extends ComponentDefinition {
   preview?: string
+  single?: boolean
 }
 
 export interface Schema {

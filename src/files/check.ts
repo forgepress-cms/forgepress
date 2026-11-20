@@ -3,7 +3,7 @@ import type { ContentIssue } from '../issues'
 import type { Schema } from '../schema'
 import type { ParsedModule } from './module'
 import type { ContentFile, ParsedSchema } from './parse'
-import { entryKey, validateEntry, validateReferences } from '../entries'
+import { entryKey, validateEntry, validateReferences, validateSingles } from '../entries'
 import { isRecord, quote } from '../utils'
 import { located, parseFile, parseSchemaFile } from './parse'
 import { toEntryFile } from './paths'
@@ -57,7 +57,7 @@ export function parseContent(schemaFile: ContentFile | undefined, entryFiles: re
     sources.set(entryKey(collection, id), { path, parsed })
   }
 
-  for (const issue of validateReferences(schema, content)) {
+  for (const issue of [...validateReferences(schema, content), ...validateSingles(schema, content)]) {
     const source = sources.get(entryKey(issue.collection, issue.id))!
 
     issues.get(source.path)!.push(located(source.path, source.parsed, issue))

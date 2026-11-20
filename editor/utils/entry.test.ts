@@ -146,6 +146,10 @@ describe('newEntry', () => {
     expect(entry.status).toBe('unpublished')
     expect(newEntry('author').id).not.toBe(entry.id)
   })
+
+  it('takes the id it is given', () => {
+    expect(newEntry('settings', 'settings').id).toBe('settings')
+  })
 })
 
 describe('titleField', () => {

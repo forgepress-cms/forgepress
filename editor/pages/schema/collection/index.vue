@@ -98,7 +98,7 @@ async function edit(values: CollectionValues): Promise<void> {
   const written = await change((draft) => {
     const { fields } = group.holder(draft)
 
-    groupOf(draft, kind)[name] = { ...values.label ? { label: values.label } : {}, ...values.description ? { description: values.description } : {}, ...values.preview ? { preview: values.preview } : {}, fields }
+    groupOf(draft, kind)[name] = { ...values.label ? { label: values.label } : {}, ...values.description ? { description: values.description } : {}, ...values.preview ? { preview: values.preview } : {}, ...values.single ? { single: true } : {}, fields }
 
     if (renamed && kind === 'components')
       renameComponent(draft, name, values.key)
@@ -219,6 +219,7 @@ function move(key: string, offset: number): Promise<boolean> {
       :label="collection.label ?? ''"
       :description="collection.description ?? ''"
       :preview="kind === 'collections' ? collection.preview ?? '' : undefined"
+      :single="kind === 'collections' ? collection.single === true : undefined"
       :loading="saving"
       :validate="invalidCollection"
       @save="edit"

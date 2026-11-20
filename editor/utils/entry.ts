@@ -40,10 +40,10 @@ export function localeItems(locales: readonly string[]): { label: string, value:
   return locales.map(value => ({ label: value.toUpperCase(), value }))
 }
 
-export function newEntry(collection: string): Entry {
+export function newEntry(collection: string, id = entryId(collection)): Entry {
   const now = new Date().toISOString()
 
-  return { id: entryId(collection), status: 'unpublished', createdAt: now, updatedAt: now }
+  return { id, status: 'unpublished', createdAt: now, updatedAt: now }
 }
 
 export function condense(value: string): string {

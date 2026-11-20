@@ -15,20 +15,22 @@ const name = useParam('collection')
 const id = route.value.params.id
 
 const { schema, collection, locales } = await useCollection(name)
+const single = collection.single === true
 
 function back(): void {
-  navigate(`content/${name}`)
+  navigate(single ? 'content' : `content/${name}`)
 }
 
 const rows = await store.list(name)
-const index = id ? rows.findIndex(row => row.id === id) : -1
+const existing = single ? rows[0]?.id : undefined
+const index = rows.findIndex(row => row.id === (id ?? existing))
 
 if (id && index < 0) {
   throw new Error(`[forgepress] ${name} has no entry with the id ${id}`)
 }
 
 const creating = index < 0
-const row = creating ? newEntry(name) : rows[index]!
+const row = creating ? newEntry(name, single ? name : undefined) : rows[index]!
 
 const fields = reactive(toLocalizedFields(collection, locales, schema.components))
 
@@ -56,6 +58,9 @@ usePreviewDraft(() => {
 })
 
 const title = computed(() => {
+  if (single)
+    return collection.label ?? name
+
   const first = titleField(fields)
   const value = first && values[first.key]![first.locale]
   const label = typeof value === 'string' ? condense(value) : ''
@@ -127,7 +132,7 @@ async function submit(linkedStatus?: EntryStatus): Promise<void> {
       :title="title"
       :breadcrumb="[
         { label: 'Content', to: href('content') },
-        { label: collection.label ?? name, to: href(`content/${name}`) },
+        ...single ? [] : [{ label: collection.label ?? name, to: href(`content/${name}`) }],
       ]"
     >
       <template #actions>

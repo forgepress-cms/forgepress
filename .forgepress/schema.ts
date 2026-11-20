@@ -480,6 +480,7 @@ export default {
     menu: {
       label: 'Menu',
       description: 'An ordered set of pages, such as the header, the footer or the documentation sidebar',
+      single: true,
       fields: {
         name: {
           type: 'text',

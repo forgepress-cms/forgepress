@@ -6,6 +6,7 @@ export interface CollectionValues {
   description: string
   key: string
   preview: string
+  single: boolean
 }
 
 const props = defineProps<{
@@ -13,6 +14,7 @@ const props = defineProps<{
   label: string
   description: string
   preview?: string | undefined
+  single?: boolean | undefined
   loading: boolean
   validate: (key: string) => string
 }>()
@@ -21,13 +23,13 @@ const emit = defineEmits<{ save: [values: CollectionValues] }>()
 
 const open = defineModel<boolean>('open', { required: true })
 
-const form = reactive<CollectionValues>({ label: '', description: '', key: '', preview: '' })
+const form = reactive<CollectionValues>({ label: '', description: '', key: '', preview: '', single: false })
 
 const invalid = computed(() => form.key === props.name ? '' : props.validate(form.key))
 
 watch(open, (value) => {
   if (value)
-    Object.assign(form, { label: props.label, description: props.description, key: props.name, preview: props.preview ?? '' })
+    Object.assign(form, { label: props.label, description: props.description, key: props.name, preview: props.preview ?? '', single: props.single ?? false })
 })
 </script>
 
@@ -45,6 +47,10 @@ watch(open, (value) => {
 
         <UFormField v-if="preview !== undefined" label="Preview" description="The address of an entry on the site, with {id}, {locale} or a field in braces, such as /blog/{slug}.">
           <UInput v-model="form.preview" class="w-full font-mono" />
+        </UFormField>
+
+        <UFormField v-if="single !== undefined" label="Single entry" description="The collection holds one entry, such as the settings of the site, and opens as a form instead of a list.">
+          <USwitch v-model="form.single" />
         </UFormField>
 
         <UFormField label="Key" description="How the collection is referenced in queries and content files.">

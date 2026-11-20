@@ -87,6 +87,17 @@ describe('checking content', () => {
     ])
   })
 
+  it('reports the extra entries of a single collection at their id', () => {
+    const single = { ...schema, text: schema.text.replace('    author: {\n', '    author: {\n      single: true,\n') }
+
+    expect(problems([
+      entry('author', 'author_1', [...meta('author_1'), 'name: \'Alice\',']),
+      entry('author', 'author_2', [...meta('author_2'), 'name: \'Bob\',']),
+    ], single)).toEqual([
+      '.forgepress/content/author/author_2.ts:4:3 Collection "author" is single and already has author/author_1; remove this entry or turn off "single"',
+    ])
+  })
+
   it('stops at schema problems, since entries cannot be checked against a broken schema', () => {
     expect(problems(
       [{ collection: 'author', id: 'author_1', path: '.forgepress/content/author/author_1.ts', text: 'export default nonsense\n' }],

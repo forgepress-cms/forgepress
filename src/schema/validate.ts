@@ -30,9 +30,9 @@ const GROUP_NAMES: Record<Group, string> = { collections: 'Collection', componen
 
 const SCHEMA_KEYS = new Set(['components', 'collections', 'locales', 'defaultLocale'])
 
-const GROUP_KEYS: Record<Group, ReadonlySet<string>> = {
-  collections: new Set(['label', 'description', 'preview', 'fields']),
-  components: new Set(['label', 'description', 'fields']),
+const GROUP_OPTIONS: Record<Group, ReadonlyMap<string, FieldOptionType>> = {
+  collections: new Map<string, FieldOptionType>([['label', 'text'], ['description', 'text'], ['preview', 'text'], ['single', 'boolean']]),
+  components: new Map<string, FieldOptionType>([['label', 'text'], ['description', 'text']]),
 }
 
 const ADDRESS_TYPES: ReadonlySet<unknown> = new Set(['text', 'number', 'list'])
@@ -264,10 +264,12 @@ function checkGroup(context: Context, group: Group, name: string, value: unknown
     return report(path, `${noun} ${quote(name)} has to be an object`)
 
   for (const [key, option] of Object.entries(value)) {
-    if (!GROUP_KEYS[group].has(key))
+    const kind = GROUP_OPTIONS[group].get(key)
+
+    if (!kind && key !== 'fields')
       report([...path, key], `${noun} ${quote(name)} has no option ${quote(key)}`)
-    else if (key !== 'fields' && typeof option !== 'string')
-      report([...path, key], `${quote(key)} of ${noun.toLowerCase()} ${quote(name)} has to be a string`)
+    else if (kind && !fits(kind, option))
+      report([...path, key], `${quote(key)} of ${noun.toLowerCase()} ${quote(name)} has to be ${KINDS[kind]}`)
   }
 
   if (!isRecord(value.fields))

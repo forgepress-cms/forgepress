@@ -113,7 +113,7 @@ async function remove(): Promise<void> {
           <UButton label="Columns" icon="i-hugeicons-layout-3-column" color="neutral" variant="outline" />
         </UDropdownMenu>
 
-        <UButton label="New entry" icon="i-hugeicons-plus-sign" @click="navigate(`content/${name}/new`)" />
+        <UButton v-if="!collection.single" label="New entry" icon="i-hugeicons-plus-sign" @click="navigate(`content/${name}/new`)" />
       </template>
     </PageHeader>
 

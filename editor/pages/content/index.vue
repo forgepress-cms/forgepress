@@ -13,6 +13,7 @@ interface CollectionRow {
   description: string
   entries: number
   problems: number
+  path: string
 }
 
 const { navigate } = useRouter()
@@ -22,13 +23,18 @@ const { store } = useContent()
 const schema = await store.schema()
 const issues = await useIssues()
 
-const collections: CollectionRow[] = await Promise.all(Object.entries(schema.collections).map(async ([name, collection]) => ({
-  id: name,
-  name: collection.label ?? name,
-  description: collection.description ?? '',
-  entries: (await store.list(name)).length,
-  problems: issues.count(name),
-})))
+const collections: CollectionRow[] = await Promise.all(Object.entries(schema.collections).map(async ([name, collection]) => {
+  const rows = await store.list(name)
+
+  return {
+    id: name,
+    name: collection.label ?? name,
+    description: collection.description ?? '',
+    entries: rows.length,
+    problems: issues.count(name),
+    path: collection.single && rows.length < 2 ? `content/${name}/${rows[0]?.id ?? 'new'}` : `content/${name}`,
+  }
+}))
 
 const columns: Column<CollectionRow>[] = [
   {
@@ -65,7 +71,7 @@ const columns: Column<CollectionRow>[] = [
       :columns="columns"
       :row-id="row => row.id"
       empty="No collections in the schema"
-      @select="row => navigate(`content/${row.id}`)"
+      @select="row => navigate(row.path)"
     />
   </div>
 </template>

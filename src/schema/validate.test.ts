@@ -394,4 +394,19 @@ describe('validateSchema', () => {
       ])
     })
   })
+
+  describe('single collections', () => {
+    it('are collections with "single" switched on', () => {
+      expect(issues({ collections: { settings: { single: true, fields: {} }, post: { single: false, fields: {} } } })).toEqual([])
+      expect(issues({ collections: { settings: { single: 'yes', fields: {} } } })).toEqual([
+        { path: ['collections', 'settings', 'single'], message: '"single" of collection "settings" has to be true or false' },
+      ])
+    })
+
+    it('leave components out', () => {
+      expect(issues({ components: { card: { single: true, fields: {} } }, collections: {} })).toEqual([
+        { path: ['components', 'card', 'single'], message: 'Component "card" has no option "single"' },
+      ])
+    })
+  })
 })
