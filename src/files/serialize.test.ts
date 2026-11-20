@@ -54,6 +54,14 @@ export default {
 
     expect(parseSchema(serializeSchema(complete), 'schema.ts')).toEqual(complete)
   })
+
+  it('writes components ahead of the collections that use them', () => {
+    const text = serializeSchema({ locales: ['en'], collections: { page: { fields: {} } }, components: { card: { fields: {} } } })
+
+    expect(text.indexOf('components:')).toBeLessThan(text.indexOf('collections:'))
+    expect(text.indexOf('locales:')).toBeLessThan(text.indexOf('components:'))
+    expect(serializeSchema({ collections: {}, components: {} })).not.toContain('components')
+  })
 })
 
 describe('serializeEntry', () => {

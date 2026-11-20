@@ -1,5 +1,5 @@
 import type { Entry } from '../entries/types'
-import type { Schema } from '../schema/types'
+import type { ComponentDefinition, Schema } from '../schema/types'
 import { describe, expect, it } from 'vitest'
 import { renameQuestions } from './questions'
 
@@ -40,5 +40,28 @@ describe('rename questions', () => {
     expect(renameQuestions({ before: current, after: current, content, repair: true, renames: { collections: { post: 'article' }, fields: { article: { heading: 'title' } } } })).toEqual([
       { kind: 'locale', from: 'de', to: ['fr'] },
     ])
+  })
+})
+
+describe('component rename questions', () => {
+  function schema(components: Record<string, ComponentDefinition>): Schema {
+    return {
+      locales: ['en', 'de'],
+      components,
+      collections: { page: { fields: { cards: { type: 'component', components: [Object.keys(components)[0]!], multiple: true, optional: true } } } },
+    }
+  }
+
+  const card: ComponentDefinition = { fields: { title: { type: 'text' }, count: { type: 'text', optional: true } } }
+  const content = { page: [entry('page_1', { cards: [{ title: 'One', count: '3' }, { title: 'Two' }] })] }
+
+  it('asks about components and component fields that are gone', () => {
+    const before = schema({ card })
+    const renamed = schema({ tile: card })
+    const reshaped = schema({ card: { fields: { heading: { type: 'text' }, count: { type: 'text', optional: true } } } })
+
+    expect(renameQuestions({ before, after: renamed, content })).toEqual([{ kind: 'component', from: 'card', to: ['tile'] }])
+    expect(renameQuestions({ before, after: renamed, content, renames: { components: { card: 'tile' } } })).toEqual([])
+    expect(renameQuestions({ before, after: reshaped, content })).toEqual([{ kind: 'field', component: 'card', from: 'title', to: ['heading'] }])
   })
 })

@@ -1,6 +1,7 @@
 import type { Schema } from '../schema/types'
 import type { Entry } from './types'
 import { describe, expect, it } from 'vitest'
+import { componentSchema, page } from '../../test/fixtures/components'
 import { entryReferences, unpublishedReferences, validateReferences } from './references'
 
 const schema = {
@@ -111,6 +112,30 @@ describe('entryReferences', () => {
 
   it('finds nothing in a collection the schema does not have', () => {
     expect(entryReferences(schema, 'missing', entry('missing_1', { author: 'author_1' }))).toEqual([])
+  })
+
+  describe('component values', () => {
+    it('finds references inside mixed items', () => {
+      expect(entryReferences(componentSchema, 'page', page({ mixed: [{ component: 'card', title: 'One', author: 'author_1', wide: false }] }))).toEqual([
+        { path: ['mixed', 0, 'author'], collection: 'author', id: 'author_1' },
+      ])
+    })
+
+    it('finds references in translated item fields', () => {
+      expect(entryReferences(componentSchema, 'page', page({ notes: [{ text: { en: 'Hello', de: 'Hallo' }, link: { de: 'author_1' } }] }))).toEqual([
+        { path: ['notes', 0, 'link', 'de'], collection: 'author', id: 'author_1' },
+      ])
+    })
+
+    it('finds references inside items', () => {
+      expect(entryReferences(componentSchema, 'page', page({
+        cards: { en: [{ title: 'One', author: 'author_1', wide: false }] },
+        grid: { cards: [{ title: 'Two', author: 'author_2', wide: false }] },
+      }))).toEqual([
+        { path: ['cards', 'en', 0, 'author'], collection: 'author', id: 'author_1' },
+        { path: ['grid', 'cards', 0, 'author'], collection: 'author', id: 'author_2' },
+      ])
+    })
   })
 })
 

@@ -1,5 +1,7 @@
 import type { Schema } from '../schema/types'
+import type { Entry } from './types'
 import { describe, expect, it } from 'vitest'
+import { componentSchema, page } from '../../test/fixtures/components'
 import { validateEntry } from './validate'
 
 const schema = {
@@ -220,5 +222,88 @@ describe('validateEntry', () => {
     const plain = { collections: { note: { fields: { text: { type: 'text', translate: true } } } } } as Schema
 
     expect(validateEntry(plain, 'note', { ...post, title: undefined, body: undefined, author: undefined, text: 'Hi' })).toEqual([])
+  })
+
+  describe('component values', () => {
+    it('accepts items that fit their component, per locale', () => {
+      expect(validateEntry(componentSchema, 'page', page({
+        cards: { en: [{ title: 'One', wide: false }], de: [] },
+        grid: { cards: [{ title: 'Nested', author: 'author_1', wide: true }] },
+      }))).toEqual([])
+    })
+
+    it('checks items like small entries, with paths into the list', () => {
+      expect(validateEntry(componentSchema, 'page', page({
+        cards: { en: [{ title: 1, wide: false }, { wide: true, colour: 'red' }, 'card'] },
+        grid: [],
+      }))).toEqual([
+        { path: ['cards', 'en', 0, 'title'], message: 'Field "title" has to be a string' },
+        { path: ['cards', 'en', 1, 'colour'], message: '"colour" is not a field of component "card"' },
+        { path: ['cards', 'en', 1], message: 'Field "title" is required' },
+        { path: ['cards', 'en', 2], message: 'Field "cards" (en) has to hold "card" items as objects' },
+        { path: ['grid'], message: 'Field "grid" has to hold "grid" items as objects' },
+      ])
+
+      expect(validateEntry(componentSchema, 'page', page({ cards: { en: { title: 'One', wide: false } } }))).toEqual([
+        { path: ['cards', 'en'], message: 'Field "cards" (en) has to be a list of "card" items' },
+      ])
+    })
+
+    it('reads which component a mixed item holds, and checks it against that one', () => {
+      expect(validateEntry(componentSchema, 'page', page({
+        mixed: [{ component: 'card', title: 'One', wide: false }, { component: 'quote', saying: 'Hi' }],
+      }))).toEqual([])
+
+      expect(validateEntry(componentSchema, 'page', page({
+        mixed: [{ title: 'One', wide: false }, { component: 'grid', cards: [] }, { component: 'quote', title: 'One' }],
+      }))).toEqual([
+        { path: ['mixed', 0], message: 'An item in field "mixed" needs a "component"' },
+        { path: ['mixed', 1, 'component'], message: 'Field "mixed" can\'t hold "grid" items; allowed are card, quote' },
+        { path: ['mixed', 2, 'title'], message: '"title" is not a field of component "quote"' },
+        { path: ['mixed', 2], message: 'Field "saying" is required' },
+      ])
+    })
+
+    it('translates fields inside an item, one value per locale', () => {
+      expect(validateEntry(componentSchema, 'page', page({
+        notes: [{ text: { en: 'Hello', de: 'Hallo' }, link: { en: 'author_1' } }],
+      }))).toEqual([])
+
+      expect(validateEntry(componentSchema, 'page', page({
+        notes: [{ text: { en: 'Hello' } }, { text: 'Hello' }],
+      }))).toEqual([
+        { path: ['notes', 0, 'text'], message: 'Field "text" is missing its de translation' },
+        { path: ['notes', 1, 'text'], message: 'Field "text" is translated and has to hold one value per locale, such as { en: … }' },
+      ])
+    })
+  })
+
+  describe('list fields', () => {
+    const lists = {
+      collections: {
+        post: {
+          fields: {
+            stage: { type: 'list', values: ['draft', 'review', 'final'] },
+            tags: { type: 'list', values: ['news', 'guide'], multiple: true, optional: true },
+          },
+        },
+      },
+    } as const satisfies Schema
+
+    function entry(fields: Record<string, unknown>): Entry {
+      return { id: 'post_1', status: 'published', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', ...fields }
+    }
+
+    it('accept one value, or a list of values when multiple', () => {
+      expect(validateEntry(lists, 'post', entry({ stage: 'review', tags: ['guide', 'news'] }))).toEqual([])
+      expect(validateEntry(lists, 'post', entry({ stage: 'published', tags: 'news' }))).toEqual([
+        { path: ['stage'], message: 'Field "stage" has to be one of "draft", "review", "final"' },
+        { path: ['tags'], message: 'Field "tags" has to be a list of values' },
+      ])
+      expect(validateEntry(lists, 'post', entry({ stage: 1, tags: ['news', 'blog'] }))).toEqual([
+        { path: ['stage'], message: 'Field "stage" has to be a string' },
+        { path: ['tags', 1], message: 'Field "tags" has to be one of "news", "guide"' },
+      ])
+    })
   })
 })

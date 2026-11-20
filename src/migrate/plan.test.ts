@@ -1,6 +1,6 @@
 import type { Entry } from '../entries/types'
 import type { Field } from '../schema'
-import type { Schema } from '../schema/types'
+import type { ComponentDefinition, Schema } from '../schema/types'
 import type { MigrationInput } from './types'
 import { describe, expect, it } from 'vitest'
 import { planMigration } from './plan'
@@ -531,5 +531,92 @@ describe('repairs', () => {
     })
 
     expect(migration.changeset.write[0]!.entry).toEqual(entry('post_1', { title: 'Hi' }))
+  })
+})
+
+describe('migrating components', () => {
+  function withComponents(components: Record<string, ComponentDefinition>, translate = false, names?: string[]): Schema {
+    const picked = names ?? [Object.keys(components)[0]!]
+
+    return {
+      locales: ['en', 'de'],
+      components,
+      collections: { page: { fields: { cards: { type: 'component', components: picked, multiple: true, optional: true, ...translate ? { translate: true } : {} } } } },
+    }
+  }
+
+  const card: ComponentDefinition = { fields: { title: { type: 'text' }, count: { type: 'text', optional: true } } }
+  const content = { page: [entry('page_1', { cards: [{ title: 'One', count: '3' }, { title: 'Two' }] })] }
+
+  it('leaves untouched items alone', () => {
+    expect(plan({ before: withComponents({ card }), after: withComponents({ card }), content }).changeset.write).toEqual([])
+  })
+
+  it('converts, drops and defaults fields inside every item', () => {
+    const after = withComponents({ card: { fields: { title: { type: 'text' }, count: { type: 'number', optional: true }, wide: { type: 'boolean', default: true } } } })
+    const migration = plan({ before: withComponents({ card }), after, content })
+
+    expect(migration.changeset.write[0]?.entry.cards).toEqual([{ title: 'One', count: 3, wide: true }, { title: 'Two', wide: true }])
+    expect(migration.blocked).toEqual([])
+  })
+
+  it('follows renamed components and renamed fields inside them', () => {
+    const after = withComponents({ tile: { fields: { heading: { type: 'text' }, count: { type: 'text', optional: true } } } })
+    const migration = plan({ before: withComponents({ card }), after, content, renames: { components: { card: 'tile' }, componentFields: { tile: { title: 'heading' } } } })
+
+    expect(migration.changeset.write[0]?.entry.cards).toEqual([{ heading: 'One', count: '3' }, { heading: 'Two' }])
+  })
+
+  it('drops items of a component the field no longer holds', () => {
+    const after = withComponents({ tile: { fields: { title: { type: 'text' } } } })
+    const migration = plan({ before: withComponents({ card }), after, content })
+
+    expect(migration.changeset.write[0]?.entry.cards).toEqual([])
+    expect(migration.effects.map(effect => effect.kind)).toEqual(['lost'])
+  })
+
+  it('names every item once the field holds more than one component', () => {
+    const quote: ComponentDefinition = { fields: { saying: { type: 'text' } } }
+    const after = withComponents({ card, quote }, false, ['card', 'quote'])
+    const migration = plan({ before: withComponents({ card }), after, content })
+
+    expect(migration.changeset.write[0]?.entry.cards).toEqual([
+      { component: 'card', title: 'One', count: '3' },
+      { component: 'card', title: 'Two' },
+    ])
+  })
+
+  it('keeps the items of the one component left and drops the others', () => {
+    const quote: ComponentDefinition = { fields: { saying: { type: 'text' } } }
+    const before = withComponents({ card, quote }, false, ['card', 'quote'])
+    const mixed = { page: [entry('page_1', { cards: [{ component: 'card', title: 'One' }, { component: 'quote', saying: 'Hi' }] })] }
+    const migration = plan({ before, after: withComponents({ card, quote }, false, ['card']), content: mixed })
+
+    expect(migration.changeset.write[0]?.entry.cards).toEqual([{ title: 'One' }])
+    expect(migration.effects).toMatchObject([{ kind: 'lost', before: [{ component: 'quote', saying: 'Hi' }] }])
+  })
+
+  it('moves a list onto the default locale when the field becomes translated', () => {
+    const migration = plan({ before: withComponents({ card }), after: withComponents({ card }, true), content })
+
+    expect(migration.changeset.write[0]?.entry.cards).toEqual({ en: [{ title: 'One', count: '3' }, { title: 'Two' }] })
+  })
+
+  it('reports items missing a new required field, without offering fills', () => {
+    const after = withComponents({ card: { fields: { ...card.fields, link: { type: 'text', label: 'Link' } } } })
+    const migration = plan({ before: withComponents({ card }), after, content })
+
+    expect(migration.effects).toMatchObject([{ kind: 'missing', id: 'page_1', field: 'cards.link', label: 'cards › Link' }])
+  })
+})
+
+describe('list fields', () => {
+  it('pick up text that matches one of their values when a field becomes a list', () => {
+    const before: Schema = { collections: { post: { fields: { stage: { type: 'text', optional: true } } } } }
+    const after: Schema = { collections: { post: { fields: { stage: { type: 'list', values: ['Draft', 'Final'], optional: true } } } } }
+    const migration = planMigration({ before, after, content: { post: [entry('post_1', { stage: ' draft ' }), entry('post_2', { stage: 'maybe' })] } })
+
+    expect(migration.changeset.write.map(write => write.entry.stage)).toEqual(['Draft', undefined])
+    expect(migration.effects.map(effect => effect.kind)).toEqual(['converted', 'lost'])
   })
 })

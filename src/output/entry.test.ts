@@ -1,6 +1,7 @@
 import type { Entry } from '../entries/types'
 import type { Schema } from '../schema/types'
 import { describe, expect, it } from 'vitest'
+import { componentSchema, page } from '../../test/fixtures/components'
 import { indexedFields, isLocalized, linkedComponents, linkFields, toOutputEntry } from './entry'
 
 const schema = {
@@ -81,6 +82,31 @@ describe('output entries', () => {
     expect(indexedFields(schema, 'author')).toEqual(['name'])
     expect(indexedFields(schema, 'blogPost')).toEqual(['title', 'author'])
     expect(indexedFields(schema, 'hero')).toEqual([])
+  })
+
+  describe('component values', () => {
+    it('keeps the component of mixed items in the output', () => {
+      expect(toOutputEntry(componentSchema, 'page', page({ mixed: [{ component: 'card', title: 'One', author: 'author_1', wide: false }] })).mixed).toEqual([
+        { component: 'card', title: 'One', author: { collection: 'author', id: 'author_1' }, wide: false },
+      ])
+    })
+
+    it('resolves translated item fields for the locale of the output', () => {
+      const entry = page({ notes: [{ text: { en: 'Hello', de: 'Hallo' }, link: { de: 'author_1' } }] })
+
+      expect(toOutputEntry(componentSchema, 'page', entry, 'de').notes).toEqual([{ text: 'Hallo', link: { collection: 'author', id: 'author_1' } }])
+      expect(toOutputEntry(componentSchema, 'page', entry, 'en').notes).toEqual([{ text: 'Hello' }])
+    })
+
+    it('outputs relations inside items as references, keeping the item order', () => {
+      const output = toOutputEntry(componentSchema, 'page', page({
+        cards: { de: [{ title: 'Eins', author: 'author_1', wide: false }, { title: 'Zwei', wide: true }] },
+        grid: { cards: [{ title: 'Two', author: 'author_2', wide: false }] },
+      }), 'de')
+
+      expect(output.cards).toEqual([{ title: 'Eins', author: { collection: 'author', id: 'author_1' }, wide: false }, { title: 'Zwei', wide: true }])
+      expect(output.grid).toEqual({ cards: [{ title: 'Two', author: { collection: 'author', id: 'author_2' }, wide: false }] })
+    })
   })
 })
 

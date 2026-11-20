@@ -37,16 +37,6 @@ function testFiles(): string[] {
   return ['src', 'editor', 'scripts', 'test'].flatMap(area => globSync(`${area}/**/*.test.ts`, { cwd: ROOT, exclude: ['**/node_modules/**'] }))
 }
 
-function moduleOf(file: string): string {
-  const parts = file.split('/')
-
-  return parts.length > 2 ? `${parts[0]}/${parts[1]}` : parts[0] ?? ''
-}
-
-function filesOf(module: string): string[] {
-  return module.includes('/') ? globSync(`${module}/**/*`, { cwd: ROOT }) : readdirSync(`${ROOT}${module}`).map(name => `${module}/${name}`)
-}
-
 describe('forgepress/layers', () => {
   it('lets a module import the layers below it, packages and its own files', async () => {
     expect(await lint('src/files/check.ts', `import { isEntryId } from '../entries'\nimport { parseFile } from './parse'\nimport { h } from 'vue'`)).toEqual([])
@@ -93,21 +83,10 @@ describe('forgepress/layers', () => {
     expect(folders.filter(folder => !/^[a-z\d]+(?:-[a-z\d]+)*$/.test(folder.replace(/\/$/, '').split('/').pop() ?? ''))).toEqual([])
   })
 
-  it('keeps tests next to the code they test, and only the type tests in test/', () => {
-    const tests = testFiles()
+  it('keeps every test next to the file it is named after, except the type tests in test/types', () => {
+    const stray = testFiles().filter(test => !test.startsWith('test/types/') && !readdirSync(`${ROOT}${dirname(test)}`).some(file => isCode(file) && nameOf(file) === nameOf(test)))
 
-    expect(tests.filter(test => test.startsWith('test/') && !test.startsWith('test/types/'))).toEqual([])
-    expect(tests.filter(test => !test.startsWith('test/') && !readdirSync(`${ROOT}${dirname(test)}`).some(isCode))).toEqual([])
-  })
-
-  it('keeps a test next to the file it is named after', () => {
-    const misplaced = testFiles().filter((test) => {
-      const namesakes = filesOf(moduleOf(test)).filter(file => isCode(file) && nameOf(file) === nameOf(test))
-
-      return namesakes.length > 0 && !namesakes.some(file => dirname(file) === dirname(test))
-    })
-
-    expect(misplaced).toEqual([])
+    expect(stray).toEqual([])
   })
 })
 

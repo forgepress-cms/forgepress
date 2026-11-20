@@ -2,7 +2,7 @@
 
 ForgePress runs in four places: on the site (queries and the preview), in the browser editor, in bundler plugins and in the CLI. To keep that manageable, the code is split into modules that are stacked in layers. A module may import the modules below it, never the ones above it.
 
-Two ESLint rules in [`scripts/architecture.ts`](scripts/architecture.ts) enforce what this file describes: `forgepress/layers` keeps imports pointing down the layers, and `forgepress/entries` keeps modules talking to each other only through their `index.ts`. `unicorn/filename-case` checks how files are named. [`test/scripts/architecture.test.ts`](test/scripts/architecture.test.ts) checks that the lists in `scripts/architecture.ts` match the folders that exist, that folders are named in kebab-case and that every test sits in the folder of the code it tests.
+Two ESLint rules in [`scripts/architecture.ts`](scripts/architecture.ts) enforce what this file describes: `forgepress/layers` keeps imports pointing down the layers, and `forgepress/entries` keeps modules talking to each other only through their `index.ts`. `unicorn/filename-case` checks how files are named. [`scripts/architecture.test.ts`](scripts/architecture.test.ts) checks that the lists in `scripts/architecture.ts` match the folders that exist, that folders are named in kebab-case and that every test sits next to the file it is named after.
 
 ## Modules
 
@@ -16,7 +16,7 @@ A module is a folder in `src` or `editor`, or a single file at their root, like 
 - Files are named after what they do, in kebab-case. Types that several files of a module share go in `types.ts`; the rest stay next to the code that uses them.
 - In the editor, components are PascalCase `.vue` files, composables are `useName.ts` and pages are named after their route.
 - The files the package publishes are listed in `build.config.mjs`. They are ordinary files of their module, like `plugin/nuxt.ts`. `src/index.ts` and `src/unplugin.ts` only re-export.
-- Tests sit next to the code they test: `src/output/create.ts` is tested in `src/output/create.test.ts`, and `BlockInput.vue` in `BlockInput.test.ts`. A test that covers more of a module, like `src/forge/clients/commit.test.ts`, sits in that module's folder and is named after what it covers. `test/` keeps only the tests of the published types (`test/types`), the fixtures and shared helpers like `settle.ts`.
+- Every test is named after a file and sits next to it. That's the file whose functions it calls, like `src/output/create.test.ts` for `src/output/create.ts` and `BlockInput.test.ts` for `BlockInput.vue`, or, for a test that calls none, the file whose settings it checks, like `editor/vite.config.test.ts` for the icons the editor bundles. A feature that spans several files, such as components, is tested in the test of each file it touches, in a `describe` block named after the feature. `test/` keeps only the tests of the published types (`test/types`), fixtures that several tests share and helpers like `settle.ts` and `fetch.ts`.
 - Tests may import any file. The layer rules and the size limits skip them, and so do Tailwind and the icon scan in the editor, so nothing from a test reaches the bundle.
 
 ## `src`, from the bottom up
