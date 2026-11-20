@@ -44,7 +44,6 @@ async function removeEmpty(folder: string): Promise<void> {
 }
 
 export function createWriter(root: string, paths: ContentPaths = defaultPaths, config?: ContentConfig): DiskWriter {
-  const directory = (collection: string): string => join(root, paths.collection(collectionName(collection)))
   const file = (collection: string, id: string): string => join(root, paths.entry(collectionName(collection), entryId(id)))
 
   async function place(files: readonly WrittenFile[]): Promise<void> {
@@ -68,7 +67,7 @@ export function createWriter(root: string, paths: ContentPaths = defaultPaths, c
     async writeEntry(collection, row) {
       const target = file(collection, row.id)
 
-      await mkdir(directory(collection), { recursive: true })
+      await mkdir(dirname(target), { recursive: true })
       await writeFile(target, serializeEntry(collection, row, config))
     },
 
@@ -84,6 +83,8 @@ export function createWriter(root: string, paths: ContentPaths = defaultPaths, c
 
         for (const name of (await listFiles(join(root, folder))).filter(isEntryFile))
           texts.set(`${folder}/${name}`, undefined)
+
+        texts.set(paths.entry(collection, collection), undefined)
       }
 
       for (const { collection, entry } of changeset.write)

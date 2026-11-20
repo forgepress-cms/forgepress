@@ -620,3 +620,30 @@ describe('list fields', () => {
     expect(migration.effects.map(effect => effect.kind)).toEqual(['converted', 'lost'])
   })
 })
+
+describe('single collections', () => {
+  const collection = (single: boolean): Schema => ({ collections: { menu: { single, fields: { title: { type: 'text', optional: true } } } } })
+
+  it('move the oldest entry into the file of a collection that turns single, and rewrite the rest', () => {
+    const content = { menu: [entry('menu_1', { title: 'Main' }), { ...entry('menu_2', { title: 'Footer' }), createdAt: '2026-02-01T00:00:00Z' }] }
+    const { changeset } = plan({ before: collection(false), after: collection(true), content })
+
+    expect(changeset.collections).toEqual(['menu'])
+    expect(changeset.write.map(item => [item.collection, item.entry.id])).toEqual([['menu', 'menu'], ['menu', 'menu_2']])
+  })
+
+  it('move the entry back into the folder under a new id when the collection stops being single', () => {
+    const { changeset } = plan({ before: collection(true), after: collection(false), content: { menu: [entry('menu', { title: 'Main' })] } })
+
+    expect(changeset.collections).toEqual(['menu'])
+    expect(changeset.write.map(item => [item.collection, item.entry.id])).toEqual([['menu', 'menu_new1']])
+  })
+
+  it('rename the entry along with its collection', () => {
+    const after: Schema = { collections: { nav: { single: true, fields: { title: { type: 'text', optional: true } } } } }
+    const { changeset } = plan({ before: collection(true), after, content: { menu: [entry('menu', { title: 'Main' })] }, renames: { collections: { menu: 'nav' } } })
+
+    expect(changeset.collections).toEqual(['menu'])
+    expect(changeset.write.map(item => [item.collection, item.entry.id])).toEqual([['nav', 'nav']])
+  })
+})

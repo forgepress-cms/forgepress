@@ -83,10 +83,20 @@ describe('entry files', () => {
     expect(toEntryRef('apps/site/.forgepress/content', 'apps/site/.forgepress/content/author/author-1.ts')).toEqual({ collection: 'author', id: 'author-1' })
   })
 
+  it('finds the entry of a single collection next to the folders, named after the collection', () => {
+    const paths = createPaths()
+
+    expect(paths.entry('siteSettings', 'siteSettings')).toBe('.forgepress/content/site-settings.ts')
+    expect(toEntryRef('.forgepress/content', '.forgepress/content/site-settings.ts')).toEqual({ collection: 'siteSettings', id: 'siteSettings' })
+  })
+
   it('ignores files that are not entries in a collection folder', () => {
     for (const path of [
       '.forgepress/schema.ts',
       '.forgepress/content/post_1.ts',
+      '.forgepress/content/Menu.ts',
+      '.forgepress/content/siteSettings.ts',
+      '.forgepress/content/menu/menu.ts',
       '.forgepress/content/author/notes.md',
       '.forgepress/content/author/drafts/author_1.ts',
       '.forgepress/content-archive/author/author_1.ts',

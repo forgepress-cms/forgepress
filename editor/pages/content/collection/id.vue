@@ -22,8 +22,7 @@ function back(): void {
 }
 
 const rows = await store.list(name)
-const existing = single ? rows[0]?.id : undefined
-const index = rows.findIndex(row => row.id === (id ?? existing))
+const index = rows.findIndex(row => row.id === (id ?? (single ? name : undefined)))
 
 if (id && index < 0) {
   throw new Error(`[forgepress] ${name} has no entry with the id ${id}`)

@@ -62,8 +62,8 @@ export function createFileSource(files: ContentFiles, paths: ContentPaths): Cont
 
     list: async (collection) => {
       const directory = paths.collection(collection)
-      const ids = (await files.list(directory)).map(path => path.slice(directory.length + 1)).filter(isEntryFile).map(toEntryId)
-      const rows = await Promise.all(ids.map(id => entry(collection, id)))
+      const ids = (await files.list(directory)).map(path => path.slice(directory.length + 1)).filter(isEntryFile).map(toEntryId).filter(id => id !== collection)
+      const rows = await Promise.all([collection, ...ids].map(id => entry(collection, id)))
 
       return sortByCreation(rows.filter(row => row !== undefined))
     },

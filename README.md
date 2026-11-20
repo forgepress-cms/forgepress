@@ -206,9 +206,10 @@ export default {
 
 A collection with `single: true` holds one entry, such as the settings of the site:
 
+- Its entry is the file `.forgepress/content/settings.ts`, with the id `settings`, and `query('settings').first()` reads it
 - The editor opens it as a form instead of a list
-- Its entry is named after the collection, such as `.forgepress/content/settings/settings.ts`, and `query('settings').first()` reads it
-- `forgepress check` reports a second entry
+- Fields can't reference a single collection; the site queries it directly
+- Turning `single` on moves the oldest entry into that file, and `forgepress check` reports any other entry
 
 Available fields include:
 - `text`: single- or multi-line text input

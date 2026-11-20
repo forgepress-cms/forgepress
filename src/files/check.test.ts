@@ -87,14 +87,29 @@ describe('checking content', () => {
     ])
   })
 
-  it('reports the extra entries of a single collection at their id', () => {
-    const single = { ...schema, text: schema.text.replace('    author: {\n', '    author: {\n      single: true,\n') }
+  it('reports every entry of a single collection but its one file, at the id', () => {
+    const single = {
+      path: '.forgepress/schema.ts',
+      text: `import type { Schema } from 'forgepress'
+
+export default {
+  collections: {
+    settings: {
+      single: true,
+      fields: {
+        name: { type: 'text' },
+      },
+    },
+  },
+} as const satisfies Schema
+`,
+    }
 
     expect(problems([
-      entry('author', 'author_1', [...meta('author_1'), 'name: \'Alice\',']),
-      entry('author', 'author_2', [...meta('author_2'), 'name: \'Bob\',']),
+      { ...entry('settings', 'settings', [...meta('settings'), 'name: \'Site\',']), path: '.forgepress/content/settings.ts' },
+      entry('settings', 'settings_2', [...meta('settings_2'), 'name: \'Other\',']),
     ], single)).toEqual([
-      '.forgepress/content/author/author_2.ts:4:3 Collection "author" is single and already has author/author_1; remove this entry or turn off "single"',
+      '.forgepress/content/settings/settings_2.ts:4:3 Collection "settings" is single and already has settings/settings; remove this entry or turn off "single"',
     ])
   })
 

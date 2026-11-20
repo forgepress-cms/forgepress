@@ -112,6 +112,14 @@ describe('reading content from disk', () => {
     expect(await source(fixture).entry('author', '../../schema')).toBeUndefined()
   })
 
+  it('finds the entry of a single collection next to the collection folders', async () => {
+    const settings = entry('settings', ['id: \'settings\',', 'status: \'published\',', 'createdAt: \'2024-01-01T00:00:00Z\',', 'updatedAt: \'2024-01-01T00:00:00Z\','])
+    const root = project({ '.forgepress/content/settings.ts': settings, '.forgepress/content/settings/settings.ts': settings })
+
+    expect((await source(root).list('settings')).map(row => row.id)).toEqual(['settings'])
+    expect((await source(root).entry('settings', 'settings'))?.id).toBe('settings')
+  })
+
   it('reads unpublished entries too', async () => {
     expect((await source(fixture).list('author')).map(row => row.id)).toEqual(['author-1', 'author-2'])
     expect((await source(fixture).entry('author', 'author-2'))?.name).toBe('Bob')

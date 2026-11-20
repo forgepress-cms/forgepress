@@ -9,6 +9,7 @@ import { filled, isRecord, same } from '../utils'
 import { convertField, hasTranslations, isTranslations, single } from './convert'
 import { nearest, slugify } from './fill'
 import { entryTitle, normalize, textOf, titleKey } from './lookup'
+import { singleIds } from './single'
 
 type Note = (effect: Omit<Effect, 'collection' | 'id' | 'title'>) => void
 
@@ -466,13 +467,18 @@ export function planMigration(input: MigrationInput): Migration {
     if (targets.get(target)?.source !== source)
       return
 
-    if (target !== source)
+    const ids = singleIds(rows, source, target, { before, after }, createId)
+    const moved = target !== source || ids.size > 0
+
+    if (moved)
       removed.push(source)
 
     for (const row of rows) {
       const next = migrateEntry(row, source, target, definition)
 
-      if (target !== source || !same(next, row))
+      next.id = ids.get(row.id) ?? next.id
+
+      if (moved || !same(next, row))
         write.push({ collection: target, entry: next })
     }
   }

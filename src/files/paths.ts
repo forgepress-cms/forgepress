@@ -1,5 +1,6 @@
 import type { EntryRef } from '../entries'
 import { isEntryId } from '../entries'
+import { isCollectionName } from '../schema'
 
 export const DEFAULT_CONTENT_PATH = '.forgepress'
 
@@ -39,12 +40,30 @@ export function isEntryFile(file: string): boolean {
   return ENTRY_FILE.test(file) && isEntryId(toEntryId(file))
 }
 
-export function toEntryRef(content: string, path: string): EntryRef | undefined {
-  const [directory, file, ...deeper] = path.startsWith(`${content}/`) ? path.slice(content.length + 1).split('/') : []
+function singleCollection(file: string): string | undefined {
+  const name = toEntryId(file)
+  const collection = toCollectionName(name)
 
-  return directory && file && deeper.length === 0 && isEntryFile(file)
-    ? { collection: toCollectionName(directory), id: toEntryId(file) }
-    : undefined
+  return ENTRY_FILE.test(file) && isCollectionName(collection) && toCollectionDir(collection) === name ? collection : undefined
+}
+
+export function toEntryRef(content: string, path: string): EntryRef | undefined {
+  const parts = path.startsWith(`${content}/`) ? path.slice(content.length + 1).split('/') : []
+  const [directory, file] = parts
+
+  if (parts.length === 1 && directory) {
+    const collection = singleCollection(directory)
+
+    return collection === undefined ? undefined : { collection, id: collection }
+  }
+
+  if (parts.length !== 2 || !directory || !file || !isEntryFile(file))
+    return undefined
+
+  const collection = toCollectionName(directory)
+  const id = toEntryId(file)
+
+  return id === collection ? undefined : { collection, id }
 }
 
 export function repositoryPath(path: string): string {
@@ -94,7 +113,7 @@ export function createPaths(path?: string): ContentPaths {
     schema: `${dir}/schema.ts`,
     types: `${dir}/forgepress.d.ts`,
     collection,
-    entry: (name, id) => `${collection(name)}/${toEntryFile(id)}`,
+    entry: (name, id) => id === name ? `${collection(name)}.ts` : `${collection(name)}/${toEntryFile(id)}`,
   }
 }
 

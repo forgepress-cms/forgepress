@@ -64,6 +64,19 @@ describe('node writer', () => {
     expect(readdirSync(root)).toEqual(['.forgepress'])
   })
 
+  it('writes the entry of a single collection next to the folders and removes it with the collection', async () => {
+    const { root, writer } = project()
+
+    await writer.writeEntry('settings', row('settings'))
+
+    expect(readdirSync(join(root, defaultPaths.content))).toEqual(['settings.ts'])
+
+    const files = await writer.apply(change({ collections: ['settings'] }))
+
+    expect(files).toEqual(['.forgepress/content/settings.ts', '.forgepress/schema.ts'])
+    expect(existsSync(join(root, defaultPaths.entry('settings', 'settings')))).toBe(false)
+  })
+
   it('applies a schema change with its content and says what it wrote', async () => {
     const { root, writer } = project()
 

@@ -18,6 +18,7 @@ type Report = (path: ValuePath, message: string) => void
 interface Context {
   report: Report
   collections: ReadonlySet<string>
+  singles: ReadonlySet<string>
   components: ReadonlySet<string>
   locales: readonly unknown[]
   nested: boolean
@@ -127,6 +128,8 @@ function checkReferences(context: Context, path: ValuePath, label: string, targe
 
     if (!known.has(target))
       context.report(at, `Field ${quote(label)} references unknown ${noun} ${quote(target)}`)
+    else if (group === 'collections' && context.singles.has(target))
+      context.report(at, `Field ${quote(label)} references the single collection ${quote(target)}; query it directly instead`)
     else if (targets.indexOf(target) < index)
       context.report(at, `Field ${quote(label)} lists ${noun} ${quote(target)} twice`)
   })
@@ -377,7 +380,8 @@ export function validateSchema(schema: unknown): ValueIssue[] {
     report(['components'], '"components" has to be an object')
 
   const found = isRecord(components) ? components : {}
-  const context: Context = { report, collections: new Set(Object.keys(schema.collections)), components: new Set(Object.keys(found)), locales, nested: false, translating: translatingComponents(found) }
+  const singles = new Set(Object.entries(schema.collections).filter(([, collection]) => isRecord(collection) && collection.single === true).map(([name]) => name))
+  const context: Context = { report, collections: new Set(Object.keys(schema.collections)), singles, components: new Set(Object.keys(found)), locales, nested: false, translating: translatingComponents(found) }
 
   for (const [name, component] of Object.entries(found))
     checkGroup({ ...context, nested: true }, 'components', name, component)

@@ -408,5 +408,15 @@ describe('validateSchema', () => {
         { path: ['components', 'card', 'single'], message: 'Component "card" has no option "single"' },
       ])
     })
+
+    it('can\'t be referenced, since the site queries them directly', () => {
+      expect(issues({
+        components: { card: { fields: { link: { type: 'collection', collections: ['settings'] } } } },
+        collections: { settings: { single: true, fields: {} }, post: { fields: { settings: { type: 'collection', collections: ['post', 'settings'] } } } },
+      })).toEqual([
+        { path: ['components', 'card', 'fields', 'link', 'collections', 0], message: 'Field "card.link" references the single collection "settings"; query it directly instead' },
+        { path: ['collections', 'post', 'fields', 'settings', 'collections', 1], message: 'Field "post.settings" references the single collection "settings"; query it directly instead' },
+      ])
+    })
   })
 })
