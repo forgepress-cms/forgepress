@@ -80,7 +80,7 @@ export default defineConfig({
       icon: {
         clientBundle: {
           icons: Object.values(ICONS),
-          scan: { globInclude: ['**/*.{vue,ts}'] },
+          scan: { globInclude: ['**/*.{vue,ts}'], globExclude: ['node_modules', '**/*.test.ts'] },
         },
       },
       ui: {

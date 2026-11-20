@@ -16,7 +16,8 @@ A module is a folder in `src` or `editor`, or a single file at their root, like 
 - Files are named after what they do, in kebab-case. Types that several files of a module share go in `types.ts`; the rest stay next to the code that uses them.
 - In the editor, components are PascalCase `.vue` files, composables are `useName.ts` and pages are named after their route.
 - The files the package publishes are listed in `build.config.mjs`. They are ordinary files of their module, like `plugin/nuxt.ts`. `src/index.ts` and `src/unplugin.ts` only re-export.
-- Tests sit in `test/`, in the folder of the code they test: `src/output/create.ts` is tested in `test/output/create.test.ts`. A test that covers more of a module, like `test/forge/commit.test.ts`, sits in that module's folder, and the tests of the published types sit in `test/types`. Tests may import any file.
+- Tests sit next to the code they test: `src/output/create.ts` is tested in `src/output/create.test.ts`, and `BlockInput.vue` in `BlockInput.test.ts`. A test that covers more of a module, like `src/forge/clients/commit.test.ts`, sits in that module's folder and is named after what it covers. `test/` keeps only the tests of the published types (`test/types`), the fixtures and shared helpers like `settle.ts`.
+- Tests may import any file. The layer rules and the size limits skip them, and so do Tailwind and the icon scan in the editor, so nothing from a test reaches the bundle.
 
 ## `src`, from the bottom up
 
@@ -43,7 +44,7 @@ A module is a folder in `src` or `editor`, or a single file at their root, like 
 
 **Project**
 
-10. `forge`: git forges, for reading, committing, build checks and signing in
+10. `forge`: git forges, for reading, committing, build checks and signing in, with the GitHub, GitLab and Forgejo clients in `forge/clients`
 11. `config`: `forgepress.config` and how it resolves
 
 **Editing**

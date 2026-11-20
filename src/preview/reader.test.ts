@@ -1,0 +1,242 @@
+// @vitest-environment happy-dom
+import type { Changes } from '../changes/types'
+import type { Entry } from '../entries/types'
+import type { ForgeFile, TokenGetter } from '../forge/types'
+import type { OutputIndex, OutputManifest } from '../output/types'
+import type { Schema } from '../schema/types'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defaultPaths } from '../files/paths'
+import { serializeEntry, serializeSchema } from '../files/serialize'
+
+const schema: Schema = {
+  collections: {
+    author: { fields: { name: { type: 'text' }, portrait: { type: 'image', optional: true } } },
+  },
+}
+
+const stored = new Map<string, unknown>()
+const blobs = new Map<string, string>()
+const commits = new Map<string, Map<string, string>>()
+const heads: string[] = []
+
+let head = 'c1'
+let tokens: TokenGetter | undefined
+
+vi.doMock('../store/persist', () => ({
+  TOKEN_KEY: 'token',
+  CHANGES_KEY: 'changes',
+  persist: (key: string) => ({
+    read: async () => stored.get(key),
+    write: async (value: unknown) => void stored.set(key, value),
+    clear: async () => void stored.delete(key),
+  }),
+  repositoryCache: () => undefined,
+}))
+
+vi.doMock('../forge/create', () => ({
+  createForge: (_config: unknown, token: TokenGetter) => {
+    tokens = token
+
+    return {
+      head: async () => {
+        await token()
+        heads.push(head)
+
+        return head
+      },
+      files: async (commit: string, directory: string): Promise<ForgeFile[]> => [...commits.get(commit) ?? []]
+        .filter(([path]) => path.startsWith(`${directory}/`))
+        .map(([path, text]) => {
+          blobs.set(`${commit}:${path}`, text)
+
+          return { path, sha: `${commit}:${path}` }
+        }),
+      read: async (sha: string) => blobs.get(sha)!,
+    }
+  },
+}))
+
+const { createPreviewReader } = await import('./reader')
+
+function author(id: string, name: string, status: Entry['status'], extra: Record<string, unknown> = {}): Entry {
+  return { id, status, createdAt: `2024-01-0${id.slice(-1)}T00:00:00Z`, updatedAt: '2024-01-01T00:00:00Z', name, ...extra }
+}
+
+function commit(name: string, authors: Entry[]): void {
+  commits.set(name, new Map([
+    [defaultPaths.schema, serializeSchema(schema)],
+    ...authors.map(entry => [defaultPaths.entry('author', entry.id), serializeEntry('author', entry)] as const),
+  ]))
+}
+
+function reader() {
+  return createPreviewReader({ provider: { type: 'forgejo', repository: { owner: 'fred', name: 'site' } }, contentPath: '.forgepress', mediaUrl: '/uploads' })
+}
+
+async function authors(files: ReadonlyMap<string, string>): Promise<Record<string, unknown>[]> {
+  const index = JSON.parse(files.get('index.json')!) as OutputIndex
+  const manifest = JSON.parse(files.get((index.collections.author as { manifest: string }).manifest)!) as OutputManifest
+
+  return manifest.entries.map(entry => JSON.parse(files.get(manifest.files[entry.id]!)!) as Record<string, unknown>)
+}
+
+beforeEach(() => {
+  stored.clear()
+  commits.clear()
+  heads.length = 0
+  head = 'c1'
+  stored.set('token', 'secret')
+  commit('c1', [author('author_1', 'Alice', 'published'), author('author_2', 'Bob', 'unpublished')])
+})
+
+describe('preview reader', () => {
+  it('builds the content output from the repository, unpublished entries included', async () => {
+    const files = await reader().build()
+
+    expect((await authors(files)).map(entry => entry.name)).toEqual(['Alice', 'Bob'])
+    expect(JSON.parse(files.get('index.json')!)).toMatchObject({ commit: null, locales: [] })
+    expect(await tokens!()).toBe('secret')
+  })
+
+  it('applies the pending changes of this browser', async () => {
+    stored.set('changes', {
+      entries: {
+        author: {
+          author_1: author('author_1', 'Alice Smith', 'published'),
+          author_2: null,
+          author_3: author('author_3', 'Carol', 'unpublished'),
+        },
+      },
+      uploads: {},
+      removed: [],
+    } satisfies Changes)
+
+    expect((await authors(await reader().build())).map(entry => entry.name)).toEqual(['Alice Smith', 'Carol'])
+  })
+
+  it('shows uploads that aren\'t deployed yet from the browser', async () => {
+    let created = 0
+
+    URL.createObjectURL = () => `blob:preview/${created += 1}`
+    URL.revokeObjectURL = () => {}
+
+    const upload = (name: string) => ({ name, type: 'image/png', size: 3, modifiedAt: '2024-01-01T00:00:00Z', data: new Uint8Array([1, 2, 3]).buffer })
+
+    commit('c1', [
+      author('author_1', 'Alice', 'published', { portrait: { url: '/uploads/alice.1a2b3c4d.png' } }),
+      author('author_2', 'Bob', 'unpublished', { portrait: { url: '/uploads/bob.5e6f7a8b.png' } }),
+    ])
+
+    stored.set('changes', {
+      entries: {},
+      uploads: { 'alice.1a2b3c4d.png': upload('alice.1a2b3c4d.png') },
+      removed: [],
+      publishedMedia: { 'bob.5e6f7a8b.png': upload('bob.5e6f7a8b.png') },
+    } satisfies Changes)
+
+    const preview = reader()
+    const files = await preview.build()
+
+    expect((await authors(files)).map(entry => entry.portrait)).toEqual([{ url: 'blob:preview/1' }, { url: 'blob:preview/2' }])
+
+    await preview.build()
+
+    expect(created).toBe(2)
+  })
+
+  it('leaves out uploads that were deleted in the editor before the site served them', async () => {
+    let created = 0
+
+    URL.createObjectURL = () => `blob:preview/${created += 1}`
+    URL.revokeObjectURL = () => {}
+
+    const upload = { name: 'bob.5e6f7a8b.png', type: 'image/png', size: 3, modifiedAt: '2024-01-01T00:00:00Z', data: new Uint8Array([1, 2, 3]).buffer }
+
+    commit('c1', [author('author_2', 'Bob', 'unpublished', { portrait: { url: '/uploads/bob.5e6f7a8b.png' } })])
+
+    stored.set('changes', {
+      entries: {},
+      uploads: {},
+      removed: ['bob.5e6f7a8b.png'],
+      publishedMedia: { 'bob.5e6f7a8b.png': upload },
+    } satisfies Changes)
+
+    expect((await authors(await reader().build())).map(entry => entry.portrait)).toEqual([{ url: '/uploads/bob.5e6f7a8b.png' }])
+    expect(created).toBe(0)
+  })
+
+  it('reads the head of the branch again for every build', async () => {
+    const preview = reader()
+
+    await preview.build()
+
+    head = 'c2'
+    commit('c2', [author('author_1', 'Alice', 'published')])
+
+    expect((await authors(await preview.build())).map(entry => entry.name)).toEqual(['Alice'])
+    expect(heads).toEqual(['c1', 'c2'])
+  })
+
+  it('asks to sign in again when the editor has no token', async () => {
+    stored.delete('token')
+
+    await expect(reader().build()).rejects.toThrow('sign in to the editor to preview unpublished content')
+  })
+})
+
+describe('preview reader with a draft', () => {
+  it('shows the editor\'s unsaved draft over the saved changes', async () => {
+    stored.set('changes', {
+      entries: { author: { author_1: author('author_1', 'Alice Smith', 'published') } },
+      uploads: {},
+      removed: [],
+    } satisfies Changes)
+
+    const files = await reader().build([
+      { collection: 'author', entry: author('author_1', 'Alice Jones', 'published') },
+      { collection: 'author', entry: author('author_3', 'Carol', 'unpublished') },
+    ])
+
+    expect((await authors(files)).map(entry => entry.name)).toEqual(['Alice Jones', 'Bob', 'Carol'])
+  })
+
+  it('keeps the branch it read while only the draft changes', async () => {
+    const preview = reader()
+
+    await preview.build([], true)
+
+    head = 'c2'
+    commit('c2', [author('author_1', 'Alice', 'published')])
+
+    const typed = await preview.build([{ collection: 'author', entry: author('author_2', 'Bobby', 'unpublished') }], false)
+
+    expect((await authors(typed)).map(entry => entry.name)).toEqual(['Alice', 'Bobby'])
+    expect(heads).toEqual(['c1'])
+  })
+
+  it('builds from the dev server when the editor works on local files', async () => {
+    const requests: string[] = []
+
+    vi.stubGlobal('fetch', async (url: string) => {
+      requests.push(url)
+
+      if (url === 'http://localhost:4390/__forgepress/schema')
+        return Response.json(schema)
+
+      if (url === 'http://localhost:4390/__forgepress/content/author')
+        return Response.json([author('author_1', 'Alice', 'published')])
+
+      return new Response('missing', { status: 404 })
+    })
+
+    const files = await createPreviewReader({ server: 'http://localhost:4390' }).build([
+      { collection: 'author', entry: author('author_2', 'Dora', 'unpublished') },
+    ])
+
+    expect((await authors(files)).map(entry => entry.name)).toEqual(['Alice', 'Dora'])
+    expect(requests).toContain('http://localhost:4390/__forgepress/schema')
+    expect(heads).toEqual([])
+
+    vi.unstubAllGlobals()
+  })
+})

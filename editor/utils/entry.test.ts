@@ -1,0 +1,237 @@
+import type { Field } from '../../src/schema'
+import type { FormField } from './schema'
+import { describe, expect, it } from 'vitest'
+import { entryLabel, fieldLocale, fromItem, fromValues, itemValues, missingFields, newEntry, SINGLE, statusLabel, titleField, toLocalizedFields, toRow, toValues, withPublished } from './entry'
+import { toFields } from './schema'
+
+const locales = ['en', 'de']
+
+function field(key: string, translated: boolean, extra: Partial<FormField> = {}): FormField {
+  const type = extra.type ?? 'text'
+
+  return {
+    key,
+    label: key,
+    description: '',
+    type,
+    typeLabel: type,
+    icon: 'i-hugeicons-text',
+    config: { type } as Field,
+    translated,
+    optional: false,
+    ...extra,
+  }
+}
+
+const name = field('name', false)
+const title = field('title', true)
+
+describe('fieldLocale', () => {
+  it('keeps untranslated fields on the single bucket', () => {
+    expect(fieldLocale(name, locales)).toBe(SINGLE)
+  })
+
+  it('starts translated fields on the first locale', () => {
+    expect(fieldLocale(title, locales)).toBe('en')
+  })
+})
+
+describe('entry values', () => {
+  const row = { id: 'author-1', status: 'unpublished' as const, createdAt: '', updatedAt: '', name: 'Jane', title: { en: 'Hello' } }
+
+  it('reads a value under the bucket its input binds to', () => {
+    const values = toValues([name, title], row, locales)
+
+    expect(values.name![fieldLocale(name, locales)]).toBe('Jane')
+    expect(values.title![fieldLocale(title, locales)]).toBe('Hello')
+  })
+
+  it('writes back what was edited', () => {
+    const values = toValues([name, title], row, locales)
+
+    values.name![fieldLocale(name, locales)] = 'John'
+    values.title![fieldLocale(title, locales)] = 'Hi'
+
+    expect(fromValues(name, values)).toBe('John')
+    expect(fromValues(title, values)).toEqual({ en: 'Hi' })
+  })
+
+  it('drops fields left empty', () => {
+    const values = toValues([name], { ...row, name: '' }, locales)
+
+    expect(fromValues(name, values)).toBeUndefined()
+  })
+})
+
+describe('toRow', () => {
+  it('writes the edited values onto the entry and drops fields left empty', () => {
+    const row = { id: 'author-1', status: 'unpublished' as const, createdAt: '', updatedAt: '', name: 'Jane', title: { en: 'Hello' }, note: 'kept' }
+    const values = toValues([name, title], row, locales)
+
+    values.name![SINGLE] = ''
+    values.title!.de = 'Hallo'
+
+    expect(toRow([name, title], values, row)).toEqual({
+      id: 'author-1',
+      status: 'unpublished',
+      createdAt: '',
+      updatedAt: '',
+      title: { en: 'Hello', de: 'Hallo' },
+      note: 'kept',
+    })
+    expect(row.name).toBe('Jane')
+  })
+})
+
+describe('toLocalizedFields', () => {
+  it('opens translated fields on the first locale', () => {
+    const fields = toLocalizedFields({ fields: { name: { type: 'text' }, title: { type: 'text', translate: true } } }, locales)
+
+    expect(fields.map(field => [field.key, field.locale])).toEqual([['name', SINGLE], ['title', 'en']])
+  })
+})
+
+describe('statusLabel', () => {
+  it('reads a status the way the status picker shows it', () => {
+    expect(statusLabel('published')).toBe('Published')
+    expect(statusLabel('archived')).toBe('archived')
+  })
+})
+
+describe('missingFields', () => {
+  const row = { id: 'author-1', status: 'unpublished' as const, createdAt: '', updatedAt: '' }
+
+  it('reports a required field left empty', () => {
+    const values = toValues([name], row, locales)
+
+    expect(missingFields([name], values).map(field => field.key)).toEqual(['name'])
+  })
+
+  it('accepts a required field once filled', () => {
+    const values = toValues([name], { ...row, name: 'Jane' }, locales)
+
+    expect(missingFields([name], values)).toEqual([])
+  })
+
+  it('wants every locale of a required translated field', () => {
+    const values = toValues([title], { ...row, title: { en: 'Hello' } }, locales)
+
+    expect(missingFields([title], values).map(field => field.key)).toEqual(['title'])
+
+    values.title!.de = 'Hallo'
+
+    expect(missingFields([title], values)).toEqual([])
+  })
+
+  it('ignores optional fields', () => {
+    const optional = field('note', false, { optional: true })
+    const values = toValues([optional], row, locales)
+
+    expect(missingFields([optional], values)).toEqual([])
+  })
+
+  it('wants a required media field to hold an asset', () => {
+    const portrait = field('portrait', false, { type: 'image', config: { type: 'image' } as Field })
+
+    expect(missingFields([portrait], toValues([portrait], row, locales)).map(field => field.key)).toEqual(['portrait'])
+    expect(missingFields([portrait], toValues([portrait], { ...row, portrait: { url: 'a.png' } }, locales))).toEqual([])
+  })
+})
+
+describe('newEntry', () => {
+  it('identifies an entry without knowing the others', () => {
+    const entry = newEntry('author')
+
+    expect(entry.id).toMatch(/^author_[0-9a-f]{12}$/)
+    expect(entry.status).toBe('unpublished')
+    expect(newEntry('author').id).not.toBe(entry.id)
+  })
+})
+
+describe('titleField', () => {
+  const rich = field('content', true, { type: 'richtext' })
+
+  it('names an entry by its first text field', () => {
+    expect(titleField([rich, name])?.key).toBe('name')
+  })
+
+  it('falls back to richtext when there is no plain text field', () => {
+    expect(titleField([rich])?.key).toBe('content')
+  })
+
+  it('has no name to use when there is no text field', () => {
+    expect(titleField([field('portrait', false, { type: 'image' })])).toBeUndefined()
+  })
+})
+
+describe('entryLabel', () => {
+  const row = { id: 'author_abc', status: 'unpublished' as const, createdAt: '', updatedAt: '' }
+
+  it('reads the first meaningful line of a body', () => {
+    const rich = field('content', false, { type: 'richtext' })
+
+    expect(entryLabel({ ...row, content: '# Jane\'s Post\n\nThe body.' }, rich)).toBe('Jane\'s Post')
+  })
+
+  it('reads through markdown syntax', () => {
+    const rich = field('content', false, { type: 'richtext' })
+
+    expect(entryLabel({ ...row, content: '## **Jane** on *design*' }, rich)).toBe('Jane on design')
+  })
+
+  it('shortens a long line', () => {
+    const rich = field('content', false, { type: 'richtext' })
+
+    expect(entryLabel({ ...row, content: 'a'.repeat(200) }, rich)).toBe(`${'a'.repeat(80)}…`)
+  })
+
+  it('falls back to the id when there is nothing to show', () => {
+    expect(entryLabel(row, name)).toBe('author_abc')
+    expect(entryLabel(row, undefined)).toBe('author_abc')
+  })
+})
+
+describe('withPublished', () => {
+  it('publishes the linked entries, whether they are saved anyway or not', () => {
+    const meta = { createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' }
+    const block = { id: 'hero_1', status: 'unpublished' as const, ...meta, title: 'Edited' }
+    const page = { id: 'page_1', status: 'published' as const, ...meta }
+    const author = { id: 'author_1', status: 'unpublished' as const, ...meta, name: 'Alice' }
+
+    expect(withPublished(
+      [{ collection: 'hero', entry: block }, { collection: 'page', entry: page }],
+      [{ collection: 'author', entry: author }, { collection: 'hero', entry: block }],
+      '2024-06-01T00:00:00Z',
+    )).toEqual([
+      { collection: 'author', entry: { ...author, status: 'published', updatedAt: '2024-06-01T00:00:00Z' } },
+      { collection: 'hero', entry: { ...block, status: 'published', updatedAt: '2024-06-01T00:00:00Z' } },
+      { collection: 'page', entry: page },
+    ])
+    expect(author.status).toBe('unpublished')
+  })
+})
+
+describe('component items', () => {
+  const components = {
+    card: { label: 'Card', fields: { title: { type: 'text' }, wide: { type: 'boolean', default: true } } },
+  } as const
+  const [cards] = toFields({ fields: { cards: { type: 'component', components: ['card'], multiple: true, optional: true } } }, [], components)
+
+  it('resolve the fields of their component', () => {
+    expect(cards!.components).toMatchObject([{ name: 'card', label: 'Card' }])
+    expect(cards!.components![0]!.fields.map(item => item.key)).toEqual(['title', 'wide'])
+  })
+
+  it('turn items into form values and back, keeping defaults', () => {
+    const fields = cards!.components![0]!.fields
+
+    expect(fromItem(fields, itemValues(fields, { title: 'One' }))).toEqual({ title: 'One', wide: true })
+    expect(fromItem(fields, itemValues(fields, {}))).toEqual({ wide: true })
+  })
+
+  it('count a field as missing while one of its items misses a required value', () => {
+    expect(missingFields([cards!], { cards: { [SINGLE]: [{ title: 'One', wide: true }] } })).toEqual([])
+    expect(missingFields([cards!], { cards: { [SINGLE]: [] } })).toEqual([])
+    expect(missingFields([cards!], { cards: { [SINGLE]: [{ title: 'One' }, { wide: false }] } })).toEqual([cards])
+  })
+})

@@ -15,7 +15,7 @@ export default antfu({
   plugins: { forgepress: architecture },
 }, {
   files: ['src/**/*.ts', 'editor/**/*.ts', 'editor/**/*.vue'],
-  ignores: ['**/*.d.ts'],
+  ignores: ['**/*.d.ts', '**/*.test.ts'],
   rules: {
     'forgepress/layers': 'error',
     'forgepress/entries': 'error',
@@ -49,14 +49,14 @@ export default antfu({
   },
 }, {
   files: ['src/**/*.ts', 'editor/**/*.ts', 'editor/**/*.vue', 'scripts/**/*.ts'],
-  ignores: ['**/*.d.ts'],
+  ignores: ['**/*.d.ts', '**/*.test.ts'],
   rules: {
     'complexity': ['error', 20],
     'max-lines': ['error', { max: 400, skipBlankLines: true }],
   },
 }, {
   files: ['src/**/*.ts', 'editor/**/*.ts', 'editor/pages/**/*.vue', 'scripts/**/*.ts'],
-  ignores: ['**/*.d.ts', 'editor/composables/**/use*.ts'],
+  ignores: ['**/*.d.ts', 'editor/composables/**/use*.ts', 'editor/components/**/[A-Z]*.test.ts'],
   rules: {
     'unicorn/filename-case': ['error', { case: 'kebabCase' }],
   },
@@ -66,7 +66,7 @@ export default antfu({
     'unicorn/filename-case': ['error', { case: 'camelCase', checkDirectories: false }],
   },
 }, {
-  files: ['editor/App.vue', 'editor/components/**/*.vue'],
+  files: ['editor/App.vue', 'editor/components/**/*.vue', 'editor/components/**/[A-Z]*.test.ts'],
   rules: {
     'unicorn/filename-case': ['error', { case: 'pascalCase', checkDirectories: false }],
   },

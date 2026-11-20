@@ -1,7 +1,7 @@
 import type { Forge, ProviderConfig, TokenGetter } from './types'
-import { createForgejoForge } from './forgejo'
-import { createGitHubForge } from './github'
-import { createGitLabForge } from './gitlab'
+import { createForgejoForge } from './clients/forgejo'
+import { createGitHubForge } from './clients/github'
+import { createGitLabForge } from './clients/gitlab'
 
 export function createForge(config: ProviderConfig, token: TokenGetter): Forge {
   if (config.type === 'gitlab')

@@ -152,7 +152,10 @@ const rebuild = debounce(async () => {
 }, 100)
 
 const [editor] = await Promise.all([watchEditor(), buildLibrary()])
-const sources = watch(join(ROOT, 'src'), { recursive: true }, () => void rebuild())
+const sources = watch(join(ROOT, 'src'), { recursive: true }, (_event, file) => {
+  if (!file?.endsWith('.test.ts'))
+    void rebuild()
+})
 
 async function shutdown(code = 0) {
   restarting = true
