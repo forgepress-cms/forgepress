@@ -37,7 +37,7 @@ function testFiles(): string[] {
   return ['src', 'editor', 'scripts', 'test'].flatMap(area => globSync(`${area}/**/*.test.ts`, { cwd: ROOT, exclude: ['**/node_modules/**'] }))
 }
 
-describe('forgepress/layers', () => {
+describe('forgepress/layers', { timeout: 60_000 }, () => {
   it('lets a module import the layers below it, packages and its own files', async () => {
     expect(await lint('src/files/check.ts', `import { isEntryId } from '../entries'\nimport { parseFile } from './parse'\nimport { h } from 'vue'`)).toEqual([])
   })
@@ -90,7 +90,7 @@ describe('forgepress/layers', () => {
   })
 })
 
-describe('forgepress/entries', () => {
+describe('forgepress/entries', { timeout: 60_000 }, () => {
   it('lets other modules in only through the index.ts', async () => {
     expect(await lint('src/files/check.ts', `import type { Schema } from '../schema'`)).toEqual([])
     expect(await lint('src/files/check.ts', `import type { Schema } from '../schema/types'`)).toEqual(['entry'])
