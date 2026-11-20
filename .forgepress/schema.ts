@@ -480,6 +480,7 @@ export default {
     menu: {
       label: 'Menu',
       description: 'An ordered set of pages, such as the header, the footer or the documentation sidebar',
+      preview: '/',
       single: true,
       fields: {
         name: {
@@ -501,7 +502,7 @@ export default {
     page: {
       label: 'Page',
       description: 'Every page of the site, from the home page to a page of the documentation',
-      preview: '{slug}?locale={locale}',
+      preview: '{slug}',
       fields: {
         title: {
           type: 'text',

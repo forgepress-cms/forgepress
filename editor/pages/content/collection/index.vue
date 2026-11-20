@@ -6,7 +6,7 @@ import UBadge from '@nuxt/ui/components/Badge.vue'
 import { computed, h, ref } from 'vue'
 
 import { actionsColumn, clamp, ConfirmDialog, DataTable, ErrorAlert, fieldCell, PageHeader, selectionColumn } from '../../../components'
-import { useCollection, useColumnVisibility, useContent, useEntries, useIssues, useParam, usePreviewContext, useRouter, useSave } from '../../../composables'
+import { useCollection, useColumnVisibility, useContent, useEntries, useIssues, useParam, useRouter, useSave } from '../../../composables'
 import { entryLabel, localized, statusColor, statusLabel, titleField } from '../../../utils'
 
 const { navigate, href } = useRouter()
@@ -15,9 +15,7 @@ const { store } = useContent()
 
 const name = useParam('collection')
 
-const { schema, collection, chosen, fields } = await useCollection(name)
-
-usePreviewContext({ schema, collection: name })
+const { collection, chosen, fields } = await useCollection(name)
 
 const rows = ref(await store.list(name))
 const locale = chosen

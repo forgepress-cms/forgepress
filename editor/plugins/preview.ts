@@ -202,6 +202,11 @@ export function createPreviewPane(server: () => Promise<PreviewServer>): Preview
     overlay.value = false
   })
 
+  watch(available, (value) => {
+    if (!value)
+      overlay.value = false
+  })
+
   watch(resizing, (active) => {
     if (!active)
       persistRatio()

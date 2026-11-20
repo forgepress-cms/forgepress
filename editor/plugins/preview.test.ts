@@ -169,6 +169,39 @@ describe('createPreviewPane', () => {
     expect(localStorage.getItem('forgepress:editor:preview')).toBeNull()
   })
 
+  it('closes the slide-over once the page has no preview, and keeps the docked pane for the next entry', async () => {
+    wide = false
+
+    const small = pane()
+    const hide = small.show(page)
+
+    small.toggle()
+    await nextTick()
+    hide()
+    await nextTick()
+    small.show(page)
+    await nextTick()
+
+    expect(small.open.value).toBe(false)
+
+    wide = true
+
+    const large = pane()
+    const leave = large.show(page)
+
+    large.toggle()
+    await nextTick()
+    leave()
+    await nextTick()
+
+    expect(large.open.value).toBe(false)
+
+    large.show(page)
+    await nextTick()
+
+    expect(large.open.value).toBe(true)
+  })
+
   it('remembers the width once it was set', () => {
     const created = pane()
 
