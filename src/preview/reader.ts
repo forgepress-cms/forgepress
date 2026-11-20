@@ -1,12 +1,14 @@
 import type { Changes } from '../changes/types'
-import type { ContentEntries } from '../entries/references'
+import type { CollectionEntry, ContentEntries } from '../entries/references'
 import type { Entry } from '../entries/types'
 import type { OAuthTokens } from '../forge/types'
-import type { PreviewSettings } from './state'
-import { readChanges } from '../changes'
+import type { ContentStore } from '../store/types'
+import type { PreviewSettings, PreviewSource } from './state'
+import { emptyChanges, readChanges } from '../changes'
 import { createContentChanges } from '../changes/content'
 import { localUploads } from '../changes/media'
 import { createPreviews } from '../changes/previews'
+import { createEndpoint } from '../endpoint/client'
 import { createPaths, repositoryPaths } from '../files/paths'
 import { createForge } from '../forge'
 import { createTokenGetter, storedTokens } from '../forge/oauth'
@@ -18,7 +20,7 @@ import { isRecord } from '../utils/value'
 export type PreviewFiles = ReadonlyMap<string, string>
 
 export interface PreviewReader {
-  build: () => Promise<PreviewFiles>
+  build: (draft?: readonly CollectionEntry[], fresh?: boolean) => Promise<PreviewFiles>
 }
 
 function swap(value: unknown, urls: ReadonlyMap<string, string>): unknown {
@@ -34,7 +36,49 @@ function swap(value: unknown, urls: ReadonlyMap<string, string>): unknown {
   return value
 }
 
-export function createPreviewReader(settings: PreviewSettings): PreviewReader {
+export function withDraft(changes: Changes, draft: readonly CollectionEntry[]): Changes {
+  if (draft.length === 0)
+    return changes
+
+  const entries = { ...changes.entries }
+
+  for (const { collection, entry } of draft)
+    entries[collection] = { ...entries[collection], [entry.id]: entry }
+
+  return { ...changes, entries }
+}
+
+async function refuse(): Promise<void> {
+  throw new Error('[forgepress] the preview only reads content')
+}
+
+async function render(content: ContentStore, urls: ReadonlyMap<string, string>): Promise<PreviewFiles> {
+  const schema = await content.schema()
+  const listed = await Promise.all(Object.keys(schema.collections).map(async collection => [collection, await content.list(collection)] as const))
+
+  const entries: ContentEntries = Object.fromEntries(listed.map(([collection, rows]) => [
+    collection,
+    Object.fromEntries(rows.map(row => [row.id, urls.size > 0 ? swap(row, urls) as Entry : row])),
+  ]))
+
+  const files = await createOutput(schema, entries, { commit: null, unpublished: true })
+
+  return new Map(files.map(file => [file.path, file.text]))
+}
+
+function createLocalReader(server: string): PreviewReader {
+  const { reader } = createEndpoint(server)
+
+  return {
+    build: async (draft = []) => {
+      const changes = withDraft(emptyChanges(), draft)
+
+      return render(createContentChanges(reader, async () => changes, refuse), new Map())
+    },
+  }
+}
+
+function createForgeReader(settings: PreviewSettings): PreviewReader {
   const tokens = persist<OAuthTokens | string>(TOKEN_KEY)
   const pending = persist<Changes>(CHANGES_KEY)
   const previews = createPreviews()
@@ -79,27 +123,19 @@ export function createPreviewReader(settings: PreviewSettings): PreviewReader {
   }
 
   return {
-    build: async () => {
-      token = undefined
-      source.reset()
+    build: async (draft = [], fresh = true) => {
+      if (fresh) {
+        token = undefined
+        source.reset()
+      }
 
-      const changes = await readChanges(pending)
-      const content = createContentChanges(source, async () => changes, async () => {
-        throw new Error('[forgepress] the preview only reads content')
-      })
+      const changes = withDraft(await readChanges(pending), draft)
 
-      const schema = await content.schema()
-      const urls = local(changes)
-      const listed = await Promise.all(Object.keys(schema.collections).map(async collection => [collection, await content.list(collection)] as const))
-
-      const entries: ContentEntries = Object.fromEntries(listed.map(([collection, rows]) => [
-        collection,
-        Object.fromEntries(rows.map(row => [row.id, urls.size > 0 ? swap(row, urls) as Entry : row])),
-      ]))
-
-      const files = await createOutput(schema, entries, { commit: null, unpublished: true })
-
-      return new Map(files.map(file => [file.path, file.text]))
+      return render(createContentChanges(source, async () => changes, refuse), local(changes))
     },
   }
+}
+
+export function createPreviewReader(source: PreviewSource): PreviewReader {
+  return 'server' in source ? createLocalReader(source.server) : createForgeReader(source)
 }

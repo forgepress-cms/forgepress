@@ -11,11 +11,13 @@ const settings: PreviewSettings = {
 
 let builds = 0
 let failure: Error | undefined
+const calls: { draft: unknown, fresh: unknown }[] = []
 
 vi.doMock('../../src/preview/reader', () => ({
   createPreviewReader: () => ({
-    build: async () => {
+    build: async (draft: unknown = [], fresh: unknown = true) => {
       builds += 1
+      calls.push({ draft, fresh })
 
       if (failure)
         throw failure
@@ -53,6 +55,7 @@ beforeEach(() => {
   document.body.replaceChildren()
   builds = 0
   failure = undefined
+  calls.length = 0
 })
 
 afterEach(() => {
@@ -176,5 +179,52 @@ describe('enablePreview', () => {
 
     expect(badge()).toBeUndefined()
     expect(preview.previewing()).toBe(true)
+  })
+})
+
+describe('enablePreview in the editor\'s frame', () => {
+  const original = Object.getOwnPropertyDescriptor(window, 'parent')
+  const entry = { id: 'page_1', status: 'published' as const, createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', title: 'Draft' }
+
+  afterEach(() => {
+    if (original)
+      Object.defineProperty(window, 'parent', original)
+  })
+
+  it('shows the draft without a badge and builds it without reading the repository again', async () => {
+    const parent = { postMessage: () => {} }
+
+    Object.defineProperty(window, 'parent', { configurable: true, get: () => parent })
+
+    const { preview, state, reader } = await load()
+    const { draftMessage } = await import('../../src/preview/frame')
+    const send = (title: string): void => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: draftMessage({ entries: [{ collection: 'page', entry: { ...entry, title } }] }),
+        origin: window.location.origin,
+        source: parent as unknown as Window,
+      }))
+    }
+
+    state.openPreview(settings)
+    state.setPreviewEnabled(false)
+
+    expect(preview.enablePreview()).toBe(false)
+
+    send('First')
+    await settle()
+
+    expect(preview.previewing()).toBe(true)
+    expect(await reader('index.json')).toMatchObject({ build: 1 })
+
+    send('Second')
+    await reader('index.json')
+    await settle()
+
+    expect(calls).toEqual([
+      { draft: [{ collection: 'page', entry: { ...entry, title: 'First' } }], fresh: true },
+      { draft: [{ collection: 'page', entry: { ...entry, title: 'Second' } }], fresh: false },
+    ])
+    expect(badge()).toBeUndefined()
   })
 })

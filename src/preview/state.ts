@@ -1,5 +1,7 @@
 import type { ProviderConfig } from '../config/types'
+import type { CollectionEntry } from '../entries/references'
 import type { KeyValueStore } from '../store/types'
+import type { FrameDraft } from './frame'
 import { readLocal, readLocalJson, writeLocal } from '../store/local'
 
 export interface PreviewSettings {
@@ -8,6 +10,12 @@ export interface PreviewSettings {
   mediaUrl: string
 }
 
+export interface LocalPreview {
+  server: string
+}
+
+export type PreviewSource = PreviewSettings | LocalPreview
+
 const SETTINGS_KEY = 'forgepress:preview'
 const OFF_KEY = 'forgepress:preview:off'
 const CHANNEL = 'forgepress:preview'
@@ -15,11 +23,16 @@ const CHANNEL = 'forgepress:preview'
 const listeners = new Set<() => void>()
 
 let version = 0
+let content = 0
 let channel: BroadcastChannel | undefined
 let listening = false
+let framed: FrameDraft | undefined
 
-function emit(): void {
+function emit(draft = false): void {
   version += 1
+
+  if (!draft)
+    content += 1
 
   for (const listener of [...listeners])
     listener()
@@ -38,7 +51,7 @@ function listen(): void {
 
   if (typeof BroadcastChannel !== 'undefined') {
     channel = new BroadcastChannel(CHANNEL)
-    channel.addEventListener('message', emit)
+    channel.addEventListener('message', () => emit())
   }
 }
 
@@ -51,11 +64,40 @@ export function previewEnabled(): boolean {
 }
 
 export function previewing(): boolean {
-  return typeof window !== 'undefined' && previewEnabled() && readLocal(SETTINGS_KEY) !== null
+  if (typeof window === 'undefined')
+    return false
+
+  if (framed)
+    return framed.server !== undefined || readLocal(SETTINGS_KEY) !== null
+
+  return previewEnabled() && readLocal(SETTINGS_KEY) !== null
+}
+
+export function previewSource(): PreviewSource | undefined {
+  return framed?.server === undefined ? previewSettings() : { server: framed.server }
 }
 
 export function previewVersion(): number {
   return version
+}
+
+export function contentVersion(): number {
+  return content
+}
+
+export function framedPreview(): boolean {
+  return framed !== undefined
+}
+
+export function previewDraft(): CollectionEntry[] {
+  return framed?.entries ?? []
+}
+
+export function setFramedDraft(next: FrameDraft): void {
+  const switched = framed === undefined || framed.server !== next.server
+
+  framed = next
+  emit(!switched)
 }
 
 export function onPreviewChange(listener: () => void): () => void {

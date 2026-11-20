@@ -4,9 +4,11 @@ import ui from '@nuxt/ui/vue-plugin'
 import { createApp } from 'vue'
 import App from './App.vue'
 import { colorModeKey, createColorMode } from './plugins/color-mode'
+import { createPreviewPane, previewKey } from './plugins/preview'
 import { createRouter, routerKey } from './plugins/router'
 import { createTitle, titleKey } from './plugins/title'
 import { routes } from './routes'
+import { baked } from './settings'
 import styles from './styles.css?inline'
 import { documentRules } from './utils/document'
 
@@ -43,7 +45,7 @@ function resolve(target?: Element | string | null): Element {
   return el
 }
 
-export const mountEditor: MountEditor = (target) => {
+export const mountEditor: MountEditor = (target, options = {}) => {
   const host = resolve(target)
   const root = host.shadowRoot ?? host.attachShadow({ mode: 'open' })
 
@@ -61,11 +63,13 @@ export const mountEditor: MountEditor = (target) => {
   const router = createRouter(routes)
   const colorMode = createColorMode(container)
   const title = createTitle()
+  const preview = createPreviewPane(options.preview, baked)
 
   app.use(ui)
   app.provide(routerKey, router)
   app.provide(colorModeKey, colorMode)
   app.provide(titleKey, title)
+  app.provide(previewKey, preview)
   app.mount(container)
   container.addEventListener('click', router.follow)
 
@@ -75,6 +79,7 @@ export const mountEditor: MountEditor = (target) => {
     router.dispose()
     colorMode.dispose()
     title.dispose()
+    preview.dispose()
     unregister?.()
     root.replaceChildren()
     host.removeAttribute(EDITOR_ATTRIBUTE)

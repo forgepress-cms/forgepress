@@ -21,7 +21,7 @@ useTitle(() => props.title)
     <div class="grid min-w-0 gap-1">
       <UBreadcrumb v-if="breadcrumb?.length" :items="breadcrumb" class="mb-1" />
 
-      <h1 class="font-display text-3xl leading-[1.05] font-bold tracking-[-0.035em] wrap-anywhere text-highlighted lg:text-[2.5rem]">
+      <h1 class="font-display text-3xl leading-[1.05] font-bold tracking-[-0.035em] wrap-anywhere text-highlighted @5xl:text-[2.5rem]">
         {{ title }}
       </h1>
 

@@ -17,6 +17,7 @@ import { useEntryDraft } from '../../../composables/useEntryDraft'
 import { useIssues } from '../../../composables/useIssues'
 import { useNestedEntries } from '../../../composables/useNestedEntries'
 import { useParam } from '../../../composables/useParam'
+import { usePreviewContext, usePreviewDraft } from '../../../composables/usePreviewPane'
 import { useRouter } from '../../../composables/useRouter'
 import { useSave } from '../../../composables/useSave'
 import { condense, missingFields, newEntry, statusColor, STATUSES, titleField, toLocalizedFields, withPublished } from '../../../utils/entry'
@@ -53,6 +54,17 @@ const problems = creating ? [] : (await useIssues()).of(name, row.id)
 const { values, status, draft, dirty, leaving, commit, cancel, discard, proceed } = useEntryDraft(row, fields, locales, back, next => nested.rows(next.status))
 
 const original = JSON.stringify(draft())
+
+usePreviewContext(creating ? { schema, collection: name } : { schema, collection: name, id: row.id, entry: row })
+
+usePreviewDraft(() => {
+  const current = draft()
+
+  return [
+    ...Object.entries(nested.rows(current.status)).flatMap(([collection, related]) => related.map(entry => ({ collection, entry }))),
+    { collection: name, entry: current },
+  ]
+})
 
 const title = computed(() => {
   const first = titleField(fields)

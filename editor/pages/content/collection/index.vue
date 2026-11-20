@@ -15,6 +15,7 @@ import { useContent } from '../../../composables/useContent'
 import { useEntries } from '../../../composables/useEntries'
 import { useIssues } from '../../../composables/useIssues'
 import { useParam } from '../../../composables/useParam'
+import { usePreviewContext } from '../../../composables/usePreviewPane'
 import { useRouter } from '../../../composables/useRouter'
 import { useSave } from '../../../composables/useSave'
 import { clamp, fieldCell } from '../../../utils/cells'
@@ -28,7 +29,9 @@ const { store } = useContent()
 
 const name = useParam('collection')
 
-const { collection, chosen, fields } = await useCollection(name)
+const { schema, collection, chosen, fields } = await useCollection(name)
+
+usePreviewContext({ schema, collection: name })
 
 const rows = ref(await store.list(name))
 const locale = chosen

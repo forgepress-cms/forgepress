@@ -71,7 +71,7 @@ const detail = computed(() => {
       :icon="look.icon"
       :color="look.color"
       variant="soft"
-      :ui="{ label: 'max-sm:sr-only', leadingIcon: state === 'building' ? 'animate-spin' : '' }"
+      :ui="{ label: '@max-[40rem]:sr-only', leadingIcon: state === 'building' ? 'animate-spin' : '' }"
     />
 
     <template #content>

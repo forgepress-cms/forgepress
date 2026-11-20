@@ -4,6 +4,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 import { useColorMode } from '../../composables/useColorMode'
 import { usePreview } from '../../composables/usePreview'
+import { usePreviewPane } from '../../composables/usePreviewPane'
 import { usePublish } from '../../composables/usePublish'
 import { useRouter } from '../../composables/useRouter'
 import { useSession } from '../../composables/useSession'
@@ -21,8 +22,10 @@ const { mode, cycle } = useColorMode()
 const { identity, signOut } = useSession()
 const { count, refresh } = usePublish()
 const { enabled: previewing, set: setPreview } = usePreview()
+const pane = usePreviewPane()
 
 const showPublish = ref(false)
+const paneOpen = computed(() => pane?.open.value === true)
 const menu = ref(false)
 
 onMounted(refresh)
@@ -61,12 +64,12 @@ const setting = { root: 'flex-row-reverse items-center justify-between gap-3 px-
     v-model:open="menu"
     :to="href()"
     :menu="{ title: 'Menu', description: 'Pages and settings of the editor' }"
-    :ui="{ root: 'sticky top-0 z-10 border-transparent bg-desk/80', title: 'items-center gap-2', content: 'bg-desk', body: 'grid content-start gap-4' }"
+    :ui="{ root: 'sticky top-0 z-10 border-transparent bg-desk/80', title: 'items-center gap-2', toggle: 'lg:inline-flex @5xl:hidden', overlay: 'lg:block', content: 'bg-desk lg:flex', body: 'grid content-start gap-4' }"
   >
     <template #title>
       <Logo />
 
-      <strong class="font-display text-[1.375rem] font-bold tracking-[-0.03em]" :class="identity && 'max-sm:sr-only'">ForgePress</strong>
+      <strong class="font-display text-[1.375rem] font-bold tracking-[-0.03em]" :class="identity && '@max-[40rem]:sr-only'">ForgePress</strong>
     </template>
 
     <template #right>
@@ -77,11 +80,23 @@ const setting = { root: 'flex-row-reverse items-center justify-between gap-3 px-
         :label="link.label"
         color="neutral"
         variant="ghost"
-        class="hidden px-3.5 lg:inline-flex"
+        class="hidden px-3.5 @5xl:inline-flex"
         :class="route.path.startsWith(link.to) && 'sheet'"
       />
 
       <BuildStatus v-if="deployed && identity" />
+
+      <UButton
+        v-if="pane?.available"
+        icon="i-hugeicons-view"
+        label="Preview"
+        color="neutral"
+        variant="ghost"
+        :class="paneOpen && 'sheet'"
+        :aria-pressed="paneOpen"
+        :ui="{ label: '@max-[40rem]:sr-only' }"
+        @click="pane.toggle()"
+      />
 
       <UButton
         v-if="identity && count"
@@ -91,14 +106,14 @@ const setting = { root: 'flex-row-reverse items-center justify-between gap-3 px-
       />
 
       <UDropdownMenu v-if="identity" :items="account">
-        <UButton :label="identity.login" icon="i-hugeicons-user" color="neutral" variant="ghost" class="hidden lg:inline-flex" />
+        <UButton :label="identity.login" icon="i-hugeicons-user" color="neutral" variant="ghost" class="hidden @5xl:inline-flex" />
       </UDropdownMenu>
 
       <USwitch
         v-if="identity"
         :model-value="previewing"
         label="Site preview"
-        :ui="{ root: 'hidden shrink-0 flex-row-reverse items-center gap-2 px-2 lg:flex', wrapper: 'ms-0', label: 'font-normal whitespace-nowrap' }"
+        :ui="{ root: 'hidden shrink-0 flex-row-reverse items-center gap-2 px-2 @5xl:flex', wrapper: 'ms-0', label: 'font-normal whitespace-nowrap' }"
         @update:model-value="setPreview"
       />
 
@@ -106,7 +121,7 @@ const setting = { root: 'flex-row-reverse items-center justify-between gap-3 px-
         :icon="icons[mode]"
         color="neutral"
         variant="ghost"
-        class="hidden lg:inline-flex"
+        class="hidden @5xl:inline-flex"
         :aria-label="`Color mode: ${mode}`"
         :title="`Color mode: ${mode}`"
         @click="cycle()"

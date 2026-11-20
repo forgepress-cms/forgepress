@@ -1,11 +1,13 @@
 import type { ContentReader } from '../query/client'
+import type { BadgeState } from './badge'
 import type { PreviewFiles, PreviewReader } from './reader'
-import type { PreviewSettings } from './state'
+import type { PreviewSource } from './state'
 import { overlayContent } from '../query/overlay'
 import { errorMessage } from '../utils/error'
 import { once } from '../utils/once'
 import { createBadge } from './badge'
-import { onPreviewChange, previewing, previewSettings, previewVersion, setPreviewEnabled } from './state'
+import { followEditor } from './frame'
+import { contentVersion, framedPreview, onPreviewChange, previewDraft, previewing, previewSettings, previewSource, previewVersion, setFramedDraft, setPreviewEnabled } from './state'
 
 export { onPreviewChange, previewing } from './state'
 
@@ -16,15 +18,23 @@ interface Snapshot {
 
 let enabled = false
 let snapshot: Snapshot | undefined
+let built: number | undefined
 let selected: { key: string, reader: () => Promise<PreviewReader> } | undefined
 
 const badge = createBadge(setPreviewEnabled)
 
-function readerFor(settings: PreviewSettings): Promise<PreviewReader> {
-  const key = JSON.stringify(settings)
+function announce(state: BadgeState): void {
+  if (framedPreview())
+    badge.hide()
+  else
+    badge.show(state)
+}
+
+function readerFor(source: PreviewSource): Promise<PreviewReader> {
+  const key = JSON.stringify(source)
 
   if (selected?.key !== key)
-    selected = { key, reader: once(() => import('./reader').then(module => module.createPreviewReader(settings))) }
+    selected = { key, reader: once(() => import('./reader').then(module => module.createPreviewReader(source))) }
 
   return selected.reader()
 }
@@ -35,28 +45,34 @@ function load(): Promise<PreviewFiles | undefined> {
   if (snapshot?.version === version)
     return snapshot.files
 
-  const settings = previewSettings()
-  const building = settings
-    ? readerFor(settings).then(reader => reader.build())
+  const source = previewSource()
+  const fresh = built !== contentVersion()
+
+  built = contentVersion()
+
+  const building = source
+    ? readerFor(source).then(reader => reader.build(previewDraft(), fresh))
     : Promise.reject(new Error('[forgepress] sign in to the editor to preview unpublished content'))
 
   const current: Snapshot = {
     version,
     files: building.then((files) => {
       if (snapshot === current && previewing())
-        badge.show({ status: 'ready' })
+        announce({ status: 'ready' })
 
       return files
     }, (cause: unknown) => {
+      built = undefined
+
       if (snapshot === current && previewing())
-        badge.show({ status: 'failed', error: errorMessage(cause) })
+        announce({ status: 'failed', error: errorMessage(cause) })
 
       return undefined
     }),
   }
 
   snapshot = current
-  badge.show({ status: 'loading' })
+  announce({ status: 'loading' })
 
   return current.files
 }
@@ -78,7 +94,7 @@ async function read(path: string, base: ContentReader): Promise<unknown> {
 function refresh(): void {
   if (previewing())
     void load()
-  else if (previewSettings())
+  else if (previewSettings() && !framedPreview())
     badge.show({ status: 'off' })
   else
     badge.hide()
@@ -92,6 +108,7 @@ export function enablePreview(): boolean {
     enabled = true
     overlayContent(read)
     onPreviewChange(refresh)
+    followEditor(setFramedDraft)
     refresh()
   }
 

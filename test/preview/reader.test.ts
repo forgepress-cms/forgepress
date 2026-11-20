@@ -183,3 +183,60 @@ describe('preview reader', () => {
     await expect(reader().build()).rejects.toThrow('sign in to the editor to preview unpublished content')
   })
 })
+
+describe('preview reader with a draft', () => {
+  it('shows the editor\'s unsaved draft over the saved changes', async () => {
+    stored.set('changes', {
+      entries: { author: { author_1: author('author_1', 'Alice Smith', 'published') } },
+      uploads: {},
+      removed: [],
+    } satisfies Changes)
+
+    const files = await reader().build([
+      { collection: 'author', entry: author('author_1', 'Alice Jones', 'published') },
+      { collection: 'author', entry: author('author_3', 'Carol', 'unpublished') },
+    ])
+
+    expect((await authors(files)).map(entry => entry.name)).toEqual(['Alice Jones', 'Bob', 'Carol'])
+  })
+
+  it('keeps the branch it read while only the draft changes', async () => {
+    const preview = reader()
+
+    await preview.build([], true)
+
+    head = 'c2'
+    commit('c2', [author('author_1', 'Alice', 'published')])
+
+    const typed = await preview.build([{ collection: 'author', entry: author('author_2', 'Bobby', 'unpublished') }], false)
+
+    expect((await authors(typed)).map(entry => entry.name)).toEqual(['Alice', 'Bobby'])
+    expect(heads).toEqual(['c1'])
+  })
+
+  it('builds from the dev server when the editor works on local files', async () => {
+    const requests: string[] = []
+
+    vi.stubGlobal('fetch', async (url: string) => {
+      requests.push(url)
+
+      if (url === 'http://localhost:4390/__forgepress/schema')
+        return Response.json(schema)
+
+      if (url === 'http://localhost:4390/__forgepress/content/author')
+        return Response.json([author('author_1', 'Alice', 'published')])
+
+      return new Response('missing', { status: 404 })
+    })
+
+    const files = await createPreviewReader({ server: 'http://localhost:4390' }).build([
+      { collection: 'author', entry: author('author_2', 'Dora', 'unpublished') },
+    ])
+
+    expect((await authors(files)).map(entry => entry.name)).toEqual(['Alice', 'Dora'])
+    expect(requests).toContain('http://localhost:4390/__forgepress/schema')
+    expect(heads).toEqual([])
+
+    vi.unstubAllGlobals()
+  })
+})

@@ -123,3 +123,48 @@ describe('preview state', () => {
     expect(state.previewSettings()).toBeUndefined()
   })
 })
+
+describe('framed preview state', () => {
+  const draft = [{ collection: 'page', entry: { id: 'page_1', status: 'published' as const, createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', title: 'Draft' } }]
+
+  it('shows the signed-in content in the editor\'s frame, even with the site preview turned off', async () => {
+    const state = await load()
+
+    state.openPreview(settings)
+    state.setPreviewEnabled(false)
+    state.setFramedDraft({ entries: draft })
+
+    expect(state.previewing()).toBe(true)
+    expect(state.framedPreview()).toBe(true)
+    expect(state.previewDraft()).toEqual(draft)
+    expect(state.previewSource()).toEqual(settings)
+  })
+
+  it('needs a signed-in editor for the repository, but not for a dev server', async () => {
+    const state = await load()
+
+    state.setFramedDraft({ entries: [] })
+
+    expect(state.previewing()).toBe(false)
+
+    state.setFramedDraft({ entries: [], server: 'http://localhost:4390' })
+
+    expect(state.previewing()).toBe(true)
+    expect(state.previewSource()).toEqual({ server: 'http://localhost:4390' })
+  })
+
+  it('counts drafts as changes, but only a new source as new content', async () => {
+    const state = await load()
+    const seen: number[] = []
+
+    state.onPreviewChange(() => seen.push(state.contentVersion()))
+
+    state.setFramedDraft({ entries: [], server: '' })
+    state.setFramedDraft({ entries: draft, server: '' })
+    state.setFramedDraft({ entries: [], server: '' })
+    state.openPreview(settings)
+
+    expect(seen).toEqual([1, 1, 1, 2])
+    expect(state.previewVersion()).toBe(4)
+  })
+})

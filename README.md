@@ -360,6 +360,22 @@ When editing schema files by hand you can run `npx forgepress migrate` to keep y
 
 - The site can render unpublished content for signed-in editors
 - A badge on the page turns it on and off
+- The editor can show the page being edited next to its form, updated while you type
+
+To show the page in the editor, tell `mountEditor` where each entry lives on the site:
+
+```ts
+mountEditor(host.value, {
+  preview: ({ collection, entry, locale }) => collection === 'page' && entry ? entry.slug : undefined,
+})
+```
+
+- `preview` is either a fixed address, such as `'/'`, or a function of the page the editor shows
+- The function gets the `collection`, the `entry` as the site queries it in that `locale`, and the `locale`; on a list of entries it gets only the `collection`
+- Returning `undefined` keeps the page that is already shown
+- On wide screens the preview sits beside the editor, with a divider to resize it; on small screens it slides in from the right
+- The editor and the site must share an origin, such as an `/admin` page on the site itself; the site needs the preview, which `forgepress/nuxt` and `forgepress/next` add by default
+- Pages that don't exist on a deployed site yet, such as a new entry, need a route that renders them in the browser
 
 ## CLI
 
