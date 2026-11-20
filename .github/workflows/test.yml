@@ -49,6 +49,9 @@ jobs:
       - name: Typecheck package, playgrounds and docs
         run: pnpm run typecheck
 
+      - name: Find unused files, exports and dependencies
+        run: pnpm run knip
+
   test:
     runs-on: ubuntu-latest
     steps:

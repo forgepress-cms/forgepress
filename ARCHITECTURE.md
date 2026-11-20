@@ -88,3 +88,12 @@ The editor builds on `src` and may import any of it. Inside the editor, the same
 - The build treats every file in `src` as free of side effects, except the files it publishes. That keeps an `index.ts` from pulling unused code into a bundle. Code that has to run as soon as its file loads, without anything using the file, belongs in a published file, like `next/preview.ts`.
 
 When a rule reports an import, move what both sides need down to the lowest module that uses it, or move the importing code up. Types that several layers share usually belong with the module that owns the concept, such as `MediaConfig` in `media` rather than in `config`.
+
+## Checks
+
+Besides the rules above, `pnpm lint` checks the code itself:
+
+- Type-aware TypeScript rules catch promises nobody waits for, casts that change nothing and `switch` statements that miss a case.
+- A function has a complexity of at most 20, and a file in `src`, `editor` or `scripts` at most 400 lines.
+
+`pnpm knip` reports files, exports and dependencies that nothing uses. A file only exports what other files import; the published entries come from `build.config.mjs`. CI runs both.
