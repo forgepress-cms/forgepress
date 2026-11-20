@@ -32,7 +32,7 @@ const GROUP_NAMES: Record<Group, string> = { collections: 'Collection', componen
 const SCHEMA_KEYS = new Set(['components', 'collections', 'locales', 'defaultLocale'])
 
 const GROUP_OPTIONS: Record<Group, ReadonlyMap<string, FieldOptionType>> = {
-  collections: new Map<string, FieldOptionType>([['label', 'text'], ['description', 'text'], ['preview', 'text'], ['single', 'boolean']]),
+  collections: new Map<string, FieldOptionType>([['label', 'text'], ['description', 'text'], ['single', 'boolean']]),
   components: new Map<string, FieldOptionType>([['label', 'text'], ['description', 'text']]),
 }
 
@@ -241,9 +241,7 @@ function placeholderProblem(context: Context, fields: Record<string, unknown>, p
   return ADDRESS_TYPES.has(field.type) && field.multiple !== true ? undefined : 'but only text, number and single list fields fit into an address'
 }
 
-function checkPreview(context: Context, path: ValuePath, name: string, template: string, fields: Record<string, unknown>): void {
-  const subject = `"preview" of collection ${quote(name)}`
-
+function checkTemplate(context: Context, path: ValuePath, subject: string, template: string, fields: Record<string, unknown>): void {
   if (!SITE_PATH.test(template))
     context.report(path, `${subject} has to be a path on the site, such as "/blog/{slug}"`)
 
@@ -252,6 +250,26 @@ function checkPreview(context: Context, path: ValuePath, name: string, template:
 
     if (problem)
       context.report(path, `${subject} uses ${quote(`{${placeholder}}`)}, ${problem}`)
+  }
+}
+
+function checkPreview(context: Context, path: ValuePath, name: string, preview: unknown, fields: Record<string, unknown>): void {
+  const subject = `"preview" of collection ${quote(name)}`
+
+  if (typeof preview === 'string')
+    return checkTemplate(context, path, subject, preview, fields)
+
+  if (!isRecord(preview) || Object.values(preview).some(template => typeof template !== 'string'))
+    return context.report(path, `${subject} has to be a path, or an object with a path for each locale`)
+
+  if (context.locales.length === 0)
+    return context.report(path, `${subject} has a path for each locale, but the schema has no locales`)
+
+  for (const [locale, template] of Object.entries(preview)) {
+    if (!context.locales.includes(locale))
+      context.report([...path, locale], `${subject} has no locale ${quote(locale)}; the schema has ${context.locales.join(', ')}`)
+    else
+      checkTemplate(context, [...path, locale], `${subject} for ${locale}`, template as string, fields)
   }
 }
 
@@ -269,7 +287,7 @@ function checkGroup(context: Context, group: Group, name: string, value: unknown
   for (const [key, option] of Object.entries(value)) {
     const kind = GROUP_OPTIONS[group].get(key)
 
-    if (!kind && key !== 'fields')
+    if (!kind && key !== 'fields' && (group !== 'collections' || key !== 'preview'))
       report([...path, key], `${noun} ${quote(name)} has no option ${quote(key)}`)
     else if (kind && !fits(kind, option))
       report([...path, key], `${quote(key)} of ${noun.toLowerCase()} ${quote(name)} has to be ${KINDS[kind]}`)
@@ -281,7 +299,7 @@ function checkGroup(context: Context, group: Group, name: string, value: unknown
   for (const [key, field] of Object.entries(value.fields))
     checkField(context, [...path, 'fields', key], name, key, field)
 
-  if (group === 'collections' && typeof value.preview === 'string')
+  if (group === 'collections' && value.preview !== undefined)
     checkPreview(context, [...path, 'preview'], name, value.preview, value.fields)
 }
 

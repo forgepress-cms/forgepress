@@ -392,6 +392,7 @@ export default {
 - Names in braces are filled in from the saved entry, the way the site queries it: `{id}`, `{locale}`, and text, number or single list fields
 - Values are URL-encoded except `/`, so a slug such as `/docs/schema` stays a path
 - `{locale}` adds a language switch to the preview
+- Each locale can have its own address instead, such as `preview: { es: '{slug}', en: '/en{slug}' }`, when the languages differ by more than one part of the path; the switch then offers the locales that have one
 - Entries of a collection with an address get a Preview button; a new entry shows its page once it's saved
 - The address has to be a path on the site; for one a template can't express, point it at a page of your site that looks the entry up and redirects, such as `/preview?id={id}`
 - On wide screens the preview sits beside the editor, with a divider to resize it; on small screens it slides in from the right

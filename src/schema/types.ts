@@ -6,8 +6,10 @@ export interface ComponentDefinition {
   fields: Record<string, Field>
 }
 
+export type PreviewAddress = string | Readonly<Record<string, string>>
+
 export interface CollectionDefinition extends ComponentDefinition {
-  preview?: string
+  preview?: PreviewAddress
   single?: boolean
 }
 

@@ -4,7 +4,7 @@ import type { Schema } from '../../src/schema'
 import { computed, ref, shallowRef, watch } from 'vue'
 import { toOutputEntry } from '../../src/output'
 import { draftMessage, frameMessage } from '../../src/preview'
-import { fillPreview, previewPlaceholders } from '../../src/schema'
+import { fillPreview, previewPlaceholders, previewTemplate } from '../../src/schema'
 import { readLocal, writeLocal } from '../../src/store'
 
 export interface PreviewContext {
@@ -104,15 +104,25 @@ export function createPreviewPane(server: () => Promise<PreviewServer>): Preview
   let frame: HTMLIFrameElement | undefined
   let entries: CollectionEntry[] = []
 
-  const template = computed(() => {
+  const preview = computed(() => {
     const current = context.value
 
-    return current ? current.schema.collections[current.collection]?.preview || undefined : undefined
+    return current ? current.schema.collections[current.collection]?.preview : undefined
   })
 
-  const available = computed(() => template.value !== undefined)
+  const locales = computed<readonly string[]>(() => {
+    const listed = context.value?.schema.locales ?? []
+    const current = preview.value
+
+    if (typeof current === 'object')
+      return listed.filter(code => Object.hasOwn(current, code))
+
+    return current && previewPlaceholders(current).includes('locale') ? listed : []
+  })
+
+  const available = computed(() => typeof preview.value === 'object' ? locales.value.length > 0 : !!preview.value)
   const open = computed(() => available.value && (wide.value ? docked.value : overlay.value))
-  const locales = computed<readonly string[]>(() => template.value && previewPlaceholders(template.value).includes('locale') ? context.value?.schema.locales ?? [] : [])
+  const template = computed(() => previewTemplate(preview.value, locale.value))
   const target = computed(() => context.value && template.value ? previewTarget(context.value, template.value, locale.value) : undefined)
   const url = computed(() => target.value?.url)
   const hint = computed(() => target.value?.hint ?? '')
@@ -173,16 +183,17 @@ export function createPreviewPane(server: () => Promise<PreviewServer>): Preview
 
   watch(url, navigate)
 
-  watch(context, (next) => {
+  watch([context, locales], ([next, offered]) => {
     if (!next)
       return
 
-    const listed = next.schema.locales ?? []
+    const listed = typeof preview.value === 'object' ? offered : next.schema.locales ?? []
+    const chosen = next.schema.defaultLocale
 
     if (listed.length === 0)
       locale.value = undefined
     else if (!locale.value || !listed.includes(locale.value))
-      locale.value = next.schema.defaultLocale ?? listed[0]
+      locale.value = chosen !== undefined && listed.includes(chosen) ? chosen : listed[0]
   })
 
   watch(docked, value => writeLocal(DOCKED_KEY, value ? '1' : undefined))

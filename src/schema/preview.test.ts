@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fillPreview, previewPlaceholders, renamePreviewField } from './preview'
+import { fillPreview, previewPlaceholders, previewTemplate, renamePreviewField } from './preview'
 
 describe('previewPlaceholders', () => {
   it('lists each name in braces once, in order', () => {
@@ -21,8 +21,28 @@ describe('fillPreview', () => {
   })
 })
 
+describe('previewTemplate', () => {
+  it('takes one address for every locale, or the address of the locale', () => {
+    expect(previewTemplate('/{locale}{slug}', 'en')).toBe('/{locale}{slug}')
+    expect(previewTemplate({ es: '{slug}', en: '/en{slug}' }, 'en')).toBe('/en{slug}')
+    expect(previewTemplate({ es: '{slug}', en: '/en{slug}' }, 'es')).toBe('{slug}')
+  })
+
+  it('has none for a locale without an address', () => {
+    expect(previewTemplate({ es: '{slug}' }, 'en')).toBeUndefined()
+    expect(previewTemplate({ es: '{slug}' }, undefined)).toBeUndefined()
+    expect(previewTemplate({ es: '' }, 'es')).toBeUndefined()
+    expect(previewTemplate('', 'es')).toBeUndefined()
+    expect(previewTemplate(undefined, 'es')).toBeUndefined()
+  })
+})
+
 describe('renamePreviewField', () => {
   it('renames every use of the field and leaves other names alone', () => {
     expect(renamePreviewField('/{slug}?s={slug}&t={slugs}', 'slug', 'path')).toBe('/{path}?s={path}&t={slugs}')
+  })
+
+  it('renames the field in the address of every locale', () => {
+    expect(renamePreviewField({ es: '{slug}', en: '/en{slug}' }, 'slug', 'path')).toEqual({ es: '{path}', en: '/en{path}' })
   })
 })

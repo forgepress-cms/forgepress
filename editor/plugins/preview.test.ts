@@ -13,6 +13,8 @@ const schema: Schema = {
   collections: {
     page: { preview: ADDRESS, fields: { title: { type: 'text', label: 'Title', translate: true }, slug: { type: 'text', label: 'Slug', translate: true } } },
     post: { preview: '/posts/{id}', fields: { title: { type: 'text', translate: true } } },
+    article: { preview: { en: '/en{slug}', de: '{slug}' }, fields: { slug: { type: 'text', translate: true } } },
+    news: { preview: { en: '/news{slug}' }, fields: { slug: { type: 'text', translate: true } } },
     note: { fields: { text: { type: 'text' } } },
   },
   locales: ['en', 'de'],
@@ -216,6 +218,31 @@ describe('createPreviewPane', () => {
 
     expect(created.url.value).toBeUndefined()
     expect(created.hint.value).toBe('Save the entry to see its page.')
+  })
+
+  it('takes the address of the chosen language, and offers only the languages that have one', async () => {
+    const created = pane()
+    const slug = { en: '/hello', de: '/hallo' }
+
+    created.show({ schema, collection: 'article', id: 'article_1', entry: { id: 'article_1', ...meta, slug } })
+    await nextTick()
+
+    expect(created.locales.value).toEqual(['en', 'de'])
+    expect(created.locale.value).toBe('de')
+    expect(created.url.value).toBe('/hallo')
+
+    created.locale.value = 'en'
+    await nextTick()
+
+    expect(created.url.value).toBe('/en/hello')
+
+    created.locale.value = 'de'
+    created.show({ schema, collection: 'news', id: 'news_1', entry: { id: 'news_1', ...meta, slug } })
+    await nextTick()
+
+    expect(created.locales.value).toEqual(['en'])
+    expect(created.locale.value).toBe('en')
+    expect(created.url.value).toBe('/news/hello')
   })
 
   it('switches languages only when the address names one', async () => {

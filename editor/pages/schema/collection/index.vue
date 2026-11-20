@@ -219,6 +219,7 @@ function move(key: string, offset: number): Promise<boolean> {
       :label="collection.label ?? ''"
       :description="collection.description ?? ''"
       :preview="kind === 'collections' ? collection.preview ?? '' : undefined"
+      :locales="schema.locales ?? []"
       :single="kind === 'collections' ? collection.single === true : undefined"
       :loading="saving"
       :validate="invalidCollection"

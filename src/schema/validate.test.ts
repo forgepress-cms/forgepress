@@ -370,7 +370,10 @@ describe('validateSchema', () => {
       }
 
       expect(issues(schema(1))).toEqual([
-        { path, message: '"preview" of collection "post" has to be a string' },
+        { path, message: '"preview" of collection "post" has to be a path, or an object with a path for each locale' },
+      ])
+      expect(issues(schema({ en: 1 }))).toEqual([
+        { path, message: '"preview" of collection "post" has to be a path, or an object with a path for each locale' },
       ])
     })
 
@@ -379,6 +382,17 @@ describe('validateSchema', () => {
         { path, message: '"preview" of collection "post" uses "{title}", but the collection has no field "title"' },
         { path, message: '"preview" of collection "post" uses "{tags}", but only text, number and single list fields fit into an address' },
         { path, message: '"preview" of collection "post" uses "{body}", but only text, number and single list fields fit into an address' },
+      ])
+    })
+
+    it('take a path for each locale the schema has, checked like a single one', () => {
+      expect(issues(schema({ es: '{slug}', en: '/en{slug}' }, { locales: ['es', 'en'] }))).toEqual([])
+      expect(issues(schema({ en: '/en/{body}', fr: '/fr{slug}' }, { locales: ['es', 'en'] }))).toEqual([
+        { path: [...path, 'en'], message: '"preview" of collection "post" for en uses "{body}", but only text, number and single list fields fit into an address' },
+        { path: [...path, 'fr'], message: '"preview" of collection "post" has no locale "fr"; the schema has es, en' },
+      ])
+      expect(issues(schema({ en: '/en{slug}' }, { locales: undefined }))).toEqual([
+        { path, message: '"preview" of collection "post" has a path for each locale, but the schema has no locales' },
       ])
     })
 
